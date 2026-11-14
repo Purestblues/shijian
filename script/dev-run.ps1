@@ -21,6 +21,12 @@
 .PARAMETER ClientOnly
     只构建并启动调试版客户端，直接复用本机已在运行的服务端（不编/不重启 shijian-server）
 
+.PARAMETER Detached
+    后台分离启动：拉起客户端并确认窗口就绪后立即退出脚本，保持窗口与服务端存活（供 Agent/自动化测试使用）
+
+.PARAMETER Stop
+    停止当前运行的调试版客户端与服务端，并恢复安装版服务
+
 .PARAMETER Port
     本地调试服务端监听端口。默认 37091
 
@@ -31,13 +37,18 @@
     ./script/dev-run.ps1 -ClientOnly
 
 .EXAMPLE
-    ./script/dev-run.ps1 -NoBuild
+    ./script/dev-run.ps1 -Detached
+
+.EXAMPLE
+    ./script/dev-run.ps1 -Stop
 #>
 [CmdletBinding()]
 param(
     [string]$InstallDir = 'D:/Program Files/shijian',
     [switch]$NoBuild,
     [switch]$ClientOnly,
+    [switch]$Detached,
+    [switch]$Stop,
     [int]$Port = 37091
 )
 
@@ -48,6 +59,12 @@ $clientProject = [IO.Path]::Combine($root, 'ShiJian.Client', 'ShiJian.Client.csp
 $outDir = [IO.Path]::Combine($root, 'ShiJian.Client', 'bin', 'Debug', 'net10.0')
 $serverManifest = [IO.Path]::Combine($root, 'shijian-server', 'Cargo.toml')
 $serverExe = [IO.Path]::Combine($root, 'shijian-server', 'target', 'debug', 'shijian-server.exe')
+
+# 自动检测是否处于 Agent / 自动化非交互环境；若是且未指定 -Detached，默认启用 -Detached 避免前台阻塞超时
+if (-not $PSBoundParameters.ContainsKey('Detached') -and ($env:ANTIGRAVITY_AGENT -eq '1' -or $env:AGENT_RUN -eq '1')) {
+    Write-Host '[agent] 检测到 Agent / 自动化运行环境，自动启用 -Detached 模式避免前台阻塞'
+    $Detached = [switch]::Present
+}
 
 function Copy-IconFolder {
     param(
@@ -83,6 +100,26 @@ function Copy-IconFolder {
     }
     $copied = @(Get-ChildItem -Path $Destination -Recurse -File -ErrorAction SilentlyContinue)
     Write-Host ("[copy] {0}：已从安装目录复制 {1} 个文件" -f $Label, $copied.Count)
+}
+
+function Start-ClientDetachedProcess {
+    param(
+        [string]$FilePath,
+        [string]$WorkingDirectory,
+        [string]$ArgumentList = ""
+    )
+
+    $cmd = ('"{0}" {1}' -f $FilePath, $ArgumentList).Trim()
+    $result = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+        CommandLine = $cmd
+        CurrentDirectory = $WorkingDirectory
+    }
+
+    if ($result.ReturnValue -ne 0) {
+        throw ("WMI 启动客户端失败，返回值：{0}" -f $result.ReturnValue)
+    }
+
+    return (Get-Process -Id $result.ProcessId)
 }
 
 function Stop-ServerStack {
@@ -194,10 +231,26 @@ function Restore-ServerStack {
     }
 }
 
+if ($Stop) {
+    Write-Host '== 正在停止本地调试环境并恢复安装版服务 =='
+    Get-Process -Name 'ShiJian' -ErrorAction SilentlyContinue | Where-Object {
+        $_.Path -like "*$root*" -or $_.Path -like "*Debug*"
+    } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+    Get-Process -Name 'shijian-server' -ErrorAction SilentlyContinue | Where-Object {
+        $_.Path -like "*$root*" -or $_.Path -like "*target*debug*"
+    } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+    Restore-ServerStack -HadShell $true -HadServer $true -InstallDir $InstallDir
+    Write-Host '== 调试环境已清理，安装版服务已恢复 =='
+    return
+}
+
 $serverUrl = ("http://127.0.0.1:{0}" -f $Port)
 $hadShell = $false
 $hadServer = $false
 $serverProc = $null
+$clientProc = $null
 $prevServerEnv = $env:SHIJIAN_SERVER
 $prevWebUiEnv = $env:SHIJIAN_WEBUI_DIR
 $prevDataDirEnv = $env:SHIJIAN_DATA_DIR
@@ -285,16 +338,63 @@ try {
         $changedServerEnv = $true
     }
 
+    # 清理可能残留的前次调试版客户端，确保只有一个调试窗口供 GUI 自动化与视觉检查
+    Get-Process -Name 'ShiJian' -ErrorAction SilentlyContinue | Where-Object {
+        $_.Path -like "*$root*" -or $_.Path -like "*Debug*"
+    } | Stop-Process -Force -ErrorAction SilentlyContinue
+
+    $clientExe = [IO.Path]::Combine($outDir, 'ShiJian.exe')
+
+    if (-not $NoBuild) {
+        Write-Host ''
+        Write-Host '[build] 正在编译 ShiJian.Client (Debug)...'
+        & dotnet build $clientProject -c Debug --nologo
+        if ($LASTEXITCODE -ne 0) {
+            throw ("ShiJian.Client 编译失败（退出码 {0}）" -f $LASTEXITCODE)
+        }
+    }
+
+    if (-not (Test-Path $clientExe)) {
+        throw ("未找到客户端可执行文件：{0}（请去掉 -NoBuild 重试）" -f $clientExe)
+    }
+
     Write-Host ''
     Write-Host ("[client] 正在启动调试版客户端（server: {0}）..." -f $serverUrl)
     Write-Host ''
 
-    $dotnetArgs = @('run', '--project', $clientProject, '-c', 'Debug')
-    if ($NoBuild) { $dotnetArgs += '--no-build' }
+    if ($Detached) {
+        $clientProc = Start-ClientDetachedProcess `
+            -FilePath $clientExe `
+            -WorkingDirectory $outDir
 
-    & dotnet @dotnetArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw ("ShiJian.Client 退出异常（退出码 {0}）" -f $LASTEXITCODE)
+        # 后台分离模式：等待客户端主窗口就绪后立即返回控制权，保持进程存活
+        $deadline = [DateTime]::UtcNow.AddSeconds(10)
+        $windowReady = $false
+        while ([DateTime]::UtcNow -lt $deadline) {
+            if ($clientProc.HasExited) {
+                throw ("客户端启动后异常退出（退出码 {0}）" -f $clientProc.ExitCode)
+            }
+            $clientProc.Refresh()
+            if ($clientProc.MainWindowHandle -ne 0 -or ($clientProc.MainWindowTitle -like '*时见*')) {
+                $windowReady = $true
+                break
+            }
+            Start-Sleep -Milliseconds 300
+        }
+        Start-Sleep -Seconds 1
+        Write-Host ("[client] 调试版客户端已就绪（PID: {0}，MainWindowHandle: {1}）" -f $clientProc.Id, $clientProc.MainWindowHandle)
+    }
+    else {
+        # 前台交互模式：保持原有体验，阻塞直到用户关闭窗口
+        $clientProc = Start-Process `
+            -FilePath $clientExe `
+            -WorkingDirectory $outDir `
+            -PassThru
+
+        $null = $clientProc.WaitForExit()
+        if ($clientProc.ExitCode -ne 0) {
+            throw ("ShiJian.Client 退出异常（退出码 {0}）" -f $clientProc.ExitCode)
+        }
     }
 }
 catch {
@@ -303,27 +403,36 @@ catch {
     Write-Host ("[error] {0}" -f $_.Exception.Message) -ForegroundColor Red
 }
 finally {
-    if ($null -ne $serverProc -and -not $serverProc.HasExited) {
+    if (-not $Detached) {
+        if ($null -ne $serverProc -and -not $serverProc.HasExited) {
+            Write-Host ''
+            Write-Host '[cleanup] 正在停止本地调试版 shijian-server...'
+            Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue
+            try { $null = $serverProc.WaitForExit(3000) } catch {}
+        }
+
+        if ($changedServerEnv) {
+            if ($null -eq $prevServerEnv) { Remove-Item Env:SHIJIAN_SERVER -ErrorAction SilentlyContinue }
+            else { $env:SHIJIAN_SERVER = $prevServerEnv }
+        }
+        if ($changedWebUiEnv) {
+            if ($null -eq $prevWebUiEnv) { Remove-Item Env:SHIJIAN_WEBUI_DIR -ErrorAction SilentlyContinue }
+            else { $env:SHIJIAN_WEBUI_DIR = $prevWebUiEnv }
+        }
+        if ($changedDataDirEnv) {
+            if ($null -eq $prevDataDirEnv) { Remove-Item Env:SHIJIAN_DATA_DIR -ErrorAction SilentlyContinue }
+            else { $env:SHIJIAN_DATA_DIR = $prevDataDirEnv }
+        }
+
+        Restore-ServerStack -HadShell $hadShell -HadServer $hadServer -InstallDir $InstallDir
+    }
+    else {
         Write-Host ''
-        Write-Host '[cleanup] 正在停止本地调试版 shijian-server...'
-        Stop-Process -Id $serverProc.Id -Force -ErrorAction SilentlyContinue
-        try { $null = $serverProc.WaitForExit(3000) } catch {}
+        $cId = if ($clientProc) { $clientProc.Id } else { '未知' }
+        $sId = if ($serverProc -and -not $serverProc.HasExited) { (', 服务端 PID: {0}' -f $serverProc.Id) } else { '' }
+        Write-Host ("[detached] 调试环境保持运行中（客户端 PID: {0}{1}）。" -f $cId, $sId)
+        Write-Host '[detached] 验证完毕后可执行 ./script/dev-run.ps1 -Stop 停止并恢复原服务。'
     }
-
-    if ($changedServerEnv) {
-        if ($null -eq $prevServerEnv) { Remove-Item Env:SHIJIAN_SERVER -ErrorAction SilentlyContinue }
-        else { $env:SHIJIAN_SERVER = $prevServerEnv }
-    }
-    if ($changedWebUiEnv) {
-        if ($null -eq $prevWebUiEnv) { Remove-Item Env:SHIJIAN_WEBUI_DIR -ErrorAction SilentlyContinue }
-        else { $env:SHIJIAN_WEBUI_DIR = $prevWebUiEnv }
-    }
-    if ($changedDataDirEnv) {
-        if ($null -eq $prevDataDirEnv) { Remove-Item Env:SHIJIAN_DATA_DIR -ErrorAction SilentlyContinue }
-        else { $env:SHIJIAN_DATA_DIR = $prevDataDirEnv }
-    }
-
-    Restore-ServerStack -HadShell $hadShell -HadServer $hadServer -InstallDir $InstallDir
 
     if ($pushedLocation) {
         Pop-Location
