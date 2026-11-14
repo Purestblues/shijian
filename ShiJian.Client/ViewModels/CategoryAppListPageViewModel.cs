@@ -265,16 +265,18 @@ public class CategoryAppListPageViewModel : CategoryAppListPageModel
         var file = (item.File ?? string.Empty).Trim();
         if (!string.IsNullOrEmpty(file))
         {
-            var folder = Path.GetFileName(Path.GetDirectoryName(file));
+            var normalized = file.Replace('\\', '/').TrimEnd('/');
+            var segments = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var folder = segments.Length >= 2 ? segments[^2] : null;
             if (!string.IsNullOrEmpty(folder) &&
                 !string.Equals(folder, processName, StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(folder, displayName, StringComparison.OrdinalIgnoreCase))
             {
                 parts.Add(folder);
             }
-            else if (parts.Count == 0)
+            else if (parts.Count == 0 && segments.Length > 0)
             {
-                parts.Add(Path.GetFileName(file));
+                parts.Add(segments[^1]);
             }
         }
 
