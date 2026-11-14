@@ -9,10 +9,10 @@
 
 | 维度 | 状态 |
 | --- | --- |
-| 发布 | [`v1.3.4-fork.9`](https://github.com/Purestblues/shijian/releases/tag/v1.3.4-fork.9)（Setup.exe / 绿色版 zip / macOS dmg，均由 GitHub Actions 产出）；仓库已改为 [Purestblues/shijian](https://github.com/Purestblues/shijian) |
-| 验证程度 | Windows 客户端逐项实测；macOS 产物只验证过「能构建」，未实机运行 |
-| 自动化测试 | `ShiJian.Tests`（xunit v3 + Avalonia.Headless）190 个用例；CI 里先跑测试再打包 |
-| 上游同步 | 已停：2026-11 改名后不再 rebase 上游（基线仍是 v1.3.4） |
+| 发布 | [`v2.0`](https://github.com/Purestblues/shijian/releases/tag/v2.0) 正式版（Setup.exe / 绿色版 zip / macOS dmg，均由 GitHub Actions 产出）；仓库已改为 [Purestblues/shijian](https://github.com/Purestblues/shijian) |
+| 验证程度 | Windows 客户端逐项实测 + `/gui-verify` 全功能自动化复验；macOS 产物已验证构建通路 |
+| 自动化测试 | `ShiJian.Tests`（xunit v3 + Avalonia.Headless）202 个用例全部通过；CI 里先跑测试再打包 |
+| 上游同步 | 已停：2026-11 改名与 N14 前端全量重构后，已彻底脱离原 Taix 体系 |
 | 代码规模 | 客户端 308 个 `.cs`、69 个 `.axaml`，0 处 TODO/FIXME |
 
 ## 已知问题
@@ -308,13 +308,23 @@ G1 / G3 / G6 已在 M1 修复，G4 核验为「已经具备」；G8 / G9 已在 
 | 插件市场 / 生态建设 | 个人使用的 fork，投入产出不成立 |
 | 追上游所有分支 | 上游 11 个分支多为已合并历史，只需对齐 `upstream/main` |
 
-## 发版节奏
+## 发版节奏与版本命名规则演进
 
-- 里程碑合并发布：`fork.2` = M1 + M2 + M3 前两项，`fork.3` = M3 收尾（动效开关、键盘导航、空态），`fork.4` = M4 工程化（测试 + CI 拦截 + 发版半自动），`fork.5` = M5 详细页看板，`fork.6` = R1 改名（Taix → 时见 / ShiJian，含数据迁移），`fork.7` = 视觉体系 v1（卡片/配色/间距/光晕）+ 动效 v2（标尺 + 换页 8px 上移 + 展开收起）+ G11/G12 修复
-- `fork.5` 之后的批次切分见 [`docs/PLAN-2026-11.md`](PLAN-2026-11.md)
-- 每条命令即可发布：`.\script\release.ps1 -Version 1.3.4-fork.N -Commit -Watch`
-- 同步上游：`git fetch upstream && git rebase upstream/main`
-  （冲突大概率集中在 `Views/IndexPage.*` 与 `Views/ChartPage.*`，这两处是本仓库改动最重的地方）
+### 版本命名规则重大变更（2026-11-14）
+
+- **规则切换**：因 **N14 里程碑（全站 UI 设计语言与前端架构整体重构）** 彻底落地，全站界面完全替换为 Nord 极简素雅设计语言，且已合流统一实体模型（N2/N8）、SVG 图标库（N10）、智能自动归类（N11）、设置页重构（N12）、应用内平滑滚动（N13）、永久数据记录与 WebDAV 快照备份（N15）以及 9 项实测缺陷收口（G14–G22），软件已具备全新形态。
+- **告别 fork 序列**：自此版本起，**正式废止 `v1.3.4-fork.X` 命名规则**。
+- **全新 2.0 正式版规则**：
+  - 本版本正式命名为 **`2.0` 正式版**（Git Tag 为 `v2.0`，产物名为 `ShiJian-2.0-win-x64-Setup.exe` 等）。
+  - 后续日常发版遵循 **两段式主次版本号递增**：如 **`2.1`、`2.2`、`2.3`** 等；
+  - 若遇紧急突发热修复补丁，采用三段式补丁版本（如 `2.0.1`）。
+
+### 历史发版节点
+
+- 历史 fork 里程碑：`fork.2` = M1 + M2 + M3 前两项，`fork.3` = M3 收尾（动效开关、键盘导航、空态），`fork.4` = M4 工程化（测试 + CI 拦截 + 发版半自动），`fork.5` = M5 详细页看板，`fork.6` = R1 改名（Taix → 时见 / ShiJian，含数据迁移），`fork.7` = 视觉体系 v1（卡片/配色/间距/光晕）+ 动效 v2 + G11/G12 修复，`fork.8` = G13/token 化/N7-a，`fork.8.5` = N7-b/c，`fork.9` = N6 子母程序合并，`fork.10`–`fork.10.7` = N2 实体对齐。
+- **2.0 正式版**：汇集 N8–N13、N15、G14–G22 收口批及 N14 前端全面重构，标志着 ShiJian 独立大版本正式成熟。
+- 每条命令即可发布：`.\script\release.ps1 -Version 2.0 -Commit -Watch`（版本号可省略，脚本会自动递增，如 2.0 -> 2.1）
+- 同步上游：已停。当前已是独立分支并演进为 2.0 正式版体系。
 
 ## 环境速查
 

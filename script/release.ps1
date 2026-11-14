@@ -73,8 +73,8 @@ if ([string]::IsNullOrWhiteSpace($Version))
 $Version = $Version.Trim()
 if ($Version.StartsWith('v')) { $Version = $Version.Substring(1) }
 
-if ($Version -notmatch '^\d+\.\d+\.\d+') {
-    Write-Host ("版本号格式不对：'{0}'，应形如 1.3.4-fork.2" -f $Version) -ForegroundColor Red
+if ($Version -notmatch '^\d+\.\d+(\.\d+)?(-.+)?$') {
+    Write-Host ("版本号格式不对：'{0}'，应形如 2.0、2.1 或 1.3.4-fork.2" -f $Version) -ForegroundColor Red
     exit 1
 }
 

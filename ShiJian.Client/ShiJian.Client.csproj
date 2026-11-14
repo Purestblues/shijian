@@ -6,7 +6,7 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <AssemblyName>ShiJian</AssemblyName>
-        <APP_VERSION Condition="'$(APP_VERSION)' == ''">1.3.4-fork.11</APP_VERSION>
+        <APP_VERSION Condition="'$(APP_VERSION)' == ''">2.0</APP_VERSION>
         <Version>$(APP_VERSION)</Version>
         <ApplicationIcon>Resources\Icons\shijian.ico</ApplicationIcon>
         <AvaloniaVersion>12.1.1</AvaloniaVersion>

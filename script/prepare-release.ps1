@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     发版前准备：算下一个版本号，并按 commit 生成 release notes 草稿。
@@ -57,26 +57,35 @@ function Get-LatestTag {
     return $tag
 }
 
-# v1.3.4-fork.3 -> 1.3.4-fork.4
-# v1.3.4        -> 1.3.4-fork.1
-# 无 tag         -> 1.0.0-fork.1
+# v2.0           -> 2.1
+# v2.1           -> 2.2
+# v1.3.4-fork.3  -> 2.0 (已进入 2.0 正式版体系)
+# 无 tag          -> 2.0
 function Get-NextVersion {
     param([string]$LatestTag)
 
-    if ([string]::IsNullOrWhiteSpace($LatestTag)) { return '1.0.0-fork.1' }
+    if ([string]::IsNullOrWhiteSpace($LatestTag)) { return '2.0' }
 
     $version = $LatestTag.TrimStart('v')
 
-    if ($version -match '^(?<base>.+?)-fork\.(?<n>\d+)$') {
-        $next = [int]$Matches['n'] + 1
-        return "$($Matches['base'])-fork.$next"
+    # 2.0 / 2.1 递增为 2.1 / 2.2
+    if ($version -match '^(?<major>\d+)\.(?<minor>\d+)$') {
+        $nextMinor = [int]$Matches['minor'] + 1
+        return "$($Matches['major']).$nextMinor"
     }
 
-    if ($version -match '^\d+\.\d+\.\d+$') {
-        return "$version-fork.1"
+    # 三段式 2.0.0 递增
+    if ($version -match '^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$') {
+        $nextPatch = [int]$Matches['patch'] + 1
+        return "$($Matches['major']).$($Matches['minor']).$nextPatch"
     }
 
-    return "$version-fork.1"
+    # 历史 fork.X 规则平滑收口切入 2.0
+    if ($version -match '-fork\.') {
+        return '2.0'
+    }
+
+    return '2.0'
 }
 
 function Get-Commits {
@@ -118,7 +127,7 @@ function Format-Draft {
     $lines = @()
     $lines += "# v$Version 更新日志"
     $lines += ""
-    $lines += "> 本版本基于上游 [NLick47/Taix](https://github.com/NLick47/Taix) 的个人 fork，改动集中在客户端。"
+    $lines += "> ShiJian（时见）桌面端与内嵌 WebUI 发布更新。"
     $lines += "> 以下是提交列表自动生成的草稿（$RangeText），发版前请补上一句人话的小结。"
     $lines += ""
 
