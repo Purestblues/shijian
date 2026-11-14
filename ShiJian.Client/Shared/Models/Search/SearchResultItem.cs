@@ -41,4 +41,5 @@ public record SearchResultItem(
     public bool IsItemRow => Kind == SearchRowKind.Item;
     public bool HasOverflow => OverflowCount > 0;
     public string OverflowText => OverflowCount > 0 ? $"+{OverflowCount}" : string.Empty;
+    public string FormattedSecondaryText => string.IsNullOrEmpty(SecondaryText) ? string.Empty : $"  {SecondaryText}";
 }

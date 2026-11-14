@@ -698,18 +698,51 @@ public class DefaultWindow : Avalonia.Controls.Window
         IsWindowClosed = true;
     }
 
+    /// <summary>
+    /// 若当前正展示窗口级确认框、动作选择框或输入框，则按取消关闭。
+    /// 返回 true 表示确有激活的对话框被关闭。
+    /// </summary>
+    public bool CancelActiveDialog()
+    {
+        if (IsShowConfirmDialog)
+        {
+            IsDialogConfirm = false;
+            HideDialog();
+            return true;
+        }
+
+        if (IsShowActionDialog)
+        {
+            ActionDialogResult = -1;
+            HideActionDialog();
+            return true;
+        }
+
+        if (IsShowInputModal)
+        {
+            IsDialogConfirm = false;
+            HideInputModal();
+            return true;
+        }
+
+        return false;
+    }
+
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
 
-        if (titleBar == null) return;
+        if (e.Handled || titleBar == null) return;
 
         try
         {
-            var point = e.GetCurrentPoint(this);
-            if (titleBar.Bounds.Contains(point.Position) && point.Properties.IsLeftButtonPressed)
+            // TitleBar 位于带 Margin 的 WindowBorder 内，必须转换到 titleBar 自身坐标系判定，
+            // 否则 TitleBar 下半部分（受 Margin 与 DPI 缩放影响）会落出 bounds。
+            var point = e.GetCurrentPoint(titleBar);
+            var titleBarBounds = new Rect(titleBar.Bounds.Size);
+            if (titleBarBounds.Contains(point.Position) && point.Properties.IsLeftButtonPressed)
             {
-                // 双击标题栏：最大化 / 还原（原实现只做了拖动，双击没有任何反馈）
+                // 双击标题栏：最大化 / 还原
                 if (e.ClickCount >= 2)
                 {
                     ToggleWindowState();

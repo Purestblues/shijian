@@ -271,7 +271,7 @@
                                     <Border Margin="0,5,0,0" Grid.Row="1"
                                             Background="{DynamicResource CardBgBrush}"
                                             Padding="20" CornerRadius="8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                        <charts:RadarChartView Margin="10,20,10,10" Height="300" Width="310" Data="{Binding RadarData}" />
+                                        <charts:RadarChartView Margin="10,20,10,10" Height="300" HorizontalAlignment="Stretch" Data="{Binding RadarData}" />
                                     </Border>
                                 </Grid>
 

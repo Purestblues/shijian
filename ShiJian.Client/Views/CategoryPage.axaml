@@ -91,25 +91,21 @@
     </c:TPage.Resources>
 
     <Grid>
-        <Grid
-            ZIndex="2"
-            Margin="0"
-            IsVisible="{Binding EditVisibility}"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch">
-            <Border Background="{DynamicResource ScrimBrush}" />
-
+        <base:PageModal IsOpen="{Binding EditVisibility}"
+                        CloseCommand="{Binding EditCloseCommand}">
             <Border x:Name="EditBorder" Width="420" MaxHeight="500"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Margin="24"
                     Background="{DynamicResource PopupBackgroundBrush}"
                     CornerRadius="{StaticResource RadiusLarge}"
                     BorderBrush="{DynamicResource PopupBorderBrush}" BorderThickness="1"
                     BoxShadow="{DynamicResource Elevation3}">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="40" />
+                        <RowDefinition Height="44" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="80" />
-
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid>
                         <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
@@ -201,11 +197,11 @@
                     </ScrollViewer>
 
                     <Button:Button Grid.Row="2" HorizontalAlignment="Right" Text="{DynamicResource ExCreateUpdate}"
-                                   Value="{Binding IsCreate}" Width="120" Margin="0,0,10,0" VerticalAlignment="Center"
+                                   Value="{Binding IsCreate}" Width="120" Margin="0,10,16,14" VerticalAlignment="Center"
                                    Command="{Binding EditDoneCommand}" />
                 </Grid>
             </Border>
-        </Grid>
+        </base:PageModal>
 
         <Grid Margin="24" Background="Transparent">
             <Grid.RowDefinitions>
@@ -266,6 +262,7 @@
             <ScrollViewer Grid.Row="1"
                           Margin="0,6,0,0"
                           IsVisible="{Binding IsCategoryBrowseMode}"
+                          HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <base:EmptyData IsVisible="{Binding !HasAnyAppCategories}" IsLoading="{Binding IsLoading}" />
@@ -319,12 +316,49 @@
                                 <Setter Property="Padding" Value="0" />
                                 <Setter Property="Margin" Value="0" />
                                 <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                 <Setter Property="Template">
                                     <ControlTemplate>
-                                        <ContentPresenter Content="{TemplateBinding Content}"
+                                        <ContentPresenter x:Name="PART_ContentPresenter"
+                                                          Background="Transparent"
+                                                          Content="{TemplateBinding Content}"
                                                           ContentTemplate="{TemplateBinding ContentTemplate}" />
                                     </ControlTemplate>
                                 </Setter>
+                                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected:focus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:focus /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:focus-visible">
+                                    <Setter Property="BorderThickness" Value="0" />
+                                </Style>
+                                <Style Selector="^:focus-visible cat|CategoryCard">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
+                                </Style>
                             </Style>
                             <Style Selector="ListBox">
                                 <Setter Property="Template">
@@ -337,7 +371,11 @@
 
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <WrapPanel>
+                                    <Interaction.Behaviors>
+                                        <behaviors:AdaptiveWrapBehavior MinItemWidth="188" />
+                                    </Interaction.Behaviors>
+                                </WrapPanel>
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
 
@@ -412,12 +450,49 @@
                                         <Setter Property="Padding" Value="0" />
                                         <Setter Property="Margin" Value="0" />
                                         <Setter Property="Background" Value="Transparent" />
+                                        <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                         <Setter Property="Template">
                                             <ControlTemplate>
-                                                <ContentPresenter Content="{TemplateBinding Content}"
+                                                <ContentPresenter x:Name="PART_ContentPresenter"
+                                                                  Background="Transparent"
+                                                                  Content="{TemplateBinding Content}"
                                                                   ContentTemplate="{TemplateBinding ContentTemplate}" />
                                             </ControlTemplate>
                                         </Setter>
+                                        <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:selected:focus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:focus /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="Transparent" />
+                                        </Style>
+                                        <Style Selector="^:focus-visible">
+                                            <Setter Property="BorderThickness" Value="0" />
+                                        </Style>
+                                        <Style Selector="^:focus-visible cat|CategoryCard">
+                                            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
+                                        </Style>
                                     </Style>
                                     <Style Selector="ListBox">
                                         <Setter Property="Template">
@@ -430,7 +505,11 @@
 
                                 <ListBox.ItemsPanel>
                                     <ItemsPanelTemplate>
-                                        <WrapPanel />
+                                        <WrapPanel>
+                                            <Interaction.Behaviors>
+                                                <behaviors:AdaptiveWrapBehavior MinItemWidth="188" />
+                                            </Interaction.Behaviors>
+                                        </WrapPanel>
                                     </ItemsPanelTemplate>
                                 </ListBox.ItemsPanel>
 
@@ -474,7 +553,8 @@
                 <Grid Grid.Row="1">
                     <base:EmptyData IsVisible="{Binding !HasFilteredEntities}" IsLoading="{Binding IsLoading}" />
 
-                    <ListBox ItemsSource="{Binding FilteredEntities}"
+                    <ListBox x:Name="EntityListBox"
+                             ItemsSource="{Binding FilteredEntities}"
                              IsVisible="{Binding HasFilteredEntities}"
                              SelectedItem="{Binding SelectedEntityItem, Mode=TwoWay}"
                              PointerPressed="OnEntityListBoxPointerPressed"
@@ -508,10 +588,11 @@
                                 <Setter Property="Padding" Value="0" />
                                 <Setter Property="Margin" Value="0" />
                                 <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                 <Setter Property="Template">
                                     <ControlTemplate>
                                         <Border x:Name="EntityCardBorder"
-                                                Width="198"
                                                 Height="156"
                                                 Margin="4"
                                                 Padding="12,10"
@@ -519,14 +600,61 @@
                                                 Background="{DynamicResource CardBgBrush}"
                                                 BorderBrush="{DynamicResource CardBorderBrush}"
                                                 BorderThickness="1">
-                                            <ContentPresenter Content="{TemplateBinding Content}"
+                                            <ContentPresenter x:Name="PART_ContentPresenter"
+                                                              Background="Transparent"
+                                                              Content="{TemplateBinding Content}"
                                                               ContentTemplate="{TemplateBinding ContentTemplate}" />
                                         </Border>
                                     </ControlTemplate>
                                 </Setter>
+                                <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected:focus /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected:focus:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:focus /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:focus-visible /template/ ContentPresenter#PART_ContentPresenter">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:focus-visible">
+                                    <Setter Property="BorderThickness" Value="0" />
+                                </Style>
+                                <Style Selector="^:focus-visible /template/ Border#EntityCardBorder">
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
+                                </Style>
                                 <Style Selector="^:pointerover /template/ Border#EntityCardBorder">
                                     <Setter Property="Background" Value="{DynamicResource ListItemCardHoverBgBrush}" />
                                     <Setter Property="BorderBrush" Value="{DynamicResource ListItemCardHoverBorderBrush}" />
+                                </Style>
+                                <Style Selector="^:pressed /template/ Border#EntityCardBorder">
+                                    <Setter Property="Background" Value="{DynamicResource ListItemPressedBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ListItemCardHoverBorderBrush}" />
+                                </Style>
+                                <Style Selector="^:selected /template/ Border#EntityCardBorder">
+                                    <Setter Property="Background" Value="{DynamicResource ListItemSelectedBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
+                                </Style>
+                                <Style Selector="^:selected:pointerover /template/ Border#EntityCardBorder">
+                                    <Setter Property="Background" Value="{DynamicResource ListItemSelectedHoverBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
                                 </Style>
                             </Style>
                             <Style Selector="Button.tagPill">
@@ -561,7 +689,11 @@
                         </ListBox.Styles>
                         <ListBox.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <WrapPanel />
+                                <WrapPanel>
+                                    <Interaction.Behaviors>
+                                        <behaviors:AdaptiveWrapBehavior MinItemWidth="188" />
+                                    </Interaction.Behaviors>
+                                </WrapPanel>
                             </ItemsPanelTemplate>
                         </ListBox.ItemsPanel>
                         <ListBox.ItemTemplate>

@@ -578,7 +578,7 @@ public class CategorySummaryPageViewModel : ModelBase
         // 切换 range/kind 时重置为全选
         ColumnSelectedIndex = -1;
         SelectedMembers = new();
-        SelectedColumnLabel = null;
+        SelectedColumnLabel = label;
 
         await ExecuteAsync(async ct =>
         {

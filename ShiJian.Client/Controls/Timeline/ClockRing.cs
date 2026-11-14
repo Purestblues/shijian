@@ -62,6 +62,9 @@ public class ClockRing : Control, ICustomHitTest
     public static readonly StyledProperty<ICommand?> ClickCommandProperty =
         AvaloniaProperty.Register<ClockRing, ICommand?>(nameof(ClickCommand));
 
+    public static readonly StyledProperty<bool> IsLoadingProperty =
+        AvaloniaProperty.Register<ClockRing, bool>(nameof(IsLoading));
+
     public static readonly DirectProperty<ClockRing, ClockSegment?> HoveredSegmentProperty =
         AvaloniaProperty.RegisterDirect<ClockRing, ClockSegment?>(
             nameof(HoveredSegment),
@@ -84,7 +87,7 @@ public class ClockRing : Control, ICustomHitTest
         AffectsRender<ClockRing>(SegmentsProperty, TickModeProperty, RangeStartProperty, RangeEndProperty,
             UseCategoryColorProperty, ThicknessProperty, CenterTextProperty, CenterCaptionProperty,
             EmptyTextProperty, TextBrushProperty, MutedTextBrushProperty, TrackBrushProperty,
-            HoverBackgroundBrushProperty);
+            HoverBackgroundBrushProperty, IsLoadingProperty);
     }
 
     public IEnumerable<ClockSegment>? Segments
@@ -169,6 +172,12 @@ public class ClockRing : Control, ICustomHitTest
     {
         get => GetValue(ClickCommandProperty);
         set => SetValue(ClickCommandProperty, value);
+    }
+
+    public bool IsLoading
+    {
+        get => GetValue(IsLoadingProperty);
+        set => SetValue(IsLoadingProperty, value);
     }
 
     public ClockSegment? HoveredSegment
@@ -392,7 +401,7 @@ public class ClockRing : Control, ICustomHitTest
         }
         else if (!hasData)
         {
-            main = EmptyText;
+            main = IsLoading ? null : EmptyText;
             caption = null;
         }
         else

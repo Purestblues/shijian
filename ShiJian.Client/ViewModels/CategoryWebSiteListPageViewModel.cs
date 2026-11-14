@@ -32,6 +32,7 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
     private readonly IAppEventService _appEventService;
 
     private List<OptionModel> _webSiteOptionsTemp = [];
+    private List<WebSiteModel> _originalWebSiteList = [];
     private IDisposable? _searchSubscription;
 
     public CategoryWebSiteListPageViewModel(
@@ -77,6 +78,12 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
             .Subscribe(DoSearch);
         _searchSubscription.DisposeWith(Disposables);
 
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(MainSearchInput))
+                ApplyMainFilter();
+        };
+
         RefreshOnChange(
             _appEventService.WebSiteChanged
                 .Where(e => e.ChangeType.HasFlag(AppChangeType.WebSiteCategory)),
@@ -107,14 +114,32 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
 
         var list = await _webDataService.GetWebSitesAsync(Category.ID);
         cancellationToken.ThrowIfCancellationRequested();
-        CategoryWebSiteList = new ObservableCollection<WebSiteModel>(list);
+        _originalWebSiteList = list.ToList();
+        ApplyMainFilter();
+    }
+
+    internal static List<WebSiteModel> FilterWebSites(IEnumerable<WebSiteModel>? source, string? keyword)
+    {
+        var items = (source ?? []).Where(s => s != null).ToList();
+        var trimmed = (keyword ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(trimmed))
+            return items;
+
+        return items
+            .Where(s => CategoryEntityViewHelper.MatchesSearchWithAlias(trimmed, s.Title, s.Domain, s.Alias))
+            .ToList();
+    }
+
+    private void ApplyMainFilter()
+    {
+        CategoryWebSiteList = new ObservableCollection<WebSiteModel>(FilterWebSites(_originalWebSiteList, MainSearchInput));
     }
 
     private async Task LoadChooserDataAsync(CancellationToken cancellationToken = default)
     {
         var unsetList = await _webDataService.GetUnSetCategoryWebSitesAsync();
         cancellationToken.ThrowIfCancellationRequested();
-        var optionList = BuildChooserOptions(unsetList, CategoryWebSiteList, Category?.ID ?? 0);
+        var optionList = BuildChooserOptions(unsetList, _originalWebSiteList, Category?.ID ?? 0);
         _webSiteOptionsTemp = optionList;
 
         WebSiteOptionList.Clear();
@@ -176,6 +201,7 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
             var removedSite = SelectedItem with { CategoryID = categoryId, Category = ToWebSiteCategoryModel(systemCategory) };
             _appEventService.PublishWebSiteChanged(removedSite, AppChangeType.WebSiteCategory);
             
+            _originalWebSiteList.RemoveAll(m => m.ID == SelectedItem.ID);
             CategoryWebSiteList.Remove(SelectedItem);
             if (CategoryWebSiteList.Count == 0) CategoryWebSiteList = new ObservableCollection<WebSiteModel>();
 
@@ -254,26 +280,26 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
             .Select(m => m.WebSite.ID)
             .ToList();
 
-        var toRemove = CategoryWebSiteList
+        var toRemove = _originalWebSiteList
             .Where(m => !userCheckedIds.Contains(m.ID))
             .Select(m => m.ID)
             .ToList();
         var toAdd = userCheckedIds
-            .Where(id => !CategoryWebSiteList.Any(s => s.ID == id))
+            .Where(id => !_originalWebSiteList.Any(s => s.ID == id))
             .ToList();
 
         foreach (var id in toRemove)
-        {
-            var item = CategoryWebSiteList.FirstOrDefault(m => m.ID == id);
-            if (item != null) CategoryWebSiteList.Remove(item);
-        }
+            _originalWebSiteList.RemoveAll(m => m.ID == id);
 
         var addSites = _webSiteOptionsTemp
             .Where(m => toAdd.Contains(m.WebSite.ID))
             .Select(m => m.WebSite)
             .ToList();
         foreach (var item in addSites)
-            CategoryWebSiteList.Add(item);
+            _originalWebSiteList.Add(item);
+
+        MainSearchInput = string.Empty;
+        ApplyMainFilter();
 
         if (toRemove.Count > 0)
         {

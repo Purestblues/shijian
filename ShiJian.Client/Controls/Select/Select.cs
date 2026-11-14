@@ -29,6 +29,9 @@ public class Select : TemplatedControl
     private List<SelectItemModel> _options = new();
 
     private StackPanel _optionsContainer;
+    private Popup? _popup;
+    private long _lastLightDismissTicks;
+    private bool _closingExplicitly;
 
     public Select()
     {
@@ -86,14 +89,36 @@ public class Select : TemplatedControl
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // IsLightDismissEnabled="True" 会在同一个按压周期内先把 Popup 关掉，
+        // 若不抑制刚关闭窗口期，直接 IsOpen = !IsOpen 会把刚关上的下拉框立刻又弹开。
+        if (!IsOpen && _lastLightDismissTicks > 0 &&
+            Environment.TickCount64 - _lastLightDismissTicks < 180)
+        {
+            _lastLightDismissTicks = 0;
+            e.Handled = true;
+            return;
+        }
+
         IsOpen = !IsOpen;
+        e.Handled = true;
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         base.OnApplyTemplate(e);
+        if (_popup != null)
+            _popup.Closed -= OnPopupClosed;
+        _popup = e.NameScope.Find<Popup>("PART_Popup");
+        if (_popup != null)
+            _popup.Closed += OnPopupClosed;
         _optionsContainer = e.NameScope.Get<StackPanel>("OptionsContainer");
         RenderOptions();
+    }
+
+    private void OnPopupClosed(object? sender, EventArgs e)
+    {
+        if (!_closingExplicitly)
+            _lastLightDismissTicks = Environment.TickCount64;
     }
 
     public void RenderOptions()
@@ -118,9 +143,19 @@ public class Select : TemplatedControl
         var option = sender as Option;
         if (option != null)
         {
-            SelectedItem = option.Value;
-            OnSelectedItemChange();
-            OnSelectedItemChanged?.Invoke(this, EventArgs.Empty);
+            _closingExplicitly = true;
+            try
+            {
+                SelectedItem = option.Value;
+                OnSelectedItemChange();
+                OnSelectedItemChanged?.Invoke(this, EventArgs.Empty);
+                IsOpen = false;
+            }
+            finally
+            {
+                _closingExplicitly = false;
+            }
+            e.Handled = true;
         }
     }
 

@@ -205,7 +205,7 @@
                                    FontSize="14" FontWeight="SemiBold"
                                    VerticalAlignment="Center" />
                         <btn:Button Grid.Column="1"
-                                    ToolTip.Tip="{DynamicResource ClearAppTheMonth}"
+                                    ToolTip.Tip="{DynamicResource ClearAppTheMonthData}"
                                     Background="{DynamicResource DangerBrush}"
                                     Foreground="{DynamicResource OnBrandBrush}"
                                     Width="120" Margin="0"

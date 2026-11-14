@@ -36,6 +36,10 @@ public class ColumnChart : TemplatedControl
         AvaloniaProperty.RegisterDirect<ColumnChart, bool>(
             nameof(IsShowTotal), o => o.IsShowTotal, (o, v) => o.IsShowTotal = v);
 
+    public static readonly DirectProperty<ColumnChart, bool> IsShowLegendTotalProperty =
+        AvaloniaProperty.RegisterDirect<ColumnChart, bool>(
+            nameof(IsShowLegendTotal), o => o.IsShowLegendTotal, (o, v) => o.IsShowLegendTotal = v);
+
     public static readonly DirectProperty<ColumnChart, bool> IsCanColumnSelectProperty =
         AvaloniaProperty.RegisterDirect<ColumnChart, bool>(
             nameof(IsCanColumnSelect), o => o.IsCanColumnSelect, (o, v) => o.IsCanColumnSelect = v);
@@ -93,6 +97,7 @@ public class ColumnChart : TemplatedControl
     private int _nameIndexStart;
     private bool _isStack;
     private bool _isShowTotal = true;
+    private bool _isShowLegendTotal;
     private bool _isCanColumnSelect;
     private int _columnSelectedIndex = -1;
     private bool _isShowCategory = true;
@@ -116,6 +121,7 @@ public class ColumnChart : TemplatedControl
     public int NameIndexStart { get => _nameIndexStart; set => SetAndRaise(NameIndexStartProperty, ref _nameIndexStart, value); }
     public bool IsStack { get => _isStack; set => SetAndRaise(IsStackProperty, ref _isStack, value); }
     public bool IsShowTotal { get => _isShowTotal; set => SetAndRaise(IsShowTotalProperty, ref _isShowTotal, value); }
+    public bool IsShowLegendTotal { get => _isShowLegendTotal; set => SetAndRaise(IsShowLegendTotalProperty, ref _isShowLegendTotal, value); }
     public bool IsCanColumnSelect { get => _isCanColumnSelect; set => SetAndRaise(IsCanColumnSelectProperty, ref _isCanColumnSelect, value); }
     public int ColumnSelectedIndex { get => _columnSelectedIndex; set => SetAndRaise(ColumnSelectedIndexProperty, ref _columnSelectedIndex, value); }
     public bool IsShowCategory { get => _isShowCategory; set => SetAndRaise(IsShowCategoryProperty, ref _isShowCategory, value); }
@@ -264,14 +270,13 @@ public class ColumnChart : TemplatedControl
 
         result = result.OrderByDescending(x => x.Value).ToList();
 
-        if (total > 0)
+        if (IsShowLegendTotal && total > 0)
         {
             var totalName = Application.Current?.FindResource("Total") as string ?? "Total";
             result.Add(new ChartColumnInfoModel
             {
                 Name = totalName,
-                Text = CoverValue(total) + Unit,
-                Color = "#FF6E7A8A"
+                Text = CoverValue(total) + Unit
             });
         }
 
@@ -295,6 +300,7 @@ public class ColumnChartCanvas : Control
     private ColumnChart? _owner;
     private int _hoverColumnIndex = -1;
     private double _columnWidth;
+    private double _plotLeft;
     private int _columnCount;
     private readonly Dictionary<int, List<ChartColumnInfoModel>> _columnPopupData = new();
     private bool _isLegendDefault = true;
@@ -368,17 +374,13 @@ public class ColumnChartCanvas : Control
         var columns = firstData.Values.Length;
         _columnCount = columns;
         _owner.SetColumnCount(columns);
-        var margin = 5;
-        if (columns <= 7) margin = 25;
-        else if (columns <= 12) margin = 15;
-        else if (columns >= 20) margin = 2;
 
         const double colNameHeight = 25;
         const double colNameBottomMargin = 3;
+        const double focusInset = 2.0;
+        const double axisPadLeft = 8.0;
+        const double axisPadRight = 4.0;
         var chartHeight = height - colNameHeight - colNameBottomMargin;
-        _columnWidth = width / columns;
-        var colValueRectWidth = width / columns - margin * 2;
-        if (colValueRectWidth <= 0) colValueRectWidth = 1;
         if (chartHeight <= 0) chartHeight = 1;
 
         var columnNames = firstData.ColumnNames;
@@ -387,6 +389,42 @@ public class ColumnChartCanvas : Control
         var themeColorStr = Application.Current?.FindResource("ThemeColor")?.ToString() ?? StateData.ThemeColor;
         var themeColor = Color.Parse(themeColorStr);
         var themeBrush = TryGetBrush("ThemeBrush") ?? new SolidColorBrush(themeColor);
+
+        // 先计算右侧参考线标签宽度，为列柱留出独立右侧刻度通道，避免最右列（如 23 时）与轴字重叠
+        var avg = tempValueArr.Average();
+        var avgText = _owner.CoverValue(avg);
+        var avgY = maxValue > 0
+            ? chartHeight - (avg / maxValue * chartHeight) + colNameBottomMargin
+            : chartHeight + colNameBottomMargin;
+        var midY = chartHeight / 2 + colNameBottomMargin;
+        var refItems = new (string Text, double LineY, IBrush Color, int Priority)[]
+        {
+            (_owner.Maximum, colNameBottomMargin, refLineBrush, 0),
+            (_owner.Median, midY, refLineBrush, 2),
+            (avgText, avgY, themeBrush, 1)
+        };
+        double maxAxisLabelWidth = 0;
+        foreach (var item in refItems)
+        {
+            if (string.IsNullOrEmpty(item.Text)) continue;
+            var w = CreateFormattedText(item.Text, 12, item.Color).Width;
+            if (w > maxAxisLabelWidth) maxAxisLabelWidth = w;
+        }
+
+        _plotLeft = focusInset;
+        var rightGutter = maxAxisLabelWidth > 0 ? maxAxisLabelWidth + axisPadLeft + axisPadRight : focusInset;
+        var plotWidth = Math.Max(1, width - _plotLeft - rightGutter);
+        _columnWidth = plotWidth / columns;
+
+        var margin = 5;
+        if (columns <= 7) margin = 25;
+        else if (columns <= 12) margin = 15;
+        else if (columns >= 20) margin = 2;
+        if (margin * 2 >= _columnWidth - 2)
+            margin = Math.Max(1, (int)Math.Floor((_columnWidth - 2) / 2));
+
+        var colValueRectWidth = _columnWidth - margin * 2;
+        if (colValueRectWidth <= 0) colValueRectWidth = 1;
 
         var selectedIndex = _owner.IsCanColumnSelect ? _owner.ColumnSelectedIndex : -1;
         var hasSelection = selectedIndex >= 0 && selectedIndex < columns;
@@ -424,7 +462,7 @@ public class ColumnChartCanvas : Control
             var nameBrush = isSelected || isHovered ? themeBrush : subTextBrush;
             var formattedText = CreateFormattedText(colName, 12, nameBrush,
                 isSelected ? FontWeight.SemiBold : FontWeight.Normal);
-            var textX = i * _columnWidth + (_columnWidth - formattedText.Width) / 2;
+            var textX = _plotLeft + i * _columnWidth + (_columnWidth - formattedText.Width) / 2;
             var textY = height - colNameBottomMargin - formattedText.Height;
             context.DrawText(formattedText, new Point(textX, textY));
         }
@@ -445,7 +483,7 @@ public class ColumnChartCanvas : Control
                 if (value > 0)
                 {
                     var rectHeight = value / maxValue * chartHeight;
-                    var rectX = i * _columnWidth + margin;
+                    var rectX = _plotLeft + i * _columnWidth + margin;
                     var rectY = height - currentBottom - rectHeight;
 
                     var color = Color.Parse(colColorStr);
@@ -483,33 +521,25 @@ public class ColumnChartCanvas : Control
                 context.DrawRectangle(liftBrush, null, barRect, barRadius, barRadius);
         }
 
-        // 绘制参考线与右端数值标签（先解算标签纵坐标碰撞，再画不穿透标签矩形的虚线）
-        var avg = tempValueArr.Average();
-        var avgText = _owner.CoverValue(avg);
-        var avgY = maxValue > 0
-            ? chartHeight - (avg / maxValue * chartHeight) + colNameBottomMargin
-            : chartHeight + colNameBottomMargin;
-        var midY = chartHeight / 2 + colNameBottomMargin;
-
+        // 绘制参考线与右端数值标签（独立右侧通道，虚线止于通道左缘）
         DrawReferenceLines(
             context,
             chartHeight,
             colNameBottomMargin,
             width,
-            [
-                (_owner.Maximum, colNameBottomMargin, refLineBrush, 0),
-                (_owner.Median, midY, refLineBrush, 2),
-                (avgText, avgY, themeBrush, 1)
-            ]);
+            _plotLeft,
+            _plotLeft + plotWidth,
+            axisPadRight,
+            refItems);
 
         if (hasSelection)
             StrokeColumnBand(context, selectedIndex, height, selectedHalo, 0, selectedStroke);
         if (hoverIndex >= 0 && hoverIndex != selectedIndex)
             StrokeColumnBand(context, hoverIndex, height, hoverHalo, 0, hoverStroke);
 
-        // 键盘焦点环
+        // 键盘焦点环绘制在画布边界以内，避免底部/右侧被裁切
         if (_owner != null)
-            FocusVisual.Draw(context, new Size(width, height + colNameHeight + colNameBottomMargin),
+            FocusVisual.Draw(context, new Size(width, height),
                 _owner.IsKeyboardFocusWithin);
     }
 
@@ -552,7 +582,7 @@ public class ColumnChartCanvas : Control
         var w = _columnWidth - BandInset * 2;
         var h = height - BandInset * 2;
         if (w <= 0 || h <= 0) return null;
-        return new Rect(colIndex * _columnWidth + BandInset, BandInset, w, h);
+        return new Rect(_plotLeft + colIndex * _columnWidth + BandInset, BandInset, w, h);
     }
 
     private static double GetBandRadius(Rect rect) =>
@@ -629,6 +659,9 @@ public class ColumnChartCanvas : Control
         double chartHeight,
         double colNameBottomMargin,
         double canvasWidth,
+        double plotLeft,
+        double plotRight,
+        double axisPadRight,
         IReadOnlyList<(string Text, double LineY, IBrush Color, int Priority)> items)
     {
         var active = new List<(FormattedText FormattedText, double LineY, IBrush Color, int Priority)>(items.Count);
@@ -644,28 +677,20 @@ public class ColumnChartCanvas : Control
         var maxY = Math.Max(chartHeight + colNameBottomMargin, chartHeight + 5);
         var labelTops = ResolveReferenceLabelPositions(slots, 0, maxY);
 
+        var lineStartX = plotLeft + 3;
+        var lineEndX = Math.Max(lineStartX, plotRight - 2);
+
         for (var i = 0; i < active.Count; i++)
         {
             var item = active[i];
             var labelTop = labelTops[i];
-            var textX = Math.Max(0, canvasWidth - item.FormattedText.Width);
+            var textX = Math.Max(lineEndX + 4, canvasWidth - axisPadRight - item.FormattedText.Width);
             context.DrawText(item.FormattedText, new Point(textX, labelTop));
 
-            // 避开所有与当前参考线在同一水平带内的标签文本，避免虚线穿字
-            var maxBlockedWidth = 0.0;
-            for (var j = 0; j < active.Count; j++)
-            {
-                var otherTop = labelTops[j];
-                var otherBottom = otherTop + active[j].FormattedText.Height;
-                if (item.LineY >= otherTop - 1 && item.LineY <= otherBottom + 1)
-                    maxBlockedWidth = Math.Max(maxBlockedWidth, active[j].FormattedText.Width);
-            }
-
-            var lineEndX = canvasWidth - 5 - maxBlockedWidth;
-            if (lineEndX > 5)
+            if (lineEndX > lineStartX)
             {
                 var dashPen = new Pen(item.Color, 1.0, new DashStyle(new[] { 2.0, 5.0 }, 0));
-                context.DrawLine(dashPen, new Point(5, item.LineY), new Point(lineEndX, item.LineY));
+                context.DrawLine(dashPen, new Point(lineStartX, item.LineY), new Point(lineEndX, item.LineY));
             }
         }
     }
@@ -682,13 +707,21 @@ public class ColumnChartCanvas : Control
             foreground);
     }
 
+    private int GetColumnIndexAt(Point pos)
+    {
+        if (_columnCount <= 0 || _columnWidth <= 0) return -1;
+        var relX = pos.X - _plotLeft;
+        if (relX < 0 || relX >= _columnCount * _columnWidth) return -1;
+        return (int)(relX / _columnWidth);
+    }
+
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
         if (_owner == null) return;
 
         var pos = e.GetPosition(this);
-        var colIndex = (int)(pos.X / _columnWidth);
+        var colIndex = GetColumnIndexAt(pos);
 
         if (colIndex < 0 || colIndex >= _columnCount)
         {
@@ -713,20 +746,22 @@ public class ColumnChartCanvas : Control
             if (hasData)
             {
                 var popupList = new List<ChartColumnInfoModel>(valuesPopupList);
-                var total = popupList.Sum(x => x.Value);
-                if (total > 0)
+                if (popupList.Count > 1)
                 {
-                    var totalName = Application.Current?.FindResource("Total") as string ?? "Total";
-                    popupList.Add(new ChartColumnInfoModel
+                    var total = popupList.Sum(x => x.Value);
+                    if (total > 0)
                     {
-                        Name = totalName,
-                        Text = _owner.CoverValue(total) + _owner.Unit,
-                        Color = "#FF6E7A8A"
-                    });
+                        var totalName = Application.Current?.FindResource("Total") as string ?? "Total";
+                        popupList.Add(new ChartColumnInfoModel
+                        {
+                            Name = totalName,
+                            Text = _owner.CoverValue(total) + _owner.Unit
+                        });
+                    }
                 }
                 _owner.ColumnValuesInfoList = popupList;
 
-                var colCenterX = colIndex * _columnWidth + _columnWidth / 2;
+                var colCenterX = _plotLeft + colIndex * _columnWidth + _columnWidth / 2;
                 var canvasCenterX = Bounds.Width / 2;
                 _owner.ValuesPopupHorizontalOffset = colCenterX - canvasCenterX;
                 _owner.ValuesPopupPlacementTarget = this;
@@ -765,7 +800,7 @@ public class ColumnChartCanvas : Control
         if (_owner == null) return;
 
         var pos = e.GetPosition(this);
-        var colIndex = (int)(pos.X / _columnWidth);
+        var colIndex = GetColumnIndexAt(pos);
 
         if (colIndex >= 0 && colIndex < _columnCount && _owner.IsCanColumnSelect)
         {

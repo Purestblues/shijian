@@ -130,7 +130,7 @@
                 </Border>
 
                 <!-- 站点 -->
-                <Border Grid.Column="4" Classes="statCard">
+                <Border x:Name="SiteStatCard" Grid.Column="4" Classes="statCard">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="5">
                             <base:Icon IconType="Website" FontSize="12"
@@ -149,7 +149,7 @@
                 </Border>
 
                 <!-- 网页 -->
-                <Border Grid.Column="6" Classes="statCard">
+                <Border x:Name="WebPageStatCard" Grid.Column="6" Classes="statCard">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Spacing="5">
                             <base:Icon IconType="WebSearch" FontSize="12"
@@ -169,21 +169,19 @@
             </Grid>
 
             <!-- ═══ 图表区：时段分布 + 分类占比 ═══ -->
-            <Grid ColumnDefinitions="*,Auto" Margin="0,16,0,0">
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-                    <TextBlock Classes="cardCaption" Text="{DynamicResource Total}" VerticalAlignment="Center" />
-                    <TextBlock Classes="cardCaption" Text="{Binding HourTotalText}"
-                               Foreground="{DynamicResource DefaultTextBrush}" VerticalAlignment="Center" />
-                </StackPanel>
-            </Grid>
-
-            <Grid ColumnDefinitions="5*,12,4*" Margin="0,8,0,0" Height="196">
+            <Grid ColumnDefinitions="5*,12,4*" Margin="0,16,0,0" MinHeight="228">
 
                 <Border Grid.Column="0" Classes="card" Padding="16,12">
                     <Grid RowDefinitions="Auto,*">
-                        <Grid ColumnDefinitions="*,Auto">
+                        <Grid ColumnDefinitions="*,Auto,Auto">
                             <TextBlock Text="{DynamicResource CategoryHourly}" FontSize="13" VerticalAlignment="Center" />
-                            <toggle:Toggle Grid.Column="1"
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"
+                                        VerticalAlignment="Center" Margin="0,0,10,0">
+                                <TextBlock Classes="cardCaption" Text="{DynamicResource Total}" VerticalAlignment="Center" />
+                                <TextBlock Classes="cardCaption" Text="{Binding HourTotalText}"
+                                           Foreground="{DynamicResource DefaultTextBrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <toggle:Toggle Grid.Column="2"
                                            OnText="{Binding CompareCaption}"
                                            OffText="{Binding CompareCaption}"
                                            IsChecked="{Binding IsCompareEnabled,Mode=TwoWay}"
@@ -191,6 +189,7 @@
                         </Grid>
 
                         <Charts:StackedBarChart Grid.Row="1" Margin="0,10,0,0"
+                                                IsLoading="{Binding IsLoading}"
                                                 Series="{Binding HourSeries}"
                                                 Labels="{Binding HourLabels}"
                                                 CompareValues="{Binding CompareValues}"
@@ -210,6 +209,7 @@
                         <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="0,6,0,0">
                             <Charts:DonutChart Width="108" Height="108"
                                                Thickness="11"
+                                               IsLoading="{Binding IsLoading}"
                                                Series="{Binding CategorySeries}"
                                                CenterText="{Binding CategoryTotalText}"
                                                CenterCaption="{Binding ChartDonutCaption}"
@@ -219,6 +219,7 @@
                                                TrackBrush="{DynamicResource Surface3Brush}" />
 
                             <ScrollViewer Grid.Column="1" Margin="10,0,0,0"
+                                          Padding="0,0,6,0"
                                           VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Disabled">
                                 <ItemsControl ItemsSource="{Binding CategorySeries}">

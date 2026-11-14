@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -158,8 +159,9 @@ public partial class DataPageViewModel : DataPageModel
                 return;
             }
 
-            // 先切到对应周期的看板，再去拉数据；数据回来前不会闪空白
-            CurrentInsight = InsightAt(index);
+            // 已缓存时立即切换避免等待；首次加载新周期时保留当前看板并靠 IsLoading 抑制「暂时没有数据」闪烁
+            if (InsightAt(index) is { HasData: true } cached)
+                CurrentInsight = cached;
             await LoadDataAsync(date, dataType);
         }, skipInitial: false);
 
@@ -303,6 +305,7 @@ public partial class DataPageViewModel : DataPageModel
             {
                 HasEntityError = true;
                 EntityErrorText = ChartDataMapper.FormatEntityLoadError(ex);
+                ApplyInsight(dataType, DataPageInsight.Empty);
                 Logger.Warn($"详细页实体数据加载失败：{ex.Message}");
                 return;
             }
@@ -320,12 +323,12 @@ public partial class DataPageViewModel : DataPageModel
                 case 1:
                     WeekData = chartData;
                     WeekClock = await BuildHourlyClockAsync(start, end, ClockTickMode.Day,
-                        ResourceStrings.ThisWeek, ct);
+                        FormatClockCaption(1, start, end), ct);
                     break;
                 case 2:
                     MonthData = chartData;
                     MonthClock = await BuildHourlyClockAsync(start, end, ClockTickMode.Day,
-                        ResourceStrings.ThisMonth, ct);
+                        FormatClockCaption(2, start, end), ct);
                     break;
                 case 3:
                     YearData = chartData;
@@ -339,7 +342,7 @@ public partial class DataPageViewModel : DataPageModel
             if (dataType != TabbarSelectedIndex) return;
 
             var insight = await BuildInsightAsync(date, dataType, ct);
-            if (insight != null) ApplyInsight(dataType, insight);
+            ApplyInsight(dataType, insight ?? DataPageInsight.Empty);
         });
     }
 
@@ -354,19 +357,75 @@ public partial class DataPageViewModel : DataPageModel
     private static DateTime ToLocal(DateTime utc) =>
         utc.Kind == DateTimeKind.Local ? utc : DateTime.SpecifyKind(utc, DateTimeKind.Utc).ToLocalTime();
 
-    /// <summary>当天：直接用会话，扇区就是真实使用时段</summary>
-    private async Task<ClockRingData> BuildDayClockAsync(DateTime date, CancellationToken ct)
+    private static readonly string[] KnownBrowserStems =
+    [
+        "chrome", "chromium", "msedge", "brave", "vivaldi", "arc", "thorium",
+        "360se", "360chrome", "qqbrowser", "firefox", "librewolf", "waterfox",
+        "zen", "safari"
+    ];
+
+    internal static string FormatClockCaption(int dataType, DateTime rangeStart, DateTime rangeEnd,
+        DateTime? referenceToday = null)
+    {
+        var today = (referenceToday ?? DateTime.Today).Date;
+        var rangeLast = rangeEnd.TimeOfDay == TimeSpan.Zero && rangeEnd > rangeStart
+            ? rangeEnd.AddSeconds(-1).Date
+            : rangeEnd.Date;
+
+        return dataType switch
+        {
+            0 => rangeStart.Date == today
+                ? ResourceStrings.Today
+                : rangeStart.Year == today.Year
+                    ? rangeStart.ToString("M'/'d", CultureInfo.InvariantCulture)
+                    : rangeStart.ToString("yyyy'/'M'/'d", CultureInfo.InvariantCulture),
+            1 => today >= rangeStart.Date && today <= rangeLast
+                ? ResourceStrings.ThisWeek
+                : $"{rangeStart.ToString("M'/'d", CultureInfo.InvariantCulture)}~{rangeLast.ToString("M'/'d", CultureInfo.InvariantCulture)}",
+            2 => rangeStart.Year == today.Year && rangeStart.Month == today.Month
+                ? ResourceStrings.ThisMonth
+                : rangeStart.ToString("yyyy'/'M", CultureInfo.InvariantCulture),
+            3 => rangeStart.Year == today.Year
+                ? ResourceStrings.ThisYear
+                : rangeStart.ToString("yyyy", CultureInfo.InvariantCulture),
+            _ => string.Empty
+        };
+    }
+
+    private static bool IsBrowserApp(AppModel app, HashSet<int> entityBrowserIds)
+    {
+        if (entityBrowserIds.Contains(app.ID)) return true;
+        var name = app.Name?.ToLowerInvariant();
+        if (string.IsNullOrEmpty(name)) return false;
+        return Array.Exists(KnownBrowserStems, stem => name.Contains(stem, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// 按单小时把真实前景会话切分：若该小时存在来自 `/api/entity/hours` 的已归属站点秒数，
+    /// 则将浏览器会话片段按网站各自秒数顺序拆分，其余保留给浏览器自身（与 `分类占比` 同源）。
+    /// </summary>
+    internal static List<ClockSegment> BuildDayClockSegments(
+        DateTime date,
+        IReadOnlyList<AppSessionModel> sessions,
+        EntityHoursModel? entityHours,
+        IReadOnlyDictionary<int, Shared.Models.CategoryModel> categoryMap,
+        bool isDark)
     {
         var dayStart = date.Date;
         var dayEnd = dayStart.AddDays(1);
         var periodSeconds = (dayEnd - dayStart).TotalSeconds;
-
-        var sessions = await GetSessionsCachedAsync(dayStart, dayEnd.AddSeconds(-1), ct);
-        ct.ThrowIfCancellationRequested();
-
-        var isDark = IsDarkTheme();
         var segments = new List<ClockSegment>();
 
+        var rows = entityHours?.Rows ?? [];
+        var entityBrowserIds = rows
+            .Where(r => r.IsBrowser && r.EntityId > 0)
+            .Select(r => r.EntityId)
+            .ToHashSet();
+        var siteRows = rows
+            .Where(r => string.Equals(r.Kind, "site", StringComparison.Ordinal) && r.Values.Length > 0)
+            .ToList();
+
+        var clipped = new List<(DateTime ClipStart, DateTime ClipEnd, AppModel App, bool IsBrowser)>();
         foreach (var session in sessions.Where(s => s.AppModel != null).OrderBy(s => s.StartTime))
         {
             var start = ToLocal(session.StartTime);
@@ -375,80 +434,257 @@ public partial class DataPageViewModel : DataPageModel
 
             var clipStart = start < dayStart ? dayStart : start;
             var clipEnd = end > dayEnd ? dayEnd : end;
-            var seconds = (clipEnd - clipStart).TotalSeconds;
-            if (seconds <= 0) continue;
+            if (clipEnd <= clipStart) continue;
 
-            segments.Add(new ClockSegment
-            {
-                StartFraction = (clipStart - dayStart).TotalSeconds / periodSeconds,
-                EndFraction = (clipEnd - dayStart).TotalSeconds / periodSeconds,
-                Name = session.AppModel!.GetDisplayName() ?? "Unknown",
-                CategoryName = session.AppModel.Category?.Name,
-                Color = TimelineColorService.GetColor(session.AppModel.GetDisplayName(), isDark),
-                CategoryColor = ResolveCategoryColor(session.AppModel.Category, isDark),
-                RangeText = $"{clipStart:HH:mm} ~ {clipEnd:HH:mm}",
-                Seconds = seconds,
-                Data = session.AppModel,
-                CategoryData = session.AppModel.Category
-            });
+            clipped.Add((clipStart, clipEnd, session.AppModel!, IsBrowserApp(session.AppModel!, entityBrowserIds)));
         }
 
-        return BuildRingData(segments, ClockTickMode.Hour, dayStart, dayEnd, ResourceStrings.Today);
+        for (var hour = 0; hour < 24; hour++)
+        {
+            var hourStart = dayStart.AddHours(hour);
+            var hourEnd = hourStart.AddHours(1);
+            var browserSlices = new List<(DateTime Start, DateTime End, AppModel App)>();
+
+            foreach (var item in clipped)
+            {
+                if (item.ClipEnd <= hourStart || item.ClipStart >= hourEnd) continue;
+                var segStart = item.ClipStart < hourStart ? hourStart : item.ClipStart;
+                var segEnd = item.ClipEnd > hourEnd ? hourEnd : item.ClipEnd;
+                if (segEnd <= segStart) continue;
+
+                if (item.IsBrowser)
+                {
+                    browserSlices.Add((segStart, segEnd, item.App));
+                }
+                else
+                {
+                    AddAppSegment(segments, dayStart, periodSeconds, segStart, segEnd, item.App, isDark);
+                }
+            }
+
+            if (browserSlices.Count == 0) continue;
+
+            var hourSites = siteRows
+                .Where(r => hour < r.Values.Length && r.Values[hour] > 0)
+                .Select(r => (Row: r, Seconds: r.Values[hour]))
+                .OrderByDescending(x => x.Seconds)
+                .ToList();
+
+            var browserTotal = browserSlices.Sum(s => (s.End - s.Start).TotalSeconds);
+            var siteTotal = hourSites.Sum(x => x.Seconds);
+
+            if (hourSites.Count == 0 || siteTotal <= 0 || browserTotal <= 0)
+            {
+                foreach (var slice in browserSlices)
+                    AddAppSegment(segments, dayStart, periodSeconds, slice.Start, slice.End, slice.App, isDark);
+                continue;
+            }
+
+            // 站点总时长不超过本小时浏览器前景会话时按精确秒数切分，否则等比例缩入会话长度
+            var scale = siteTotal > browserTotal ? browserTotal / siteTotal : 1d;
+            var allocCursor = 0d;
+            var sliceOffsets = new List<(DateTime Start, DateTime End, AppModel App, double OffsetStart, double OffsetEnd)>(browserSlices.Count);
+            var acc = 0d;
+            foreach (var slice in browserSlices)
+            {
+                var len = (slice.End - slice.Start).TotalSeconds;
+                sliceOffsets.Add((slice.Start, slice.End, slice.App, acc, acc + len));
+                acc += len;
+            }
+
+            foreach (var (row, secs) in hourSites)
+            {
+                var allocLen = secs * scale;
+                if (allocLen <= 0.5) continue;
+
+                var allocStart = allocCursor;
+                var allocEnd = Math.Min(browserTotal, allocCursor + allocLen);
+                allocCursor = allocEnd;
+                if (allocEnd <= allocStart) continue;
+
+                categoryMap.TryGetValue(row.CategoryId, out var catModel);
+                var catName = catModel?.Name ?? row.CategoryName;
+                var catColor = ResolveCategoryColor(catModel?.Color ?? row.CategoryColor, catModel?.IsSystem ?? true,
+                    catModel != null || !string.IsNullOrEmpty(row.CategoryName), isDark);
+                var appColor = TimelineColorService.GetColor(row.Name, isDark);
+                var entityModel = row.ToEntityModel((int)Math.Round(allocLen));
+
+                foreach (var slice in sliceOffsets)
+                {
+                    var ovStart = Math.Max(allocStart, slice.OffsetStart);
+                    var ovEnd = Math.Min(allocEnd, slice.OffsetEnd);
+                    if (ovEnd - ovStart <= 0.5) continue;
+
+                    var partStart = slice.Start.AddSeconds(ovStart - slice.OffsetStart);
+                    var partEnd = slice.Start.AddSeconds(ovEnd - slice.OffsetStart);
+                    segments.Add(new ClockSegment
+                    {
+                        StartFraction = (partStart - dayStart).TotalSeconds / periodSeconds,
+                        EndFraction = (partEnd - dayStart).TotalSeconds / periodSeconds,
+                        Name = row.Name,
+                        CategoryName = catName,
+                        Color = appColor,
+                        CategoryColor = catColor,
+                        RangeText = $"{partStart:HH:mm} ~ {partEnd:HH:mm}",
+                        Seconds = (partEnd - partStart).TotalSeconds,
+                        Data = entityModel,
+                        CategoryData = catModel
+                    });
+                }
+            }
+
+            // 浏览器余额部分保留原生应用与分类
+            if (browserTotal - allocCursor > 0.5)
+            {
+                foreach (var slice in sliceOffsets)
+                {
+                    var ovStart = Math.Max(allocCursor, slice.OffsetStart);
+                    var ovEnd = slice.OffsetEnd;
+                    if (ovEnd - ovStart <= 0.5) continue;
+
+                    var partStart = slice.Start.AddSeconds(ovStart - slice.OffsetStart);
+                    AddAppSegment(segments, dayStart, periodSeconds, partStart, slice.End, slice.App, isDark);
+                }
+            }
+        }
+
+        segments.Sort((a, b) => a.StartFraction.CompareTo(b.StartFraction));
+        return segments;
     }
 
-    /// <summary>
-    /// 周 / 月：服务端只有「应用 × 小时」的桶，所以一个小时的弧长按该小时的
-    /// 应用占比拆开——位置仍是真实时段，只是小时内不再区分先后。
-    /// </summary>
-    private async Task<ClockRingData> BuildHourlyClockAsync(DateTime rangeStart, DateTime rangeEnd,
-        ClockTickMode tickMode, string caption, CancellationToken ct)
+    private static void AddAppSegment(List<ClockSegment> segments, DateTime dayStart, double periodSeconds,
+        DateTime segStart, DateTime segEnd, AppModel app, bool isDark)
     {
-        var hours = await _dataService.GetHoursRangeLogListAsync(rangeStart, rangeEnd, ct);
-        ct.ThrowIfCancellationRequested();
+        var seconds = (segEnd - segStart).TotalSeconds;
+        if (seconds <= 0) return;
 
-        var periodSeconds = Math.Max(1, (rangeEnd - rangeStart).TotalSeconds);
-        var isDark = IsDarkTheme();
-        var segments = new List<ClockSegment>();
-
-        var slots = hours
-            .Where(h => h.AppModel != null && h.Time > 0)
-            .Select(h => (Model: h, LocalTime: TruncateToHour(ToLocal(h.DataTime))))
-            .Where(x => x.LocalTime >= rangeStart && x.LocalTime < rangeEnd)
-            .GroupBy(x => x.LocalTime);
-
-        foreach (var slot in slots)
+        var name = app.GetDisplayName() ?? "Unknown";
+        segments.Add(new ClockSegment
         {
-            var slotStart = slot.Key;
-            var slotTotal = slot.Sum(x => x.Model.Time);
+            StartFraction = (segStart - dayStart).TotalSeconds / periodSeconds,
+            EndFraction = (segEnd - dayStart).TotalSeconds / periodSeconds,
+            Name = name,
+            CategoryName = app.Category?.Name,
+            Color = TimelineColorService.GetColor(name, isDark),
+            CategoryColor = ResolveCategoryColor(app.Category, isDark),
+            RangeText = $"{segStart:HH:mm} ~ {segEnd:HH:mm}",
+            Seconds = seconds,
+            Data = app,
+            CategoryData = app.Category
+        });
+    }
+
+    internal static List<ClockSegment> BuildHourlyClockSegments(
+        EntityHoursModel? entityHours,
+        IReadOnlyDictionary<int, Shared.Models.CategoryModel> categoryMap,
+        DateTime rangeStart,
+        DateTime rangeEnd,
+        bool isDark)
+    {
+        var clockEnd = rangeEnd.TimeOfDay == TimeSpan.Zero ? rangeEnd : rangeEnd.Date.AddDays(1);
+        var periodSeconds = Math.Max(1, (clockEnd - rangeStart).TotalSeconds);
+        var segments = new List<ClockSegment>();
+        var rows = entityHours?.Rows ?? [];
+        if (rows.Count == 0) return segments;
+
+        var bucketCount = Math.Max(entityHours?.BucketCount ?? 0, rows.Max(r => r.Values.Length));
+        var labels = entityHours?.Labels ?? [];
+
+        for (var i = 0; i < bucketCount; i++)
+        {
+            DateTime slotStart;
+            if (i < labels.Count && DateTimeOffset.TryParse(labels[i], CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind, out var dto))
+            {
+                slotStart = dto.DateTime;
+            }
+            else
+            {
+                slotStart = rangeStart.Date.AddHours(i);
+            }
+
+            if (slotStart < rangeStart || slotStart >= clockEnd) continue;
+
+            var hourItems = rows
+                .Where(r => i < r.Values.Length && r.Values[i] > 0)
+                .Select(r => (Row: r, Seconds: r.Values[i]))
+                .OrderByDescending(x => x.Seconds)
+                .ToList();
+
+            var slotTotal = hourItems.Sum(x => x.Seconds);
             if (slotTotal <= 0) continue;
 
             var slotFraction = (slotStart - rangeStart).TotalSeconds / periodSeconds;
-            var slotWidth = 3600d / periodSeconds;
+            var slotWidth = Math.Min(3600d, (clockEnd - slotStart).TotalSeconds) / periodSeconds;
             var cursor = 0d;
 
-            foreach (var item in slot.OrderByDescending(x => x.Model.Time))
+            foreach (var (row, seconds) in hourItems)
             {
-                var model = item.Model;
-                var share = (double)model.Time / slotTotal;
+                var share = seconds / slotTotal;
                 var startFraction = slotFraction + slotWidth * cursor;
                 cursor += share;
+
+                categoryMap.TryGetValue(row.CategoryId, out var catModel);
+                var categoryColor = ResolveCategoryColor(catModel?.Color ?? row.CategoryColor,
+                    catModel?.IsSystem ?? true,
+                    catModel != null || !string.IsNullOrEmpty(row.CategoryName), isDark);
 
                 segments.Add(new ClockSegment
                 {
                     StartFraction = startFraction,
                     EndFraction = slotFraction + slotWidth * cursor,
-                    Name = model.AppModel!.GetDisplayName() ?? "Unknown",
-                    CategoryName = model.AppModel.Category?.Name,
-                    Color = TimelineColorService.GetColor(model.AppModel.GetDisplayName(), isDark),
-                    CategoryColor = ResolveCategoryColor(model.AppModel.Category, isDark),
-                    RangeText = $"{slotStart:M/d HH:00} · {FormatDuration(model.Time)}",
-                    Seconds = model.Time,
-                    Data = model.AppModel,
-                    CategoryData = model.AppModel.Category
+                    Name = row.Name,
+                    CategoryName = catModel?.Name ?? row.CategoryName,
+                    Color = TimelineColorService.GetColor(row.Name, isDark),
+                    CategoryColor = categoryColor,
+                    RangeText = $"{slotStart:M/d HH:00} · {FormatDuration(seconds)}",
+                    Seconds = seconds,
+                    Data = row.ToEntityModel((int)Math.Round(seconds)),
+                    CategoryData = catModel
                 });
             }
         }
 
+        return segments;
+    }
+
+    /// <summary>当天：用真实会话铺时段，并将浏览器时段按同小时归属的网站秒数子拆分</summary>
+    private async Task<ClockRingData> BuildDayClockAsync(DateTime date, CancellationToken ct)
+    {
+        var dayStart = date.Date;
+        var dayEnd = dayStart.AddDays(1);
+
+        var sessionsTask = GetSessionsCachedAsync(dayStart, dayEnd.AddSeconds(-1), ct);
+        var hoursTask = _entityData.GetEntityHoursAsync(dayStart, dayStart, "hour", false, ct);
+        var categoriesTask = _categoryService.GetCategoriesAsync(ct);
+        await Task.WhenAll(sessionsTask, hoursTask, categoriesTask);
+        ct.ThrowIfCancellationRequested();
+
+        var sessions = await sessionsTask;
+        var entityHours = await hoursTask;
+        var categoryMap = (await categoriesTask).ToDictionary(c => c.ID);
+
+        var segments = BuildDayClockSegments(dayStart, sessions, entityHours, categoryMap, IsDarkTheme());
+        return BuildRingData(segments, ClockTickMode.Hour, dayStart, dayEnd,
+            FormatClockCaption(0, dayStart, dayEnd));
+    }
+
+    /// <summary>
+    /// 周 / 月：走 `/api/entity/hours?buckets=hour&amp;browserMerged=false`，
+    /// 同小时内既能看见应用也能看见拆分后的网站实体与真实分类。
+    /// </summary>
+    private async Task<ClockRingData> BuildHourlyClockAsync(DateTime rangeStart, DateTime rangeEnd,
+        ClockTickMode tickMode, string caption, CancellationToken ct)
+    {
+        var hoursTask = _entityData.GetEntityHoursAsync(rangeStart.Date, rangeEnd.Date, "hour", false, ct);
+        var categoriesTask = _categoryService.GetCategoriesAsync(ct);
+        await Task.WhenAll(hoursTask, categoriesTask);
+        ct.ThrowIfCancellationRequested();
+
+        var entityHours = await hoursTask;
+        var categoryMap = (await categoriesTask).ToDictionary(c => c.ID);
+
+        var segments = BuildHourlyClockSegments(entityHours, categoryMap, rangeStart, rangeEnd, IsDarkTheme());
         return BuildRingData(segments, tickMode, rangeStart, rangeEnd, caption);
     }
 
@@ -514,7 +750,8 @@ public partial class DataPageViewModel : DataPageModel
             }
         }
 
-        return BuildRingData(segments, ClockTickMode.Month, rangeStart, rangeEnd, ResourceStrings.ThisYear);
+        return BuildRingData(segments, ClockTickMode.Month, rangeStart, rangeEnd,
+            FormatClockCaption(3, rangeStart, rangeEnd));
     }
 
     private static string ResolveCategoryColor(Shared.Models.CategoryModel? category, bool isDark) =>
@@ -526,9 +763,6 @@ public partial class DataPageViewModel : DataPageModel
             ? ChartColorHelper.Resolve(color, isSystem)
             : TimelineColorService.GetColor(ResourceStrings.SystemCategory, isDark);
     }
-
-    private static DateTime TruncateToHour(DateTime time) =>
-        new(time.Year, time.Month, time.Day, time.Hour, 0, 0);
 
     private ClockRingData BuildRingData(List<ClockSegment> segments, ClockTickMode tickMode,
         DateTime rangeStart, DateTime rangeEnd, string caption)

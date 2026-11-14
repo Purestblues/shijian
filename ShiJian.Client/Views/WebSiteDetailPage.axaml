@@ -160,7 +160,7 @@
                         <TextBlock Grid.Column="1" VerticalAlignment="Center"
                                    FontSize="12" Foreground="{DynamicResource SubTextBrush}">
                             <Run Text="{Binding WebPageData,Converter={StaticResource GetCountConverter}}" />
-                            <Run Text="{DynamicResource MultipleWebsites}" />
+                            <Run Text="{DynamicResource BrowseRecordsUnit}" />
                         </TextBlock>
                     </Grid>
 
@@ -178,7 +178,7 @@
                                 <Separator />
                                 <MenuItem Header="{DynamicResource CopyURL}" Command="{Binding PageCommand}"
                                           CommandParameter="CopyURL" />
-                                <MenuItem Header="{DynamicResource Title}" Command="{Binding PageCommand}"
+                                <MenuItem Header="{DynamicResource CopyTitle}" Command="{Binding PageCommand}"
                                           CommandParameter="CopyTitle" />
                             </ContextMenu>
                         </ListBox.ContextMenu>

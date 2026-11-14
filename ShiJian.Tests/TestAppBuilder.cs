@@ -43,5 +43,9 @@ public static class TestAppBuilder
     public static AppBuilder BuildAvaloniaApp() =>
         AppBuilder.Configure<TestApp>()
             .UseSkia()
-            .UseHeadless(new AvaloniaHeadlessPlatformOptions());
+            .UseHeadless(new AvaloniaHeadlessPlatformOptions
+            {
+                // 启用 Skia 位图与真实渲染后端，避免 HeadlessBitmapStub 吞掉像素读写测试
+                UseHeadlessDrawing = false
+            });
 }

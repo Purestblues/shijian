@@ -1011,13 +1011,13 @@ const SVG_ICON_KEYS: [&str; 32] = [
 
 const PRESET_CATEGORIES: [(&str, &str, &str); 9] = [
     ("开发", "svg:code", "#2563EB"),
-    ("办公", "svg:briefcase", "#0EA5E9"),
+    ("办公", "svg:briefcase", "#0D9488"),
     ("AI", "svg:sparkles", "#8B5CF6"),
-    ("娱乐", "svg:gamepad", "#F59E0B"),
+    ("娱乐", "svg:gamepad", "#D97706"),
     ("社交", "svg:message", "#EC4899"),
-    ("学习", "svg:book", "#10B981"),
-    ("设计", "svg:palette", "#F43F5E"),
-    ("影音", "svg:film", "#EA580C"),
+    ("学习", "svg:book", "#16A34A"),
+    ("设计", "svg:palette", "#0284C7"),
+    ("影音", "svg:film", "#E11D48"),
     ("工具", "svg:wrench", "#64748B"),
 ];
 
@@ -1368,6 +1368,7 @@ mod tests {
         .unwrap();
         let mut tx = pool.begin().await.unwrap();
         execute_batch(&mut tx, BASELINE_SQL).await.unwrap();
+        add_column_if_missing(&mut tx, "WebBrowseLogModels", "BrowserRef", "TEXT").await.unwrap();
         add_column_if_missing(&mut tx, "AppModels", "Publisher", "TEXT").await.unwrap();
         add_column_if_missing(&mut tx, "WebSiteCategoryModels", "IsSystem", "INTEGER NOT NULL DEFAULT 0").await.unwrap();
         add_column_if_missing(&mut tx, "WebSiteCategoryModels", "IsUrlMatch", "INTEGER NOT NULL DEFAULT 0").await.unwrap();

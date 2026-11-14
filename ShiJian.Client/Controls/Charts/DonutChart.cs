@@ -49,6 +49,9 @@ public class DonutChart : Control
     public static readonly StyledProperty<string?> EmptyTextProperty =
         AvaloniaProperty.Register<DonutChart, string?>(nameof(EmptyText));
 
+    public static readonly StyledProperty<bool> IsLoadingProperty =
+        AvaloniaProperty.Register<DonutChart, bool>(nameof(IsLoading));
+
     private const double SliceGapDegrees = 1.6;
     private const double DurationMs = 260;
 
@@ -107,7 +110,7 @@ public class DonutChart : Control
     {
         AffectsRender<DonutChart>(SeriesProperty, ProgressProperty, ThicknessProperty,
             CenterTextProperty, CenterCaptionProperty, TextBrushProperty, MutedTextBrushProperty,
-            TrackBrushProperty, EmptyTextProperty);
+            TrackBrushProperty, EmptyTextProperty, IsLoadingProperty);
     }
 
     public IEnumerable<ChartsDataModel>? Series
@@ -162,6 +165,12 @@ public class DonutChart : Control
     {
         get => GetValue(EmptyTextProperty);
         set => SetValue(EmptyTextProperty, value);
+    }
+
+    public bool IsLoading
+    {
+        get => GetValue(IsLoadingProperty);
+        set => SetValue(IsLoadingProperty, value);
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -312,7 +321,7 @@ public class DonutChart : Control
 
     private void DrawEmpty(DrawingContext context, Point center, double innerRadius)
     {
-        if (string.IsNullOrEmpty(EmptyText)) return;
+        if (IsLoading || string.IsNullOrEmpty(EmptyText)) return;
 
         var safeRadius = ComputeSafeRadius(innerRadius);
         if (safeRadius <= 6) return;

@@ -14,11 +14,12 @@ use crate::models::log::{ColumnDataModel, InfrastructureDataModel};
 use crate::models::web::{WebBrowseLogModel, WebSiteCategoryModel, WebSiteJoinCols, WebSiteModel, WebUrlModel, WEB_SITE_JOIN_COLS_SQL};
 use crate::services::category::CategoryService;
 use crate::services::config::ConfigService;
+use crate::services::entity;
 use crate::services::web_domain::{
     clean_title, extract_domain, extract_domain_scheme, extract_site_name, host_without_port,
     is_loopback_site_domain, is_placeholder_site_title, normalize_browser_ref,
 };
-use crate::utils::{parse_timezone, tz_naive_to_utc};
+use crate::utils::{parse_timezone, tz_date_to_utc_range, tz_naive_to_utc};
 
 static WEB_CATEGORY_CACHE: std::sync::OnceLock<RwLock<Option<Vec<WebSiteCategoryModel>>>> = std::sync::OnceLock::new();
 static URL_MATCH_CACHE: std::sync::OnceLock<RwLock<Option<Vec<CompiledUrlMatchRule>>>> = std::sync::OnceLock::new();
@@ -650,54 +651,52 @@ impl WebDataService {
 
     pub async fn get_browse_data_statistics(pool: &SqlitePool, start: NaiveDateTime, end: NaiveDateTime, site_id: i64, tz_id: &str, config_service: &ConfigService) -> Result<Vec<InfrastructureDataModel>, AppError> {
         debug!("get_browse_data_statistics: start={} end={} site_id={}", start, end, site_id);
-        let excluded_site_ids = get_excluded_site_ids(pool, config_service).await;
-        let has_excluded = !excluded_site_ids.is_empty();
+        let excluded_site_ids: std::collections::HashSet<i64> =
+            get_excluded_site_ids(pool, config_service).await.into_iter().collect();
 
         let tz = parse_timezone(tz_id);
-        let start_date = NaiveDateTime::new(start.date(), chrono::NaiveTime::from_hms_opt(0,0,0).unwrap());
-        let end_date = NaiveDateTime::new(end.date(), chrono::NaiveTime::from_hms_opt(23,59,59).unwrap());
-        let utc_start = tz_naive_to_utc(start_date, &tz);
-        let utc_end = tz_naive_to_utc(end_date, &tz);
+        let start_d = start.date();
+        let end_d = end.date();
+        let utc_start = tz_date_to_utc_range(start_d, &tz).0;
+        let utc_end = tz_date_to_utc_range(end_d, &tz).1;
 
-        let mut q = String::from("SELECT LogTime, SUM(Duration) as total FROM WebBrowseLogModels WHERE LogTime >= ? AND LogTime <= ?");
-        if site_id > 0 { q.push_str(" AND SiteId = ?"); }
-        if has_excluded {
-            let placeholders = excluded_site_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            q.push_str(&format!(" AND SiteId NOT IN ({})", placeholders));
-        }
-        q.push_str(" GROUP BY LogTime");
-
-        let mut query = sqlx::query_as::<_, (DateTime<Utc>, i64)>(&q)
-            .bind(utc_start).bind(utc_end);
-        if site_id > 0 { query = query.bind(site_id); }
-        if has_excluded {
-            for id in &excluded_site_ids {
-                query = query.bind(*id);
+        let attrib = entity::compute_window_attribution(pool, config_service, utc_start, utc_end, &tz).await?;
+        let mut by_hour: HashMap<DateTime<Utc>, i64> = HashMap::new();
+        for ((hour_ts, sid), item) in attrib.site_hours {
+            if item.credited <= 0 || excluded_site_ids.contains(&sid) {
+                continue;
+            }
+            if site_id > 0 && sid != site_id {
+                continue;
+            }
+            if let Some(utc_dt) = DateTime::<Utc>::from_timestamp(hour_ts.max(utc_start.timestamp()), 0) {
+                *by_hour.entry(utc_dt).or_insert(0) += item.credited;
             }
         }
-        let data = query.fetch_all(pool).await?;
 
         let mut result = Vec::new();
-        if start_date.date() == end_date.date() {
+        if start_d == end_d {
             let mut buckets = [0i64; 24];
-            for (t, v) in &data {
-                let h = t.with_timezone(&tz).hour() as usize;
-                if h < 24 {
-                    buckets[h] += *v;
+            for (t, v) in &by_hour {
+                let local = t.with_timezone(&tz);
+                if local.date_naive() == start_d {
+                    let h = local.hour() as usize;
+                    if h < 24 {
+                        buckets[h] += *v;
+                    }
                 }
             }
             for (i, value) in buckets.iter().enumerate() {
                 result.push(InfrastructureDataModel { id: i as i64, name: i.to_string(), value: *value });
             }
         } else {
-            let days = (end_date.date() - start_date.date()).num_days() + 1;
+            let days = (end_d - start_d).num_days() + 1;
             if days <= constants::DAY_VIEW_THRESHOLD {
                 let days_usize = days as usize;
                 let mut buckets = vec![0i64; days_usize];
-                let start_local_date = start_date.date();
-                for (t, v) in &data {
+                for (t, v) in &by_hour {
                     let local_date = t.with_timezone(&tz).date_naive();
-                    let offset = (local_date - start_local_date).num_days();
+                    let offset = (local_date - start_d).num_days();
                     if offset >= 0 && (offset as usize) < days_usize {
                         buckets[offset as usize] += *v;
                     }
@@ -707,8 +706,8 @@ impl WebDataService {
                 }
             } else {
                 let mut buckets = [0i64; 12];
-                let target_year = start_date.year();
-                for (t, v) in &data {
+                let target_year = start_d.year();
+                for (t, v) in &by_hour {
                     let local = t.with_timezone(&tz);
                     if local.year() == target_year {
                         let m = (local.month() - 1) as usize;
@@ -727,121 +726,95 @@ impl WebDataService {
 
     pub async fn get_browse_data_by_category_statistics(pool: &SqlitePool, start: NaiveDate, end: NaiveDate, tz_id: &str, config_service: &ConfigService) -> Result<Vec<ColumnDataModel>, AppError> {
         debug!("get_browse_data_by_category_statistics: start={} end={}", start, end);
-        let excluded_site_ids = get_excluded_site_ids(pool, config_service).await;
-        let has_excluded = !excluded_site_ids.is_empty();
+        let excluded_site_ids: std::collections::HashSet<i64> =
+            get_excluded_site_ids(pool, config_service).await.into_iter().collect();
 
         let tz = parse_timezone(tz_id);
-        let start_dt = NaiveDateTime::new(start, chrono::NaiveTime::from_hms_opt(0,0,0).unwrap());
-        let end_dt = NaiveDateTime::new(end, chrono::NaiveTime::from_hms_opt(23,59,59).unwrap());
-        let utc_start = tz_naive_to_utc(start_dt, &tz);
-        let utc_end = tz_naive_to_utc(end_dt, &tz);
+        let utc_start = tz_date_to_utc_range(start, &tz).0;
+        let utc_end = tz_date_to_utc_range(end, &tz).1;
 
-        let categories: Vec<(i64, i64)> = if !has_excluded {
-            sqlx::query_as(
-                r#"SELECT COALESCE(ws.CategoryID, 0) as cat_id, SUM(wbl.Duration) as total FROM WebBrowseLogModels wbl
-                LEFT JOIN WebSiteModels ws ON wbl.SiteId = ws.ID
-                WHERE wbl.LogTime >= ? AND wbl.LogTime <= ?
-                GROUP BY cat_id"#
-            ).bind(utc_start).bind(utc_end).fetch_all(pool).await?
-        } else {
-            let placeholders = excluded_site_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let sql = format!(
-                r#"SELECT COALESCE(ws.CategoryID, 0) as cat_id, SUM(wbl.Duration) as total FROM WebBrowseLogModels wbl
-                LEFT JOIN WebSiteModels ws ON wbl.SiteId = ws.ID
-                WHERE wbl.LogTime >= ? AND wbl.LogTime <= ? AND wbl.SiteId NOT IN ({})
-                GROUP BY cat_id"#,
-                placeholders
-            );
-            let mut query = sqlx::query_as::<_, (i64, i64)>(&sql)
-                .bind(utc_start).bind(utc_end);
-            for id in &excluded_site_ids {
-                query = query.bind(*id);
+        let site_cat_rows: Vec<(i64, i64)> =
+            sqlx::query_as("SELECT ID, COALESCE(CategoryID, 0) FROM WebSiteModels")
+                .fetch_all(pool)
+                .await?;
+        let site_cats: HashMap<i64, i64> = site_cat_rows.into_iter().collect();
+
+        let attrib = entity::compute_window_attribution(pool, config_service, utc_start, utc_end, &tz).await?;
+        let mut cat_totals: HashMap<i64, i64> = HashMap::new();
+        let mut cat_hour_rows: Vec<(i64, DateTime<Utc>, i64)> = Vec::new();
+        for ((hour_ts, sid), item) in attrib.site_hours {
+            if item.credited <= 0 || excluded_site_ids.contains(&sid) {
+                continue;
             }
-            query.fetch_all(pool).await?
+            let cat_id = site_cats.get(&sid).copied().unwrap_or(0);
+            if let Some(utc_dt) = DateTime::<Utc>::from_timestamp(hour_ts.max(utc_start.timestamp()), 0) {
+                *cat_totals.entry(cat_id).or_insert(0) += item.credited;
+                cat_hour_rows.push((cat_id, utc_dt, item.credited));
+            }
+        }
+
+        let mut categories: Vec<i64> = cat_totals.keys().copied().collect();
+        categories.sort_unstable();
+
+        let bucket_len = if start == end {
+            24
+        } else {
+            let days = (end - start).num_days() + 1;
+            if days <= constants::DAY_VIEW_THRESHOLD {
+                days as usize
+            } else {
+                12
+            }
         };
 
-        let data: Vec<(i64, DateTime<Utc>, i64)> = if !has_excluded {
-            sqlx::query_as(
-                r#"SELECT COALESCE(ws.CategoryID, 0) as cat_id, wbl.LogTime, SUM(wbl.Duration) as total FROM WebBrowseLogModels wbl
-                LEFT JOIN WebSiteModels ws ON wbl.SiteId = ws.ID
-                WHERE wbl.LogTime >= ? AND wbl.LogTime <= ?
-                GROUP BY cat_id, wbl.LogTime"#
-            ).bind(utc_start).bind(utc_end).fetch_all(pool).await?
-        } else {
-            let placeholders = excluded_site_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let sql = format!(
-                r#"SELECT COALESCE(ws.CategoryID, 0) as cat_id, wbl.LogTime, SUM(wbl.Duration) as total FROM WebBrowseLogModels wbl
-                LEFT JOIN WebSiteModels ws ON wbl.SiteId = ws.ID
-                WHERE wbl.LogTime >= ? AND wbl.LogTime <= ? AND wbl.SiteId NOT IN ({})
-                GROUP BY cat_id, wbl.LogTime"#,
-                placeholders
-            );
-            let mut query = sqlx::query_as::<_, (i64, DateTime<Utc>, i64)>(&sql)
-                .bind(utc_start).bind(utc_end);
-            for id in &excluded_site_ids {
-                query = query.bind(*id);
-            }
-            query.fetch_all(pool).await?
-        };
-
-        let mut result = Vec::new();
-        let mut result_map: HashMap<i64, &mut ColumnDataModel> = HashMap::new();
+        let mut result: Vec<ColumnDataModel> = categories
+            .into_iter()
+            .map(|cat_id| ColumnDataModel {
+                app_id: None,
+                category_id: Some(cat_id),
+                values: vec![0.0; bucket_len],
+            })
+            .collect();
+        let result_map: HashMap<i64, usize> = result
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, item)| item.category_id.map(|cid| (cid, idx)))
+            .collect();
 
         if start == end {
-            for (cat_id, _) in &categories {
-                result.push(ColumnDataModel { app_id: None, category_id: Some(*cat_id), values: vec![0.0; 24] });
-            }
-            for item in &mut result {
-                if let Some(cid) = item.category_id {
-                    result_map.insert(cid, item);
-                }
-            }
-            for (cid, t, d) in &data {
-                if let Some(item) = result_map.get_mut(cid) {
-                    let h = t.with_timezone(&tz).hour() as usize;
-                    if h < 24 {
-                        item.values[h] += *d as f64;
+            for (cid, t, d) in cat_hour_rows {
+                if let Some(&idx) = result_map.get(&cid) {
+                    let local = t.with_timezone(&tz);
+                    if local.date_naive() == start {
+                        let h = local.hour() as usize;
+                        if h < 24 {
+                            result[idx].values[h] += d as f64;
+                        }
                     }
                 }
             }
         } else {
             let days = (end - start).num_days() + 1;
             if days <= constants::DAY_VIEW_THRESHOLD {
-                for (cat_id, _) in &categories {
-                    result.push(ColumnDataModel { app_id: None, category_id: Some(*cat_id), values: vec![0.0; days as usize] });
-                }
-                for item in &mut result {
-                    if let Some(cid) = item.category_id {
-                        result_map.insert(cid, item);
-                    }
-                }
                 let days_usize = days as usize;
-                for (cid, t, d) in &data {
-                    if let Some(item) = result_map.get_mut(cid) {
+                for (cid, t, d) in cat_hour_rows {
+                    if let Some(&idx) = result_map.get(&cid) {
                         let local_date = t.with_timezone(&tz).date_naive();
                         let offset = (local_date - start).num_days();
                         if offset >= 0 && (offset as usize) < days_usize {
-                            item.values[offset as usize] += *d as f64;
+                            result[idx].values[offset as usize] += d as f64;
                         }
                     }
                 }
             } else {
-                for (cat_id, _) in &categories {
-                    result.push(ColumnDataModel { app_id: None, category_id: Some(*cat_id), values: vec![0.0; 12] });
-                }
-                for item in &mut result {
-                    if let Some(cid) = item.category_id {
-                        result_map.insert(cid, item);
-                    }
-                }
                 let target_year = start.year();
-                for (cid, t, d) in &data {
-                    if let Some(item) = result_map.get_mut(cid) {
+                for (cid, t, d) in cat_hour_rows {
+                    if let Some(&idx) = result_map.get(&cid) {
                         let local = t.with_timezone(&tz);
                         if local.year() == target_year {
                             let m = (local.month() - 1) as usize;
                             if m < 12 {
-                                item.values[m] += *d as f64;
+                                result[idx].values[m] += d as f64;
                             }
                         }
                     }
@@ -853,31 +826,20 @@ impl WebDataService {
 
     pub async fn get_browse_duration_total(pool: &SqlitePool, start: NaiveDateTime, end: NaiveDateTime, tz_id: &str, config_service: &ConfigService) -> Result<i64, AppError> {
         debug!("get_browse_duration_total: start={} end={}", start, end);
-        let excluded_site_ids = get_excluded_site_ids(pool, config_service).await;
-        let has_excluded = !excluded_site_ids.is_empty();
+        let excluded_site_ids: std::collections::HashSet<i64> =
+            get_excluded_site_ids(pool, config_service).await.into_iter().collect();
 
-        let start_date = NaiveDateTime::new(start.date(), chrono::NaiveTime::from_hms_opt(0,0,0).unwrap());
-        let end_date = NaiveDateTime::new(end.date(), chrono::NaiveTime::from_hms_opt(23,59,59).unwrap());
-        let utc_start = tz_naive_to_utc(start_date, &parse_timezone(tz_id));
-        let utc_end = tz_naive_to_utc(end_date, &parse_timezone(tz_id));
-
-        let total: Option<i64> = if !has_excluded {
-            sqlx::query_scalar("SELECT SUM(Duration) FROM WebBrowseLogModels WHERE LogTime >= ? AND LogTime <= ?")
-                .bind(utc_start).bind(utc_end).fetch_optional(pool).await?
-        } else {
-            let placeholders = excluded_site_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
-            let sql = format!(
-                "SELECT SUM(Duration) FROM WebBrowseLogModels WHERE LogTime >= ? AND LogTime <= ? AND SiteId NOT IN ({})",
-                placeholders
-            );
-            let mut query = sqlx::query_scalar::<_, i64>(&sql)
-                .bind(utc_start).bind(utc_end);
-            for id in &excluded_site_ids {
-                query = query.bind(*id);
-            }
-            query.fetch_optional(pool).await?
-        };
-        Ok(total.unwrap_or(0))
+        let tz = parse_timezone(tz_id);
+        let utc_start = tz_date_to_utc_range(start.date(), &tz).0;
+        let utc_end = tz_date_to_utc_range(end.date(), &tz).1;
+        let attrib = entity::compute_window_attribution(pool, config_service, utc_start, utc_end, &tz).await?;
+        let total: i64 = attrib
+            .site_hours
+            .into_iter()
+            .filter(|((_, sid), item)| item.credited > 0 && !excluded_site_ids.contains(sid))
+            .map(|(_, item)| item.credited)
+            .sum();
+        Ok(total)
     }
 
     pub async fn get_browse_sites_total(pool: &SqlitePool, start: NaiveDateTime, end: NaiveDateTime, tz_id: &str, config_service: &ConfigService) -> Result<i64, AppError> {
@@ -1044,22 +1006,36 @@ impl WebDataService {
 
     pub async fn get_web_site_log_list(pool: &SqlitePool, start: NaiveDateTime, end: NaiveDateTime, tz_id: &str, config_service: &ConfigService) -> Result<Vec<WebSiteModel>, AppError> {
         debug!("get_web_site_log_list: start={} end={}", start, end);
-        let start_date = NaiveDateTime::new(start.date(), chrono::NaiveTime::from_hms_opt(0,0,0).unwrap());
-        let end_date = NaiveDateTime::new(end.date(), chrono::NaiveTime::from_hms_opt(23,59,59).unwrap());
-        let utc_start = tz_naive_to_utc(start_date, &parse_timezone(tz_id));
-        let utc_end = tz_naive_to_utc(end_date, &parse_timezone(tz_id));
-        // site_duration 由 SUM 提供（共享片段不含 s.Duration，无重名列）
+        let tz = parse_timezone(tz_id);
+        let utc_start = tz_date_to_utc_range(start.date(), &tz).0;
+        let utc_end = tz_date_to_utc_range(end.date(), &tz).1;
+
+        let attrib = entity::compute_window_attribution(pool, config_service, utc_start, utc_end, &tz).await?;
+        let mut by_site: HashMap<i64, i64> = HashMap::new();
+        for ((_, sid), item) in attrib.site_hours {
+            if item.credited > 0 {
+                *by_site.entry(sid).or_insert(0) += item.credited;
+            }
+        }
+        if by_site.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let site_ids: Vec<i64> = by_site.keys().copied().collect();
+        let placeholders = site_ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
         let sql = format!(
-            r#"SELECT {cols}, SUM(wbl.Duration) AS site_duration
-            FROM WebBrowseLogModels wbl
-            LEFT JOIN WebSiteModels s ON wbl.SiteId = s.ID
+            r#"SELECT {cols}, 0 AS site_duration
+            FROM WebSiteModels s
             LEFT JOIN CategoryModels c ON s.CategoryID = c.ID
-            WHERE wbl.LogTime >= ? AND wbl.LogTime <= ?
-            GROUP BY wbl.SiteId"#,
-            cols = WEB_SITE_JOIN_COLS_SQL
+            WHERE s.ID IN ({placeholders})"#,
+            cols = WEB_SITE_JOIN_COLS_SQL,
+            placeholders = placeholders
         );
-        let rows: Vec<WebSiteJoinCols> = sqlx::query_as(&sql)
-            .bind(utc_start).bind(utc_end).fetch_all(pool).await?;
+        let mut query = sqlx::query_as::<_, WebSiteJoinCols>(&sql);
+        for id in &site_ids {
+            query = query.bind(*id);
+        }
+        let rows = query.fetch_all(pool).await?;
 
         let domains: Vec<&str> = rows.iter().filter_map(|r| r.site_domain.as_deref()).collect();
         let excluded = config_service.get_excluded_domains(&domains).await;
@@ -1068,7 +1044,14 @@ impl WebDataService {
         Ok(rows
             .into_iter()
             .filter(|r| r.site_domain.as_ref().map_or(false, |d| !excluded_set.contains(d)))
-            .filter_map(|r| r.to_site_model())
+            .filter_map(|mut r| {
+                let dur = r.site_id.and_then(|id| by_site.get(&id).copied()).unwrap_or(0);
+                if dur <= 0 {
+                    return None;
+                }
+                r.site_duration = Some(dur);
+                r.to_site_model()
+            })
             .collect())
     }
 

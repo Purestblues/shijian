@@ -22,6 +22,7 @@ public class SearchPaletteViewModel : ModelBase
     private string _statusText = string.Empty;
     private string _resultsCountText = string.Empty;
     private int _searchGeneration;
+    private bool _skipNextEmptyThrottle;
 
     public SearchPaletteViewModel(ISearchService searchService)
     {
@@ -38,6 +39,14 @@ public class SearchPaletteViewModel : ModelBase
             .ObserveOn(AvaloniaContextScheduler.Instance)
             .Select(kw =>
             {
+                var trimmed = (kw ?? string.Empty).Trim();
+                if (_skipNextEmptyThrottle)
+                {
+                    _skipNextEmptyThrottle = false;
+                    if (trimmed.Length == 0)
+                        return RxObservable.FromAsync(_ => System.Threading.Tasks.Task.CompletedTask);
+                }
+
                 var generation = Interlocked.Increment(ref _searchGeneration);
                 return RxObservable.FromAsync(_ => OnKeywordChangedAsync(kw, generation));
             })
@@ -292,6 +301,18 @@ public class SearchPaletteViewModel : ModelBase
         {
             if (generation == Volatile.Read(ref _searchGeneration))
                 ApplyResults(Array.Empty<SearchResultItem>(), isDefault: true, keywordIsEmpty: true);
+        }
+    }
+
+    public void ResetForReopen()
+    {
+        Interlocked.Increment(ref _searchGeneration);
+        _expanded.Clear();
+        SelectedItem = null;
+        if (!string.IsNullOrEmpty(Keyword))
+        {
+            _skipNextEmptyThrottle = true;
+            Keyword = string.Empty;
         }
     }
 

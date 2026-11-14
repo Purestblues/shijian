@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using ShiJian.Client.Controls;
 using ShiJian.Client.Foundation;
@@ -60,6 +61,18 @@ public partial class CategoryPage : TPage
         _appEmptyExpandedSubscription = ObservablePropertyChangedExtensions.WhenPropertyChanged(model, x => x.IsAppEmptyExpanded)
             .Skip(1)
             .Subscribe(expanded => _ = ExpandMotion.SetExpandedAsync(EmptyAppCategoriesHost, expanded));
+
+        model.EntityScrollResetRequested += OnEntityScrollResetRequested;
+    }
+
+    private void OnEntityScrollResetRequested()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            var scrollViewer = EntityListBox?.FindDescendantOfType<ScrollViewer>();
+            if (scrollViewer != null)
+                scrollViewer.Offset = Vector.Zero;
+        }, DispatcherPriority.Loaded);
     }
 
     protected override void OnLoaded(RoutedEventArgs e)
@@ -90,6 +103,8 @@ public partial class CategoryPage : TPage
     protected override void OnUnloaded(RoutedEventArgs e)
     {
         base.OnUnloaded(e);
+        if (_model != null)
+            _model.EntityScrollResetRequested -= OnEntityScrollResetRequested;
         _activeTagFlyout?.Hide();
         _activeTagFlyout = null;
         _editIsDirectoryMatchSubscription.Dispose();

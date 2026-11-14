@@ -47,7 +47,8 @@ public class CategoryPageViewModel : CategoryPageModel
     private List<CategoryEntityRow> _allAppEntityRows = new();
     private List<CategoryEntityRow> _allWebEntityRows = new();
     private bool _entitiesLoaded;
-    private bool _categoryStatsDirty;
+    private bool _categoryStatsDirty = true;
+    private bool _categoryStatsLoaded;
     private CategoryEntityRow? _tagTargetRow;
 
     public CategoryPageViewModel(
@@ -112,19 +113,19 @@ public class CategoryPageViewModel : CategoryPageModel
             .DisposeWith(Disposables);
         ObservablePropertyChangedExtensions.WhenPropertyChanged(this, x => x.EntitySearchInput)
             .Skip(1)
-            .Subscribe(_ => ApplyEntityFilterAndSort())
+            .Subscribe(_ => ApplyEntityFilterAndSort(resetScroll: true))
             .DisposeWith(Disposables);
         ObservablePropertyChangedExtensions.WhenPropertyChanged(this, x => x.EntityTypeMode)
             .Skip(1)
-            .Subscribe(_ => ApplyEntityFilterAndSort())
+            .Subscribe(_ => ApplyEntityFilterAndSort(resetScroll: true))
             .DisposeWith(Disposables);
         ObservablePropertyChangedExtensions.WhenPropertyChanged(this, x => x.EntityFilterMode)
             .Skip(1)
-            .Subscribe(_ => ApplyEntityFilterAndSort())
+            .Subscribe(_ => ApplyEntityFilterAndSort(resetScroll: true))
             .DisposeWith(Disposables);
         ObservablePropertyChangedExtensions.WhenPropertyChanged(this, x => x.EntitySortMode)
             .Skip(1)
-            .Subscribe(_ => ApplyEntityFilterAndSort())
+            .Subscribe(_ => ApplyEntityFilterAndSort(resetScroll: true))
             .DisposeWith(Disposables);
 
         ChartColorHelper.ThemeChanged += OnThemeChanged;
@@ -137,15 +138,50 @@ public class CategoryPageViewModel : CategoryPageModel
         _ = RefreshAsync();
     }
 
+    private const string AppEntitiesStateKey = "CategoryPage:AppEntities";
+    private const string WebEntitiesStateKey = "CategoryPage:WebEntities";
+
     public override async Task OnNavigatedToAsync()
     {
-        TryRestoreState(_navigationService, _stateService);
-        await ExecuteAsync(LoadDataCoreAsync);
+        var restored = TryRestoreState(_navigationService, _stateService);
+        if (Data.Count > 0)
+        {
+            ComputeHasDirectoryMatchCategory();
+            RebuildCategoryBuckets();
+        }
+        if (restored)
+        {
+            if (_stateService.Get<string, List<CategoryEntityRow>>(AppEntitiesStateKey) is { } appRows)
+                _allAppEntityRows = appRows;
+            if (_stateService.Get<string, List<CategoryEntityRow>>(WebEntitiesStateKey) is { } webRows)
+                _allWebEntityRows = webRows;
+            if (_allAppEntityRows.Count > 0 || _allWebEntityRows.Count > 0)
+            {
+                _entitiesLoaded = true;
+                ApplyEntityFilterAndSort();
+            }
+            if (Data.Any(m => m.Duration > 0 || m.Count > 0))
+            {
+                _categoryStatsLoaded = true;
+                _categoryStatsDirty = false;
+            }
+        }
+
+        // 有缓存内容时保持现有卡片/列表直接可见，静默后台刷新，消除返回导航时的骨架闪烁
+        var hasCachedContent = IsEntityBrowseMode
+            ? _entitiesLoaded || FilteredEntities.Count > 0
+            : Data.Count > 0;
+        await ExecuteAsync(LoadDataCoreAsync, trackLoading: !hasCachedContent);
     }
 
     public override void OnNavigatedFrom()
     {
         SaveState(_stateService);
+        if (_entitiesLoaded)
+        {
+            _stateService.Set(AppEntitiesStateKey, _allAppEntityRows);
+            _stateService.Set(WebEntitiesStateKey, _allWebEntityRows);
+        }
         base.OnNavigatedFrom();
     }
 
@@ -216,12 +252,14 @@ public class CategoryPageViewModel : CategoryPageModel
     private Task OnRefreshAsync(object _)
     {
         _entitiesLoaded = false;
+        _categoryStatsDirty = true;
         return ExecuteAsync(LoadDataCoreAsync);
     }
 
     public override Task RefreshAsync()
     {
         _entitiesLoaded = false;
+        _categoryStatsDirty = true;
         return ExecuteAsync(LoadDataCoreAsync);
     }
 
@@ -262,6 +300,7 @@ public class CategoryPageViewModel : CategoryPageModel
             var count = await _categoryService.ApplyAutoClassifyAsync();
             _toastService.Success(string.Format(ResourceStrings.AutoClassifySuccess, count));
             _entitiesLoaded = false;
+            _categoryStatsDirty = true;
             await LoadDataCoreAsync(default);
         }
         catch (Exception ex)
@@ -647,6 +686,7 @@ public class CategoryPageViewModel : CategoryPageModel
 
             ComputeHasDirectoryMatchCategory();
             _entitiesLoaded = false;
+            _categoryStatsDirty = true;
             ApplySort();
             EditVisibility = false;
             SelectedAppCategoryItem = null;
@@ -859,7 +899,7 @@ public class CategoryPageViewModel : CategoryPageModel
             else
                 _ = ExecuteAsync(LoadDataCoreAsync);
         }
-        else if (_categoryStatsDirty)
+        else if (_categoryStatsDirty || !_categoryStatsLoaded)
         {
             _ = ExecuteAsync(LoadDataCoreAsync);
         }
@@ -870,11 +910,14 @@ public class CategoryPageViewModel : CategoryPageModel
         if (IsEntityBrowseMode)
         {
             await LoadEntitiesAsync(cancellationToken);
+            if (!_categoryStatsLoaded)
+                _categoryStatsDirty = true;
             return;
         }
 
         await LoadCategoryCardsAsync(cancellationToken);
         _categoryStatsDirty = false;
+        _categoryStatsLoaded = true;
     }
 
     /// <summary>
@@ -883,7 +926,6 @@ public class CategoryPageViewModel : CategoryPageModel
     /// </summary>
     private async Task LoadCategoryCardsAsync(CancellationToken cancellationToken)
     {
-        Data.Clear();
         var today = DateTime.Now.Date;
 
         var categories = await _categoryService.GetCategoriesAsync(cancellationToken);
@@ -914,8 +956,11 @@ public class CategoryPageViewModel : CategoryPageModel
         }
 
         CategoryCardStats.Assign(cards, m => m.Data.ID, durationByCategory);
+        var sorted = CategoryCardStats.Sort(cards, CurrentSortMode, m => m.Data.Name);
 
-        foreach (var card in CategoryCardStats.Sort(cards, CurrentSortMode, m => m.Data.Name)) Data.Add(card);
+        // 替换整集合引用而不原地 Clear，避免影响 StateService 持有的返回导航缓存实例
+        Data = new ObservableCollection<CategoryModel>(sorted);
+        OnPropertyChanged(nameof(HasAnyAppCategories));
 
         ComputeHasDirectoryMatchCategory();
         RebuildCategoryBuckets();
@@ -940,6 +985,10 @@ public class CategoryPageViewModel : CategoryPageModel
                 Data.Add(new CategoryModel { Data = c });
             ComputeHasDirectoryMatchCategory();
             RebuildCategoryBuckets();
+            // Bare category shells have no duration stats yet; mark stats stale so switching
+            // back to category view loads real metrics instead of collapsing into empty bucket.
+            _categoryStatsLoaded = false;
+            _categoryStatsDirty = true;
         }
 
         _allAppEntityRows = CategoryEntityViewHelper.BuildAppRows(
@@ -965,7 +1014,9 @@ public class CategoryPageViewModel : CategoryPageModel
         _ => _allAppEntityRows.Concat(_allWebEntityRows).ToList()
     };
 
-    private void ApplyEntityFilterAndSort()
+    public event Action? EntityScrollResetRequested;
+
+    private void ApplyEntityFilterAndSort(bool resetScroll = false)
     {
         var source = CurrentSourceEntities;
         TotalEntityCount = source.Count;
@@ -985,6 +1036,8 @@ public class CategoryPageViewModel : CategoryPageModel
         var desired = CategoryEntityViewHelper.FilterAndSort(source, EntitySearchInput, filter, sort);
         CategoryCardStats.SyncCollection(FilteredEntities, desired);
         NotifyEntityListState();
+        if (resetScroll)
+            EntityScrollResetRequested?.Invoke();
     }
 
     /// <summary>打开分类选择浮层前刷新统一共享分类清单</summary>
@@ -1091,7 +1144,6 @@ public class CategoryPageViewModel : CategoryPageModel
     public override void Dispose()
     {
         ChartColorHelper.ThemeChanged -= OnThemeChanged;
-        Data?.Clear();
         ActiveAppCategories?.Clear();
         EmptyAppCategories?.Clear();
         FilteredEntities?.Clear();

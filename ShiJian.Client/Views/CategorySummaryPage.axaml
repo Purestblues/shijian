@@ -20,7 +20,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource DividerSubtleBrush}" />
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Padding" Value="14,6" />
-            <Setter Property="Margin" Value="0,0,8,0" />
+            <Setter Property="Margin" Value="0,0,8,8" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="MinHeight" Value="30" />
         </Style>
@@ -81,30 +81,26 @@
                          Options="{Binding KindOptions}" />
         </Grid>
 
-        <!-- 分类切换标签行 -->
-        <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Disabled"
-                      Margin="0,0,0,16">
-            <ItemsControl ItemsSource="{Binding CurrentCategories}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" />
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="vm:CategoryChip">
-                        <Button Classes="cat-chip"
-                                Classes.active="{Binding IsActive}"
-                                Command="{Binding $parent[UserControl].((vm:CategorySummaryPageViewModel)DataContext).SwitchCategoryCommand}"
-                                CommandParameter="{Binding}">
-                            <TextBlock Text="{Binding Name}"
-                                       FontSize="13"
-                                       VerticalAlignment="Center" />
-                        </Button>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </ScrollViewer>
+        <!-- 分类切换标签行：窄窗口自动换行而非横向裁切 -->
+        <ItemsControl ItemsSource="{Binding CurrentCategories}" Margin="0,0,0,10">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:CategoryChip">
+                    <Button Classes="cat-chip"
+                            Classes.active="{Binding IsActive}"
+                            Command="{Binding $parent[UserControl].((vm:CategorySummaryPageViewModel)DataContext).SwitchCategoryCommand}"
+                            CommandParameter="{Binding}">
+                        <TextBlock Text="{Binding Name}"
+                                   FontSize="13"
+                                   VerticalAlignment="Center" />
+                    </Button>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <StackPanel Spacing="16">
 
@@ -224,12 +220,13 @@
                     CornerRadius="{StaticResource RadiusMedium}">
                 <StackPanel>
                     <Grid Margin="20,16,20,12" ColumnDefinitions="*,Auto">
-                        <StackPanel Grid.Column="0" Spacing="2">
+                        <StackPanel Grid.Column="0" Spacing="2" Margin="0,0,12,0">
                             <TextBlock Text="{DynamicResource CategoryTrend}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource DefaultTextBrush}" />
                             <TextBlock Text="{DynamicResource CategoryColumnHint}"
                                        FontSize="11"
+                                       TextWrapping="Wrap"
                                        Foreground="{DynamicResource SubTextBrush}" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
@@ -268,19 +265,21 @@
 
                             <StackPanel Grid.Row="1">
                                 <!-- 时间标签条：全选时显示周期名，点列时显示该列标签 -->
-                                <Border Margin="0,5,0,0" HorizontalAlignment="Left" Padding="10"
-                                        CornerRadius="{StaticResource RadiusMedium}"
-                                        Background="{DynamicResource Surface3Brush}">
-                                    <StackPanel Orientation="Horizontal">
-                                        <base:Icon IconType="Calendar"
-                                                   Foreground="{DynamicResource SubTextBrush}"
-                                                   VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding SelectedColumnLabel}"
-                                                   Foreground="{DynamicResource SubTextBrush}"
-                                                   VerticalAlignment="Center"
-                                                   FontSize="13" Margin="5,0,0,0" />
-                                    </StackPanel>
-                                </Border>
+                                <base:View Condition="not empty" Value="{Binding SelectedColumnLabel}">
+                                    <Border Margin="0,5,0,0" HorizontalAlignment="Left" Padding="10"
+                                            CornerRadius="{StaticResource RadiusMedium}"
+                                            Background="{DynamicResource Surface3Brush}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <base:Icon IconType="Calendar"
+                                                       Foreground="{DynamicResource SubTextBrush}"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="{Binding SelectedColumnLabel}"
+                                                       Foreground="{DynamicResource SubTextBrush}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="13" Margin="5,0,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </base:View>
 
                                 <base:View Value="{Binding SelectedMembers}" Condition="not empty">
                                     <charts:ListChart IsLoading="{Binding IsLoading}" IsSearch="True"

@@ -40,6 +40,8 @@ public partial class IndexPage : UserControl
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
 
+        SyncStatCardsLayout();
+
         if (_entered) return;
         _entered = true;
 
@@ -60,8 +62,26 @@ public partial class IndexPage : UserControl
     /// <summary>「自定义」范围面板：切换周期时按参考项目的方式做高度展开 / 收起</summary>
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(IndexPageViewModel.IsWebBrowserMerged))
+        {
+            SyncStatCardsLayout();
+            return;
+        }
+
         if (e.PropertyName != nameof(IndexPageViewModel.IsCustomRange) || CustomRangeHost == null) return;
         _ = ExpandMotion.SetExpandedAsync(CustomRangeHost, _viewModel?.IsCustomRange == true);
+    }
+
+    /// <summary>「并入浏览器」时隐藏站点卡片并把总览网格切为 3 列等宽</summary>
+    private void SyncStatCardsLayout()
+    {
+        if (StatCardsPanel == null || SiteStatCard == null || WebPageStatCard == null) return;
+
+        var merged = _viewModel?.IsWebBrowserMerged == true;
+        SiteStatCard.IsVisible = !merged;
+        Grid.SetColumn(WebPageStatCard, merged ? 4 : 6);
+        StatCardsPanel.ColumnDefinitions = ColumnDefinitions.Parse(
+            merged ? "*,10,*,10,*" : "*,10,*,10,*,10,*");
     }
 
     /// <summary>
@@ -72,7 +92,7 @@ public partial class IndexPage : UserControl
         var panel = StatCardsPanel;
         if (panel == null) return;
 
-        var cards = panel.Children.OfType<Control>().ToList();
+        var cards = panel.Children.OfType<Control>().Where(c => c.IsVisible).ToList();
         if (!Motion.IsEnabled)
         {
             foreach (var card in cards) card.Opacity = 1;

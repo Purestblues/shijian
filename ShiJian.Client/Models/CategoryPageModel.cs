@@ -285,6 +285,7 @@ public partial class CategoryPageModel : ModelBase
         }
     ];
 
+    [PageState(DataCache = true)]
     public ObservableCollection<CategoryModel> Data
     {
         get => _data;

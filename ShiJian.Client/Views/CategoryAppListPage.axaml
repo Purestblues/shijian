@@ -15,22 +15,21 @@
          IsFillPage="TRUE"
          x:Class="ShiJian.Client.Views.CategoryAppListPage">
     <Grid>
-        <Grid IsVisible="{Binding ChooseVisibility}" ZIndex="2"
-              Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <Border Background="{DynamicResource ScrimBrush}" />
+        <base:PageModal IsOpen="{Binding ChooseVisibility}"
+                        CloseCommand="{Binding ChooseCloseCommand}">
             <Border Background="{DynamicResource PopupBackgroundBrush}" CornerRadius="{StaticResource RadiusLarge}"
                     BorderBrush="{DynamicResource PopupBorderBrush}"
                     BorderThickness="1"
                     BoxShadow="{DynamicResource Elevation3}"
-                    Width="520" MaxHeight="520"
+                    Width="560" MaxHeight="520"
                     HorizontalAlignment="Center" VerticalAlignment="Center"
                     Margin="24">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="40" />
+                        <RowDefinition Height="44" />
                         <RowDefinition Height="auto" />
                         <RowDefinition Height="*" />
-                        <RowDefinition Height="80" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
                     <Grid>
@@ -67,7 +66,7 @@
                             </Style>
 
                             <Style Selector="ListBoxItem">
-                                <Setter Property="Width" Value="200" />
+                                <Setter Property="Width" Value="240" />
                                 <Setter Property="Template">
                                     <ControlTemplate>
                                         <Border>
@@ -112,13 +111,13 @@
                     </ListBox>
                     <Button:Button Grid.Row="3"
                                    HorizontalAlignment="Right"
-                                   Content="{DynamicResource Complete}" Width="120" Margin="0,0,10,0"
+                                   Content="{DynamicResource Complete}" Width="120" Margin="0,12,12,14"
                                    VerticalAlignment="Center"
                                    Command="{Binding ChoosedCommand}" />
                 </Grid>
 
             </Border>
-        </Grid>
+        </base:PageModal>
 
         <Grid Margin="20">
             <Grid.RowDefinitions>

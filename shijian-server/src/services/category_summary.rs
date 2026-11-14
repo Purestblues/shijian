@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDate, NaiveDateTime, Timelike, Utc};
 use chrono_tz::Tz;
 use sqlx::SqlitePool;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tracing::debug;
 
 use crate::error::AppError;
@@ -9,6 +9,7 @@ use crate::models::category_summary::{
     CategoryMemberModel, CategorySummaryModel, DailyPointModel,
 };
 use crate::services::config::ConfigService;
+use crate::services::entity;
 use crate::utils::{parse_timezone, tz_date_to_utc_range, tz_naive_to_utc};
 
 pub struct CategorySummaryService;
@@ -138,7 +139,7 @@ impl CategorySummaryService {
         })
     }
 
-    // 网站分类排除用 site 维度，不复用 App 的 excluded 列表
+    // 网站分类汇总（与概览/分类页保持完全一致的浏览器会话交集与小时预算封顶口径）
     pub async fn get_web_category_summary(
         pool: &SqlitePool,
         category_id: i64,
@@ -147,7 +148,7 @@ impl CategorySummaryService {
         prev_start: Option<NaiveDate>,
         prev_end: Option<NaiveDate>,
         tz_id: &str,
-        _config_service: &ConfigService,
+        config_service: &ConfigService,
     ) -> Result<CategorySummaryModel, AppError> {
         debug!(
             "get_web_category_summary: cat={} start={} end={}",
@@ -162,64 +163,33 @@ impl CategorySummaryService {
         let category_name = category_name.unwrap_or_else(|| String::from("?"));
 
         let tz = parse_timezone(tz_id);
-        let start_dt = chrono::NaiveDateTime::new(start, chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap());
-        let end_dt = chrono::NaiveDateTime::new(end + chrono::Duration::days(1), chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap());
-        let utc_start = tz_naive_to_utc(start_dt, &tz);
-        let utc_end = tz_naive_to_utc(end_dt, &tz);
+        let utc_start = tz_date_to_utc_range(start, &tz).0;
+        let utc_end = tz_date_to_utc_range(end, &tz).1;
 
-        let rows: Vec<(DateTime<Utc>, i64)> = sqlx::query_as(
-            r#"
-            SELECT l.LogTime, l.Duration
-            FROM WebBrowseLogModels l
-            JOIN WebSiteModels s ON l.SiteId = s.ID
-            WHERE s.CategoryID = ?
-              AND l.LogTime >= ? AND l.LogTime < ?
-            "#,
-        )
-        .bind(category_id)
-        .bind(utc_start)
-        .bind(utc_end)
-        .fetch_all(pool)
-        .await?;
+        let web_data = collect_web_category_data(pool, category_id, utc_start, utc_end, start, end, &tz, config_service).await?;
 
-        // 环比总时长，纯 SUM 标量查询
+        // 环比总时长：同样走浏览器会话交集与小时预算封顶
         let previous_total_seconds = match (prev_start, prev_end) {
             (Some(ps), Some(pe)) if ps <= pe => {
-                sum_web_range_total(pool, category_id, ps, pe, &tz).await
+                sum_web_range_total(pool, category_id, ps, pe, &tz, config_service).await
             }
             _ => 0,
         };
 
-        let mut daily: HashMap<NaiveDate, i64> = HashMap::new();
-        let mut hourly: [i64; 24] = [0; 24];
-        let mut total_seconds: i64 = 0;
-
-        for (utc_dt, secs) in &rows {
-            let local = utc_dt.with_timezone(&tz);
-            let local_date = local.date_naive();
-            if local_date < start || local_date > end {
-                continue;
-            }
-            *daily.entry(local_date).or_insert(0) += secs;
-            let h = local.time().hour() as usize;
-            hourly[h] += secs;
-            total_seconds += secs;
-        }
-
-        let active_days = daily.values().filter(|&&v| v > 0).count() as i64;
+        let active_days = web_data.daily.values().filter(|&&v| v > 0).count() as i64;
         let average_daily_seconds = if active_days > 0 {
-            total_seconds / active_days
+            web_data.total_seconds / active_days
         } else {
             0
         };
 
-        let daily_trend = build_daily_trend(start, end, &daily);
-        let hourly_distribution = hourly.to_vec();
+        let daily_trend = build_daily_trend(start, end, &web_data.daily);
+        let hourly_distribution = web_data.hourly.to_vec();
 
         Ok(CategorySummaryModel {
             category_id,
             category_name,
-            total_seconds,
+            total_seconds: web_data.total_seconds,
             previous_total_seconds,
             active_days,
             average_daily_seconds,
@@ -297,42 +267,36 @@ impl CategorySummaryService {
         build_top_items_for_apps(pool, &by_app).await
     }
 
-    /// 网站分类区间成员明细
+    /// 网站分类区间成员明细（走统一归属与小时预算封顶口径）
     pub async fn get_web_category_members(
         pool: &SqlitePool,
         category_id: i64,
         start: NaiveDateTime,
         end: NaiveDateTime,
         tz_id: &str,
+        config_service: &ConfigService,
     ) -> Result<Vec<CategoryMemberModel>, AppError> {
         let tz = parse_timezone(tz_id);
         let utc_start = tz_naive_to_utc(start, &tz);
         let utc_end = tz_naive_to_utc(end, &tz);
 
-        let rows: Vec<(i64, i64)> = sqlx::query_as(
-            r#"
-            SELECT s.ID, l.Duration
-            FROM WebBrowseLogModels l
-            JOIN WebSiteModels s ON l.SiteId = s.ID
-            WHERE s.CategoryID = ?
-              AND l.LogTime >= ? AND l.LogTime < ?
-            "#,
-        )
-        .bind(category_id)
-        .bind(utc_start)
-        .bind(utc_end)
-        .fetch_all(pool)
-        .await?;
+        let cat_site_ids = load_category_site_ids(pool, category_id).await?;
+        if cat_site_ids.is_empty() || utc_end <= utc_start {
+            return Ok(Vec::new());
+        }
 
+        let attrib = entity::compute_window_attribution(pool, config_service, utc_start, utc_end, &tz).await?;
         let mut by_site: HashMap<i64, i64> = HashMap::new();
-        for (site_id, secs) in &rows {
-            *by_site.entry(*site_id).or_insert(0) += secs;
+        for ((_hour_ts, site_id), item) in attrib.site_hours {
+            if item.credited > 0 && cat_site_ids.contains(&site_id) {
+                *by_site.entry(site_id).or_insert(0) += item.credited;
+            }
         }
 
         build_top_items_for_sites(pool, &by_site).await
     }
 
-    /// 统一分类摘要（同时聚合应用与网站，N8）
+    /// 统一分类摘要（同时聚合净应用与归属网站，确保与概览/分类页完全一致）
     pub async fn get_unified_category_summary(
         pool: &SqlitePool,
         category_id: i64,
@@ -343,70 +307,71 @@ impl CategorySummaryService {
         tz_id: &str,
         config_service: &ConfigService,
     ) -> Result<CategorySummaryModel, AppError> {
-        let app_summary = Self::get_app_category_summary(
+        let category_name: Option<String> =
+            sqlx::query_scalar("SELECT Name FROM CategoryModels WHERE ID = ?")
+                .bind(category_id)
+                .fetch_optional(pool)
+                .await?;
+        let category_name = category_name.unwrap_or_else(|| String::from("?"));
+
+        let tz = parse_timezone(tz_id);
+        let utc_start = tz_date_to_utc_range(start, &tz).0;
+        let utc_end = tz_date_to_utc_range(end, &tz).1;
+
+        let data = collect_unified_category_data(
             pool,
             category_id,
+            utc_start,
+            utc_end,
             start,
             end,
-            prev_start,
-            prev_end,
-            tz_id,
+            &tz,
             config_service,
         )
         .await?;
-        let web_summary = Self::get_web_category_summary(
-            pool,
-            category_id,
-            start,
-            end,
-            prev_start,
-            prev_end,
-            tz_id,
-            config_service,
-        )
-        .await?;
 
-        let total_seconds = app_summary.total_seconds + web_summary.total_seconds;
-        let previous_total_seconds =
-            app_summary.previous_total_seconds + web_summary.previous_total_seconds;
+        let previous_total_seconds = match (prev_start, prev_end) {
+            (Some(ps), Some(pe)) if ps <= pe => {
+                let (p_start, _) = tz_date_to_utc_range(ps, &tz);
+                let (_, p_end) = tz_date_to_utc_range(pe, &tz);
+                collect_unified_category_data(
+                    pool,
+                    category_id,
+                    p_start,
+                    p_end,
+                    ps,
+                    pe,
+                    &tz,
+                    config_service,
+                )
+                .await
+                .map(|m| m.total_seconds)
+                .unwrap_or(0)
+            }
+            _ => 0,
+        };
 
-        let daily_trend: Vec<DailyPointModel> = app_summary
-            .daily_trend
-            .iter()
-            .zip(web_summary.daily_trend.iter())
-            .map(|(a, w)| DailyPointModel {
-                date: a.date,
-                seconds: a.seconds + w.seconds,
-            })
-            .collect();
-
+        let daily_trend = build_daily_trend(start, end, &data.daily);
         let active_days = daily_trend.iter().filter(|d| d.seconds > 0).count() as i64;
         let average_daily_seconds = if active_days > 0 {
-            total_seconds / active_days
+            data.total_seconds / active_days
         } else {
             0
         };
 
-        let hourly_distribution: Vec<i64> = app_summary
-            .hourly_distribution
-            .iter()
-            .zip(web_summary.hourly_distribution.iter())
-            .map(|(a, w)| a + w)
-            .collect();
-
         Ok(CategorySummaryModel {
             category_id,
-            category_name: app_summary.category_name,
-            total_seconds,
+            category_name,
+            total_seconds: data.total_seconds,
             previous_total_seconds,
             active_days,
             average_daily_seconds,
             daily_trend,
-            hourly_distribution,
+            hourly_distribution: data.hourly.to_vec(),
         })
     }
 
-    /// 统一分类成员明细（合并应用与网站按时长降序，N8）
+    /// 统一分类成员明细（净应用 + 归属网站按时长降序）
     pub async fn get_unified_category_members(
         pool: &SqlitePool,
         category_id: i64,
@@ -415,26 +380,29 @@ impl CategorySummaryService {
         tz_id: &str,
         config_service: &ConfigService,
     ) -> Result<Vec<CategoryMemberModel>, AppError> {
-        let mut apps = Self::get_app_category_members(
+        let tz = parse_timezone(tz_id);
+        let utc_start = tz_naive_to_utc(start, &tz);
+        let utc_end = tz_naive_to_utc(end, &tz);
+        if utc_end <= utc_start {
+            return Ok(Vec::new());
+        }
+
+        let start_date = start.date();
+        let end_date = end.date();
+        let data = collect_unified_category_data(
             pool,
             category_id,
-            start,
-            end,
-            tz_id,
+            utc_start,
+            utc_end,
+            start_date,
+            end_date,
+            &tz,
             config_service,
         )
         .await?;
-        for item in &mut apps {
-            if item.kind.is_none() {
-                item.kind = Some(String::from("app"));
-            }
-        }
-        let mut sites = Self::get_web_category_members(pool, category_id, start, end, tz_id).await?;
-        for item in &mut sites {
-            if item.kind.is_none() {
-                item.kind = Some(String::from("site"));
-            }
-        }
+
+        let mut apps = build_top_items_for_apps(pool, &data.by_app).await?;
+        let mut sites = build_top_items_for_sites(pool, &data.by_site).await?;
         apps.append(&mut sites);
         apps.sort_by(|a, b| b.seconds.cmp(&a.seconds));
         Ok(apps)
@@ -628,35 +596,190 @@ async fn sum_app_range_total(
     total
 }
 
-/// Web 分类区间总时长，纯 SUM 标量查询
+struct CategoryAggBucket {
+    total_seconds: i64,
+    daily: HashMap<NaiveDate, i64>,
+    hourly: [i64; 24],
+    by_app: HashMap<i64, i64>,
+    by_site: HashMap<i64, i64>,
+}
+
+async fn load_category_site_ids(pool: &SqlitePool, category_id: i64) -> Result<HashSet<i64>, AppError> {
+    let ids: Vec<i64> = sqlx::query_scalar("SELECT ID FROM WebSiteModels WHERE CategoryID = ?")
+        .bind(category_id)
+        .fetch_all(pool)
+        .await?;
+    Ok(ids.into_iter().collect())
+}
+
+fn record_hour_secs(
+    ts: i64,
+    secs: i64,
+    start: NaiveDate,
+    end: NaiveDate,
+    tz: &Tz,
+    daily: &mut HashMap<NaiveDate, i64>,
+    hourly: &mut [i64; 24],
+) -> bool {
+    let Some(utc_dt) = DateTime::<Utc>::from_timestamp(ts, 0) else {
+        return false;
+    };
+    let local = utc_dt.with_timezone(tz);
+    let local_date = local.date_naive();
+    if local_date < start || local_date > end {
+        return false;
+    }
+    *daily.entry(local_date).or_insert(0) += secs;
+    hourly[local.time().hour() as usize] += secs;
+    true
+}
+
+async fn collect_web_category_data(
+    pool: &SqlitePool,
+    category_id: i64,
+    utc_start: DateTime<Utc>,
+    utc_end: DateTime<Utc>,
+    start: NaiveDate,
+    end: NaiveDate,
+    tz: &Tz,
+    config_service: &ConfigService,
+) -> Result<CategoryAggBucket, AppError> {
+    let mut bucket = CategoryAggBucket {
+        total_seconds: 0,
+        daily: HashMap::new(),
+        hourly: [0; 24],
+        by_app: HashMap::new(),
+        by_site: HashMap::new(),
+    };
+
+    let cat_site_ids = load_category_site_ids(pool, category_id).await?;
+    if cat_site_ids.is_empty() || utc_end <= utc_start {
+        return Ok(bucket);
+    }
+
+    let attrib = entity::compute_window_attribution(pool, config_service, utc_start, utc_end, tz).await?;
+    for ((hour_ts, site_id), item) in attrib.site_hours {
+        if item.credited <= 0 || !cat_site_ids.contains(&site_id) {
+            continue;
+        }
+        if record_hour_secs(
+            hour_ts.max(utc_start.timestamp()),
+            item.credited,
+            start,
+            end,
+            tz,
+            &mut bucket.daily,
+            &mut bucket.hourly,
+        ) {
+            bucket.total_seconds += item.credited;
+            *bucket.by_site.entry(site_id).or_insert(0) += item.credited;
+        }
+    }
+
+    Ok(bucket)
+}
+
+async fn collect_unified_category_data(
+    pool: &SqlitePool,
+    category_id: i64,
+    utc_start: DateTime<Utc>,
+    utc_end: DateTime<Utc>,
+    start: NaiveDate,
+    end: NaiveDate,
+    tz: &Tz,
+    config_service: &ConfigService,
+) -> Result<CategoryAggBucket, AppError> {
+    let mut bucket = CategoryAggBucket {
+        total_seconds: 0,
+        daily: HashMap::new(),
+        hourly: [0; 24],
+        by_app: HashMap::new(),
+        by_site: HashMap::new(),
+    };
+    if utc_end <= utc_start {
+        return Ok(bucket);
+    }
+
+    let attrib = entity::compute_window_attribution(pool, config_service, utc_start, utc_end, tz).await?;
+    let cat_app_ids: HashSet<i64> = attrib
+        .apps
+        .iter()
+        .filter(|agg| agg.app.app_category_id == Some(category_id))
+        .filter_map(|agg| agg.app.app_id)
+        .collect();
+    let cat_site_ids = load_category_site_ids(pool, category_id).await?;
+
+    // 先对属于该分类的应用按 UTC 小时减去被站点领走的部分（非浏览器 app 扣减为 0）
+    for app_id in cat_app_ids {
+        let Some(entries) = attrib.app_hours.get(&app_id) else {
+            continue;
+        };
+        let mut by_hour: HashMap<i64, i64> = HashMap::new();
+        for &(ts, secs) in entries {
+            let hour_ts = ts.div_euclid(3600) * 3600;
+            *by_hour.entry(hour_ts).or_insert(0) += secs;
+        }
+        for (hour_ts, raw_secs) in by_hour {
+            let deducted = attrib
+                .browser_hour_credits
+                .get(&app_id)
+                .and_then(|m| m.get(&hour_ts))
+                .copied()
+                .unwrap_or(0);
+            let net = (raw_secs - deducted).max(0);
+            if net <= 0 {
+                continue;
+            }
+            if record_hour_secs(
+                hour_ts.max(utc_start.timestamp()),
+                net,
+                start,
+                end,
+                tz,
+                &mut bucket.daily,
+                &mut bucket.hourly,
+            ) {
+                bucket.total_seconds += net;
+                *bucket.by_app.entry(app_id).or_insert(0) += net;
+            }
+        }
+    }
+
+    // 再叠加归属于该分类的站点（已完成会话交集与小时封顶）
+    for ((hour_ts, site_id), item) in attrib.site_hours {
+        if item.credited <= 0 || !cat_site_ids.contains(&site_id) {
+            continue;
+        }
+        if record_hour_secs(
+            hour_ts.max(utc_start.timestamp()),
+            item.credited,
+            start,
+            end,
+            tz,
+            &mut bucket.daily,
+            &mut bucket.hourly,
+        ) {
+            bucket.total_seconds += item.credited;
+            *bucket.by_site.entry(site_id).or_insert(0) += item.credited;
+        }
+    }
+
+    Ok(bucket)
+}
+
+/// Web 分类区间总时长（复用会话交集与小时预算封顶口径）
 async fn sum_web_range_total(
     pool: &SqlitePool,
     category_id: i64,
     start: NaiveDate,
     end: NaiveDate,
     tz: &Tz,
+    config_service: &ConfigService,
 ) -> i64 {
-    let start_dt =
-        chrono::NaiveDateTime::new(start, chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap());
-    let end_dt =
-        chrono::NaiveDateTime::new(end + chrono::Duration::days(1), chrono::NaiveTime::from_hms_opt(0, 0, 0).unwrap());
-    let utc_start = tz_naive_to_utc(start_dt, tz);
-    let utc_end = tz_naive_to_utc(end_dt, tz);
-
-    let total: i64 = sqlx::query_scalar(
-        r#"
-        SELECT COALESCE(SUM(l.Duration), 0)
-        FROM WebBrowseLogModels l
-        JOIN WebSiteModels s ON l.SiteId = s.ID
-        WHERE s.CategoryID = ?
-          AND l.LogTime >= ? AND l.LogTime < ?
-        "#,
-    )
-    .bind(category_id)
-    .bind(utc_start)
-    .bind(utc_end)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
-    total
+    let utc_start = tz_date_to_utc_range(start, tz).0;
+    let utc_end = tz_date_to_utc_range(end, tz).1;
+    collect_web_category_data(pool, category_id, utc_start, utc_end, start, end, tz, config_service)
+        .await
+        .map(|b| b.total_seconds)
+        .unwrap_or(0)
 }

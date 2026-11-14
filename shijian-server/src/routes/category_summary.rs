@@ -186,7 +186,7 @@ async fn get_app_category_members(
 
 async fn get_web_category_members(
     State(pool): State<SqlitePool>,
-    Extension(_config_service): Extension<Arc<ConfigService>>,
+    Extension(config_service): Extension<Arc<ConfigService>>,
     Path(id): Path<i64>,
     Query(q): Query<SummaryQuery>,
 ) -> Json<ApiResponse<Vec<CategoryMemberModel>>> {
@@ -196,6 +196,7 @@ async fn get_web_category_members(
         q.start,
         q.end,
         &q.timezone,
+        &config_service,
     )
     .await
     {

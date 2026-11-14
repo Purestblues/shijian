@@ -11,6 +11,7 @@ public class CategoryWebSiteListPageModel : ModelBase
     private CategoryModel? _category;
     private ObservableCollection<WebSiteModel> _categoryWebSiteList = new();
     private bool _chooseVisibility;
+    private string _mainSearchInput = string.Empty;
     private string _searchInput = string.Empty;
     private WebSiteModel? _selectedItem;
     private ObservableCollection<OptionModel> _webSiteOptionList = new();
@@ -31,6 +32,17 @@ public class CategoryWebSiteListPageModel : ModelBase
         set
         {
             _selectedItem = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string MainSearchInput
+    {
+        get => _mainSearchInput;
+        set
+        {
+            if (_mainSearchInput == value) return;
+            _mainSearchInput = value;
             OnPropertyChanged();
         }
     }

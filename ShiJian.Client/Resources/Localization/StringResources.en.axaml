@@ -70,6 +70,7 @@
     <system:String x:Key="DurationStatistics">Duration Statistics</system:String>
     <system:String x:Key="ViewDetails">View Details</system:String>
     <system:String x:Key="MultipleWebsites">Websites</system:String>
+    <system:String x:Key="BrowseRecordsUnit">Records</system:String>
     <system:String x:Key="OpenWebPage">Open Webpage</system:String>
     <system:String x:Key="CopyURL">Copy URL</system:String>
     <system:String x:Key="CopyTitle">Copy Title</system:String>
@@ -568,4 +569,6 @@ Choose restore mode (an automatic local rollback point is saved before import):<
     <system:String x:Key="WebDavRemoteEmpty">No .shijian-backup archives found in remote folder</system:String>
     <system:String x:Key="WebDavMergeRestore">Merge</system:String>
     <system:String x:Key="WebDavReplaceRestore">Replace</system:String>
+    <system:String x:Key="View">View Details</system:String>
+    <system:String x:Key="Retry">Retry</system:String>
 </ResourceDictionary>

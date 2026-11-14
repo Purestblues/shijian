@@ -68,8 +68,10 @@
 
                         <!--选择-->
                         <Popup
+                            x:Name="PART_Popup"
                             Placement="Bottom"
                             PlacementTarget="{Binding ElementName=Main}"
+                            IsLightDismissEnabled="True"
                             IsOpen="{Binding RelativeSource={RelativeSource AncestorType={x:Type controls:Select}}, Path=IsOpen,Mode=TwoWay}">
                             <Interaction.Behaviors>
                                 <behaviors:PopupScrollDismissBehavior />

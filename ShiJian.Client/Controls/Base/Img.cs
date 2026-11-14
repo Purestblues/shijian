@@ -3,10 +3,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Styling;
 using ShiJian.Client.Librarys.Image;
 using ShiJian.Client.Logging;
 
@@ -54,6 +56,12 @@ public class Img : TemplatedControl
     public static readonly DirectProperty<Img, bool> HasSvgProperty =
         AvaloniaProperty.RegisterDirect<Img, bool>(nameof(HasSvg), o => o.HasSvg);
 
+    public static readonly DirectProperty<Img, IBrush> IconPlateBackgroundProperty =
+        AvaloniaProperty.RegisterDirect<Img, IBrush>(nameof(IconPlateBackground), o => o.IconPlateBackground);
+
+    public static readonly DirectProperty<Img, Thickness> IconPlatePaddingProperty =
+        AvaloniaProperty.RegisterDirect<Img, Thickness>(nameof(IconPlatePadding), o => o.IconPlatePadding);
+
     private string _url = string.Empty;
     private CancellationTokenSource? _cts;
     private string? _loadingUrl;
@@ -63,6 +71,11 @@ public class Img : TemplatedControl
     private bool _loadFailed;
     private Geometry? _svgGeometry;
     private bool _hasSvg;
+    private IBrush _iconPlateBackground = Brushes.Transparent;
+    private Thickness _iconPlatePadding;
+
+    private static readonly IBrush DarkContrastPlateBrush = new SolidColorBrush(Color.Parse("#3B4252"));
+    private static readonly IBrush LightContrastPlateBrush = new SolidColorBrush(Color.Parse("#D8DEE9"));
 
     /// <summary>占位色：同一域名每次都拿到同一个颜色</summary>
     private static readonly string[] FallbackPalette =
@@ -148,6 +161,18 @@ public class Img : TemplatedControl
         private set => SetAndRaise(HasSvgProperty, ref _hasSvg, value);
     }
 
+    public IBrush IconPlateBackground
+    {
+        get => _iconPlateBackground;
+        private set => SetAndRaise(IconPlateBackgroundProperty, ref _iconPlateBackground, value);
+    }
+
+    public Thickness IconPlatePadding
+    {
+        get => _iconPlatePadding;
+        private set => SetAndRaise(IconPlatePaddingProperty, ref _iconPlatePadding, value);
+    }
+
     protected override Type StyleKeyOverride => typeof(Img);
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs e)
@@ -231,27 +256,66 @@ public class Img : TemplatedControl
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        if (Application.Current is { } app)
+            app.ActualThemeVariantChanged += OnAppThemeChanged;
 
         if (!string.IsNullOrWhiteSpace(URL) && !HasSvg && Resource == Imager.GetDefaultBitmap())
             ReloadFromUrl();
+        else
+            UpdateIconPlate();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
+        if (Application.Current is { } app)
+            app.ActualThemeVariantChanged -= OnAppThemeChanged;
         CancelLoading();
         // Popup 关闭时内容可能被 detach，但不重置 Resource
         // 如果使用了 ShouldUseOverlayLayer="True"，每次关闭都会触发 detach
         // 正常情况下 Popup 只是隐藏，不会触发 detach
     }
 
+    private void OnAppThemeChanged(object? sender, EventArgs e) => UpdateIconPlate();
+
+    private void UpdateIconPlate()
+    {
+        if (HasSvg || IsFallbackVisible || _loadFailed || string.IsNullOrWhiteSpace(URL))
+        {
+            IconPlateBackground = Brushes.Transparent;
+            IconPlatePadding = default;
+            return;
+        }
+
+        var tone = Imager.GetIconTone(URL);
+        var isDark = Application.Current?.ActualThemeVariant == ThemeVariant.Dark;
+        if (!isDark && tone == IconTone.LightForeground)
+        {
+            IconPlateBackground = DarkContrastPlateBrush;
+            IconPlatePadding = new Thickness(2);
+        }
+        else if (isDark && tone == IconTone.DarkForeground)
+        {
+            IconPlateBackground = LightContrastPlateBrush;
+            IconPlatePadding = new Thickness(2);
+        }
+        else
+        {
+            IconPlateBackground = Brushes.Transparent;
+            IconPlatePadding = default;
+        }
+    }
+
     private double GetDpiScale()
     {
         var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return 2.0;
+        if (topLevel?.RenderScaling is > 0 and var scale) return scale;
 
-        var renderScaling = topLevel.RenderScaling;
-        return renderScaling > 0 ? renderScaling : 2.0;
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+            desktop.MainWindow?.RenderScaling is > 0 and var mainScale)
+            return mainScale;
+
+        return 2.0;
     }
 
     private void ReloadFromUrl()
@@ -279,6 +343,7 @@ public class Img : TemplatedControl
             HasSvg = true;
             Resource = Imager.GetDefaultBitmap();
             UpdateFallbackVisibility();
+            UpdateIconPlate();
             return;
         }
 
@@ -293,6 +358,7 @@ public class Img : TemplatedControl
         {
             Resource = cached ?? Imager.GetDefaultBitmap();
             UpdateFallbackVisibility();
+            UpdateIconPlate();
             return;
         }
 
@@ -301,11 +367,13 @@ public class Img : TemplatedControl
             Resource = Imager.GetDefaultBitmap();
             _loadFailed = true;
             UpdateFallbackVisibility();
+            UpdateIconPlate();
             return;
         }
 
         Resource = Imager.GetDefaultBitmap();
         UpdateFallbackVisibility();
+        UpdateIconPlate();
 
         _cts = new CancellationTokenSource();
         _loadingUrl = path;
@@ -340,6 +408,7 @@ public class Img : TemplatedControl
             Resource = bitmap;
             _loadFailed = ReferenceEquals(bitmap, Imager.GetDefaultBitmap());
             UpdateFallbackVisibility();
+            UpdateIconPlate();
         }
         catch (OperationCanceledException)
         {

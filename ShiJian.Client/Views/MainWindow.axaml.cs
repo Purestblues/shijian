@@ -5,6 +5,8 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using ShiJian.Client.Controls.Base;
 using ShiJian.Client.Controls.Window;
 using ShiJian.Client.Librarys;
 using ShiJian.Client.Platform;
@@ -20,6 +22,8 @@ public partial class MainWindow : DefaultWindow
     private IShortcutService? _shortcutService;
     private TextBox? _searchInput;
     private ListBox? _searchResultList;
+    private Grid? _pageModalOverlay;
+    private ContentControl? _pageModalHost;
 
     public MainWindow()
     {
@@ -92,6 +96,12 @@ public partial class MainWindow : DefaultWindow
         Loaded -= OnLoadedAttachShortcuts;
         _shortcutService = ServiceLocator.GetService<IShortcutService>();
         _shortcutService?.Attach(this);
+        OverlayDismissTracker.EnsureInitialized();
+
+        _pageModalOverlay = this.FindControl<Grid>("PageModalOverlay");
+        _pageModalHost = this.FindControl<ContentControl>("PageModalHost");
+        PageModal.ActiveModalChanged += OnPageModalActiveChanged;
+        SyncPageModalOverlay();
 
         // 搜索覆盖层控件就绪后接线
         _searchInput = this.FindControl<TextBox>("SearchInput");
@@ -106,8 +116,8 @@ public partial class MainWindow : DefaultWindow
         // 覆盖层可见时挂 Tunnel KeyDown，拦截 Esc/方向/Enter；隐藏时路由不到这里
         AddHandler(KeyDownEvent, OnSearchKeyDown, RoutingStrategies.Tunnel);
 
-        // 全局 Esc：搜索层没吃掉的按「返回上一页」处理
-        AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Tunnel);
+        // 全局 Esc：按 Bubble 在浮层、弹窗、对话框、输入失焦之后再触发「返回上一页」
+        AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Bubble);
 
         // IsSearchOpen 变化时聚焦输入框
         if (DataContext is MainViewModel vm)
@@ -120,18 +130,76 @@ public partial class MainWindow : DefaultWindow
     {
         if (e.PropertyName != nameof(MainViewModel.IsSearchOpen)) return;
         if (DataContext is not MainViewModel { IsSearchOpen: true }) return;
-        // 展开后聚焦输入框，延迟到布局完成
-        Dispatcher.UIThread.Post(() => _searchInput?.Focus(), DispatcherPriority.Loaded);
+        // 展开后聚焦输入框并复位列表滚动条到顶部，延迟到布局完成
+        Dispatcher.UIThread.Post(() =>
+        {
+            _searchInput?.Focus();
+            var scrollViewer = _searchResultList?.FindDescendantOfType<ScrollViewer>();
+            if (scrollViewer != null)
+                scrollViewer.Offset = Vector.Zero;
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void OnPageModalActiveChanged()
+    {
+        if (Dispatcher.UIThread.CheckAccess())
+            SyncPageModalOverlay();
+        else
+            Dispatcher.UIThread.Post(SyncPageModalOverlay);
+    }
+
+    private void SyncPageModalOverlay()
+    {
+        if (_pageModalOverlay == null || _pageModalHost == null) return;
+        var active = PageModal.ActiveModal;
+        if (active == null)
+        {
+            _pageModalOverlay.IsVisible = false;
+            _pageModalHost.Content = null;
+            _pageModalHost.DataContext = null;
+            return;
+        }
+
+        if (!ReferenceEquals(_pageModalHost.Content, active.ModalContent))
+            _pageModalHost.Content = null;
+
+        _pageModalHost.DataContext = active.DataContext;
+        _pageModalHost.Content = active.ModalContent;
+        _pageModalOverlay.IsVisible = true;
+    }
+
+    private void OnPageModalScrimPressed(object? sender, PointerPressedEventArgs e)
+    {
+        PageModal.DismissTopModal();
+        e.Handled = true;
     }
 
     /// <summary>
-    /// Esc：搜索覆盖层优先（由 OnSearchKeyDown 处理），否则返回上一页。
-    /// 焦点在输入框里时先让输入框退出编辑，避免误把「想退出输入」当成「想退出页面」。
+    /// Esc 统一关闭顺序：浮层（右键菜单/Flyout/下拉 Popup） -> 窗口级对话框 -> 页面模态弹窗 -> 输入框失焦 -> 返回上一页。
     /// </summary>
     private void OnGlobalKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key != Key.Escape || e.Handled) return;
+
+        if (OverlayDismissTracker.DismissTopMost())
+        {
+            e.Handled = true;
+            return;
+        }
+
         if (DataContext is not MainViewModel { IsSearchOpen: false } vm) return;
+
+        if (CancelActiveDialog())
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (PageModal.DismissTopModal())
+        {
+            e.Handled = true;
+            return;
+        }
 
         if (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is TextBox)
         {
@@ -250,6 +318,7 @@ public partial class MainWindow : DefaultWindow
 
     protected override void OnClosed(EventArgs e)
     {
+        PageModal.ActiveModalChanged -= OnPageModalActiveChanged;
         RemoveHandler(KeyDownEvent, OnSearchKeyDown);
         RemoveHandler(KeyDownEvent, OnGlobalKeyDown);
         if (_searchResultList != null)

@@ -15,22 +15,21 @@
                 <Border Width="{TemplateBinding Width}"
                         Height="{TemplateBinding Height}"
                         CornerRadius="{TemplateBinding Radius}"
+                        Background="{Binding IconPlateBackground, RelativeSource={RelativeSource TemplatedParent}}"
                         ClipToBounds="True">
                     <Grid>
-                        <controls:SafeImage Stretch="Fill"
-                               Width="{TemplateBinding Width}"
-                               Height="{TemplateBinding Height}"
-                               IsVisible="{Binding !HasSvg, RelativeSource={RelativeSource TemplatedParent}}"
-                               Source="{Binding Resource,RelativeSource={RelativeSource TemplatedParent}}" />
-                        <Viewbox Stretch="Uniform"
-                                 Width="{TemplateBinding Width}"
-                                 Height="{TemplateBinding Height}"
-                                 IsVisible="{Binding HasSvg, RelativeSource={RelativeSource TemplatedParent}}">
-                            <Canvas Width="24" Height="24">
-                                <Path Data="{Binding SvgGeometry, RelativeSource={RelativeSource TemplatedParent}}"
-                                      Fill="{TemplateBinding Foreground}" />
-                            </Canvas>
-                        </Viewbox>
+                        <Grid Margin="{Binding IconPlatePadding, RelativeSource={RelativeSource TemplatedParent}}">
+                            <controls:SafeImage Stretch="Uniform"
+                                                IsVisible="{Binding !HasSvg, RelativeSource={RelativeSource TemplatedParent}}"
+                                                Source="{Binding Resource,RelativeSource={RelativeSource TemplatedParent}}" />
+                            <Viewbox Stretch="Uniform"
+                                     IsVisible="{Binding HasSvg, RelativeSource={RelativeSource TemplatedParent}}">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{Binding SvgGeometry, RelativeSource={RelativeSource TemplatedParent}}"
+                                          Fill="{TemplateBinding Foreground}" />
+                                </Canvas>
+                            </Viewbox>
+                        </Grid>
                         <!-- 图标解码失败时降级成“首字母色块”，比默认图标更好认 -->
                         <Border Background="{Binding FallbackBrush, RelativeSource={RelativeSource TemplatedParent}}"
                                 IsVisible="{Binding IsFallbackVisible, RelativeSource={RelativeSource TemplatedParent}}">

@@ -26,19 +26,44 @@ public partial class ChartPageModel : ModelBase
             _rowWidth = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(ColumnChartWidth));
+            OnPropertyChanged(nameof(RadarChartWidth));
+            OnPropertyChanged(nameof(TopListWidth));
             OnPropertyChanged(nameof(CardsWidth));
         }
     }
 
-    /// <summary>
-    /// 雷达图宽度（macOS 内容区宽 32px，两块侧栏各分 16）
-    /// </summary>
-    public double RadarChartWidth => OperatingSystem.IsMacOS() ? 366 : 350;
+    private double BaseRadarWidth => OperatingSystem.IsMacOS() ? 366 : 350;
+    private double BaseTopListWidth => OperatingSystem.IsMacOS() ? 336 : 320;
+    private bool IsThreeColumnLayout =>
+        _rowWidth > 0 && _rowWidth - (BaseRadarWidth + BaseTopListWidth + 40) >= 560;
 
     /// <summary>
-    /// 「最为频繁」列表宽度
+    /// 雷达图宽度：三栏并排维持紧凑基线；两行布局（柱图独占首行）与「最为频繁」平分第二行，避免右侧大片留白
     /// </summary>
-    public double TopListWidth => OperatingSystem.IsMacOS() ? 336 : 320;
+    public double RadarChartWidth
+    {
+        get
+        {
+            if (_rowWidth <= 0) return BaseRadarWidth;
+            if (IsThreeColumnLayout) return BaseRadarWidth;
+            if (_rowWidth < 680) return Math.Max(260, _rowWidth - 20);
+            return Math.Max(280, Math.Floor((_rowWidth - 30) * 0.46));
+        }
+    }
+
+    /// <summary>
+    /// 「最为频繁」列表宽度：两行布局下占满第二行剩余空间
+    /// </summary>
+    public double TopListWidth
+    {
+        get
+        {
+            if (_rowWidth <= 0) return BaseTopListWidth;
+            if (IsThreeColumnLayout) return BaseTopListWidth;
+            if (_rowWidth < 680) return Math.Max(260, _rowWidth - 20);
+            return Math.Max(280, Math.Floor(_rowWidth - 30 - RadarChartWidth));
+        }
+    }
 
     /// <summary>
     /// 行内柱状图宽度：空间足够（合并后 ≥560）时与雷达、最为频繁拼一行，
@@ -49,9 +74,9 @@ public partial class ChartPageModel : ModelBase
         get
         {
             if (_rowWidth <= 0) return double.NaN;
-            var rest = RadarChartWidth + TopListWidth + 40; // 两块宽度 + 各自左margin + WrapPanel 外扩
+            var rest = BaseRadarWidth + BaseTopListWidth + 40; // 两块宽度 + 各自左margin + WrapPanel 外扩
             var merged = _rowWidth - rest;
-            return merged >= 560 ? merged : _rowWidth - 20;
+            return merged >= 560 ? merged : Math.Max(320, _rowWidth - 20);
         }
     }
 

@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Headless.XUnit;
+using Avalonia.Layout;
 using Avalonia.Threading;
 using ShiJian.Client.Controls.Category;
 using ShiJian.Client.Models.Category;
@@ -49,7 +50,9 @@ public class CategoryCardTests
         try
         {
             Assert.False(card.IsCard);
-            Assert.Equal(200, card.Bounds.Width);
+            Assert.Equal(HorizontalAlignment.Stretch, card.HorizontalAlignment);
+            Assert.Equal(156, card.MinWidth);
+            Assert.True(card.Bounds.Width > 156);
             Assert.Equal(92, card.Bounds.Height);
         }
         finally
@@ -68,7 +71,9 @@ public class CategoryCardTests
             card.IsCard = true;
             Dispatcher.UIThread.RunJobs();
 
-            Assert.Equal(168, card.Bounds.Width);
+            Assert.Equal(HorizontalAlignment.Stretch, card.HorizontalAlignment);
+            Assert.Equal(156, card.MinWidth);
+            Assert.True(card.Bounds.Width > 156);
             Assert.Equal(148, card.Bounds.Height);
         }
         finally

@@ -71,7 +71,11 @@ public class PopupScrollDismissBehavior : Behavior<Popup>
 
         _topLevel = TopLevel.GetTopLevel(AssociatedObject) as Control;
         if (_topLevel != null)
-            _topLevel.AddHandler(InputElement.PointerPressedEvent, OnTopLevelPointerPressed, RoutingStrategies.Tunnel);
+        {
+            _topLevel.AddHandler(InputElement.PointerPressedEvent, OnTopLevelPointerPressed, RoutingStrategies.Tunnel, handledEventsToo: true);
+            _topLevel.AddHandler(InputElement.PointerWheelChangedEvent, OnTopLevelPointerWheelChanged, RoutingStrategies.Tunnel, handledEventsToo: true);
+            _topLevel.AddHandler(InputElement.KeyDownEvent, OnTopLevelKeyDown, RoutingStrategies.Tunnel);
+        }
 
         _window = TopLevel.GetTopLevel(AssociatedObject) as Window;
         if (_window != null)
@@ -92,6 +96,8 @@ public class PopupScrollDismissBehavior : Behavior<Popup>
         if (_topLevel != null)
         {
             _topLevel.RemoveHandler(InputElement.PointerPressedEvent, OnTopLevelPointerPressed);
+            _topLevel.RemoveHandler(InputElement.PointerWheelChangedEvent, OnTopLevelPointerWheelChanged);
+            _topLevel.RemoveHandler(InputElement.KeyDownEvent, OnTopLevelKeyDown);
             _topLevel = null;
         }
 
@@ -130,6 +136,22 @@ public class PopupScrollDismissBehavior : Behavior<Popup>
         if (IsDescendantOf(source, AssociatedObject.Parent as Visual)) return;
 
         AssociatedObject.IsOpen = false;
+    }
+
+    private void OnTopLevelPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (AssociatedObject is not { IsOpen: true }) return;
+        if (e.Source is Visual source && IsDescendantOf(source, AssociatedObject.Child)) return;
+
+        AssociatedObject.IsOpen = false;
+    }
+
+    private void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape || AssociatedObject is not { IsOpen: true }) return;
+
+        AssociatedObject.IsOpen = false;
+        e.Handled = true;
     }
 
     private static bool IsInViewport(Visual target, ScrollViewer scrollViewer)

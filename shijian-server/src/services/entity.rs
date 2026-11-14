@@ -43,9 +43,28 @@ const BROWSER_FAMILIES: [(&str, &[&str]); 3] = [
 pub struct EntityService;
 
 #[derive(Debug, Clone)]
-struct AppAgg {
-    app: AppJoinCols,
-    seconds: i64,
+pub(crate) struct AppAgg {
+    pub(crate) app: AppJoinCols,
+    pub(crate) seconds: i64,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SiteHourAttribution {
+    pub(crate) credited: i64,
+    pub(crate) unmatched: i64,
+    pub(crate) by_browser: HashMap<i64, i64>,
+}
+
+pub(crate) struct WindowAttribution {
+    pub(crate) app_seconds: i64,
+    pub(crate) apps: Vec<AppAgg>,
+    pub(crate) app_hours: HashMap<i64, Vec<(i64, i64)>>,
+    pub(crate) browser_apps: HashMap<String, i64>,
+    pub(crate) default_browser: String,
+    pub(crate) site_hours: HashMap<(i64, i64), SiteHourAttribution>,
+    pub(crate) browser_hour_credits: HashMap<i64, HashMap<i64, i64>>,
+    pub(crate) overflow_seconds: i64,
+    pub(crate) unmatched_seconds: i64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -59,8 +78,267 @@ struct SiteAgg {
     category_color: Option<String>,
     /// 已按互斥归属扣减后的秒数（可能来自多个浏览器，累加）
     credited: i64,
+    /// 未能归属到任何活跃浏览器会话的秒数
+    unmatched: i64,
     /// 归属到哪些浏览器（应用 ID + 秒数），`browserMerged=1` 时作为成员展示
     by_browser: HashMap<i64, i64>,
+}
+
+/// 在单窗口内完成「HoursLogModels 预算 + 浏览器会话交集 + 同小时多站点比例封顶」归属。
+/// `list`、`hours`、`category_summary` 与 `web_data` 统计统一复用这一套口径，保证总额严格守恒。
+pub(crate) async fn compute_window_attribution(
+    pool: &SqlitePool,
+    config_service: &ConfigService,
+    utc_start: DateTime<Utc>,
+    utc_end: DateTime<Utc>,
+    tz: &chrono_tz::Tz,
+) -> Result<WindowAttribution, AppError> {
+    #[derive(sqlx::FromRow)]
+    struct WindowHourRow {
+        #[sqlx(rename = "AppModelID")]
+        app_id: i64,
+        #[sqlx(rename = "Hour")]
+        hour: DateTime<Utc>,
+        #[sqlx(rename = "total")]
+        total: i64,
+    }
+
+    let config = config_service.get_or_load().await?;
+    let configured_browser = config.general.default_browser.trim().to_lowercase();
+    let excluded = config_service.get_excluded_app_id_set(pool).await;
+
+    let all_apps = load_app_aggregates_all(pool).await?;
+    let app_meta: HashMap<i64, &AppJoinCols> = all_apps
+        .iter()
+        .filter_map(|agg| agg.app.app_id.map(|id| (id, &agg.app)))
+        .collect();
+
+    let hour_rows: Vec<WindowHourRow> = sqlx::query_as(
+        r#"
+        SELECT AppModelID, DataTime AS Hour, SUM(Time) AS total
+        FROM HoursLogModels
+        WHERE DataTime >= ? AND DataTime < ?
+        GROUP BY AppModelID, DataTime
+        "#,
+    )
+    .bind(utc_start)
+    .bind(utc_end)
+    .fetch_all(pool)
+    .await?;
+
+    let mut app_seconds: i64 = 0;
+    let mut app_totals: HashMap<i64, i64> = HashMap::new();
+    let mut app_hours: HashMap<i64, Vec<(i64, i64)>> = HashMap::new();
+    let mut app_hour_budgets: HashMap<(i64, i64), i64> = HashMap::new();
+
+    for row in hour_rows {
+        if excluded.contains(&row.app_id) || !app_meta.contains_key(&row.app_id) {
+            continue;
+        }
+        let ts = row.hour.timestamp();
+        let hour_ts = ts.div_euclid(3600) * 3600;
+        app_seconds += row.total;
+        *app_totals.entry(row.app_id).or_insert(0) += row.total;
+        app_hours.entry(row.app_id).or_default().push((ts, row.total));
+        *app_hour_budgets.entry((row.app_id, hour_ts)).or_insert(0) += row.total;
+    }
+
+    let apps: Vec<AppAgg> = app_totals
+        .into_iter()
+        .filter_map(|(app_id, seconds)| {
+            app_meta.get(&app_id).map(|meta| AppAgg {
+                app: (*meta).clone(),
+                seconds,
+            })
+        })
+        .collect();
+
+    let browser_apps = resolve_browser_apps(&apps, &excluded);
+    let default_browser = if configured_browser.is_empty() {
+        recommend_default_browser(pool, &browser_apps).await?
+    } else {
+        configured_browser
+    };
+
+    let sessions = load_session_intervals(pool, utc_start, utc_end).await?;
+    let logs = load_browse_logs(pool, utc_start, utc_end).await?;
+
+    let mut site_hours: HashMap<(i64, i64), SiteHourAttribution> = HashMap::new();
+    let mut matched_raw: HashMap<(i64, i64), HashMap<i64, i64>> = HashMap::new();
+    let mut browser_hour_credits: HashMap<i64, HashMap<i64, i64>> = HashMap::new();
+    let mut overflow_seconds: i64 = 0;
+    let mut unmatched_seconds: i64 = 0;
+
+    let win_start = utc_start.timestamp();
+    let win_end = utc_end.timestamp();
+
+    // 记录浏览器在哪些本地日期存在 AppSessions（使单日 vs 多日口径严格可加，当天无会话时归入 unmatched）
+    let mut session_days: HashSet<(i64, NaiveDate)> = HashSet::new();
+    for (&app_id, intervals) in &sessions {
+        for &(s, e) in intervals {
+            let cs = s.max(win_start);
+            let ce = e.min(win_end);
+            if ce <= cs {
+                continue;
+            }
+            if let (Some(dt0), Some(dt1)) = (
+                DateTime::<Utc>::from_timestamp(cs, 0),
+                DateTime::<Utc>::from_timestamp((ce - 1).max(cs), 0),
+            ) {
+                let mut d = dt0.with_timezone(tz).date_naive();
+                let end_d = dt1.with_timezone(tz).date_naive();
+                while d <= end_d {
+                    session_days.insert((app_id, d));
+                    d += Duration::days(1);
+                }
+            }
+        }
+    }
+
+    for log in logs {
+        let clip_start = log.start.timestamp().max(win_start);
+        let clip_end = log.end.timestamp().min(win_end);
+        if clip_end <= clip_start {
+            continue;
+        }
+
+        let reference = if log.browser.trim().is_empty() {
+            default_browser.as_str()
+        } else {
+            log.browser.trim()
+        };
+        let reference_lower = reference.to_lowercase();
+        let browser_app = browser_apps.get(&reference_lower).copied();
+
+        let mut cursor = clip_start;
+        while cursor < clip_end {
+            let hour_ts = cursor.div_euclid(3600) * 3600;
+            let mut seg_end = clip_end.min(hour_ts + 3600);
+            let local_date = DateTime::<Utc>::from_timestamp(cursor, 0)
+                .map(|dt| dt.with_timezone(tz).date_naive());
+            if let Some(d) = local_date {
+                let next_midnight_utc = tz_date_to_utc_range(d, tz).1.timestamp();
+                if next_midnight_utc > cursor && next_midnight_utc < seg_end {
+                    seg_end = next_midnight_utc;
+                }
+            }
+            let seg_len = seg_end - cursor;
+
+            match (browser_app, local_date) {
+                (Some(app_id), Some(d)) if session_days.contains(&(app_id, d)) => {
+                    if let Some(intervals) = sessions.get(&app_id) {
+                        let raw = overlap_seconds(intervals, cursor, seg_end).min(seg_len).max(0);
+                        overflow_seconds += seg_len - raw;
+                        if raw > 0 {
+                            *matched_raw
+                                .entry((app_id, hour_ts))
+                                .or_default()
+                                .entry(log.site_id)
+                                .or_insert(0) += raw;
+                        }
+                    }
+                }
+                _ => {
+                    unmatched_seconds += seg_len;
+                    let entry = site_hours.entry((hour_ts, log.site_id)).or_default();
+                    entry.credited += seg_len;
+                    entry.unmatched += seg_len;
+                }
+            }
+
+            cursor = seg_end;
+        }
+    }
+
+    // 同一小时内同一浏览器的所有站点共享该浏览器在本小时的 HoursLogModels 预算，超出部分等比缩限并记入 overflow
+    for ((app_id, hour_ts), site_raw_map) in matched_raw {
+        let budget = app_hour_budgets
+            .get(&(app_id, hour_ts))
+            .copied()
+            .unwrap_or(0)
+            .max(0);
+        let total_raw: i64 = site_raw_map.values().sum();
+        if total_raw <= 0 {
+            continue;
+        }
+        let mut items: Vec<(i64, i64)> = site_raw_map.into_iter().collect();
+        items.sort_by_key(|(site_id, _)| *site_id);
+
+        let allocated = if total_raw <= budget {
+            items
+        } else {
+            overflow_seconds += total_raw - budget;
+            allocate_proportional(&items, budget)
+        };
+
+        for (site_id, sec) in allocated {
+            if sec <= 0 {
+                continue;
+            }
+            let entry = site_hours.entry((hour_ts, site_id)).or_default();
+            entry.credited += sec;
+            *entry.by_browser.entry(app_id).or_insert(0) += sec;
+            *browser_hour_credits
+                .entry(app_id)
+                .or_default()
+                .entry(hour_ts)
+                .or_insert(0) += sec;
+        }
+    }
+
+    Ok(WindowAttribution {
+        app_seconds,
+        apps,
+        app_hours,
+        browser_apps,
+        default_browser,
+        site_hours,
+        browser_hour_credits,
+        overflow_seconds,
+        unmatched_seconds,
+    })
+}
+
+/// 最大余数法按比例分配整数秒数，严格保证 Σallocated == budget 且不超出 raw。
+fn allocate_proportional(items: &[(i64, i64)], budget: i64) -> Vec<(i64, i64)> {
+    if budget <= 0 || items.is_empty() {
+        return items.iter().map(|&(id, _)| (id, 0)).collect();
+    }
+    let total_raw: i128 = items.iter().map(|&(_, v)| v.max(0) as i128).sum();
+    if total_raw <= 0 {
+        return items.iter().map(|&(id, _)| (id, 0)).collect();
+    }
+
+    let budget_i128 = budget as i128;
+    let mut floors: Vec<(i64, i64, i128)> = Vec::with_capacity(items.len());
+    let mut floor_sum: i64 = 0;
+
+    for &(id, raw) in items {
+        let numerator = raw.max(0) as i128 * budget_i128;
+        let base = (numerator / total_raw) as i64;
+        let rem = numerator % total_raw;
+        floor_sum += base;
+        floors.push((id, base, rem));
+    }
+
+    let mut leftover = (budget - floor_sum).max(0) as usize;
+    let mut order: Vec<usize> = (0..floors.len()).collect();
+    order.sort_by(|&a, &b| {
+        floors[b]
+            .2
+            .cmp(&floors[a].2)
+            .then_with(|| floors[a].0.cmp(&floors[b].0))
+    });
+
+    for idx in order {
+        if leftover == 0 {
+            break;
+        }
+        floors[idx].1 += 1;
+        leftover -= 1;
+    }
+
+    floors.into_iter().map(|(id, sec, _)| (id, sec)).collect()
 }
 
 impl EntityService {
@@ -76,90 +354,29 @@ impl EntityService {
         let tz = parse_timezone(tz_id);
         let utc_start = tz_date_to_utc_range(start, &tz).0;
         let utc_end = tz_date_to_utc_range(end, &tz).1;
-        let config = config_service.get_or_load().await?;
-        let configured_browser = config.general.default_browser.trim().to_lowercase();
         let excluded = config_service.get_excluded_app_id_set(pool).await;
 
-        // 1. 应用时长（UTC 小时桶，与既有页面同口径）
-        let apps = load_app_aggregates(pool, utc_start, utc_end).await?;
-        let mut app_seconds: i64 = 0;
-        let mut browser_apps: HashMap<String, i64> = HashMap::new();
-        for agg in &apps {
-            if excluded.contains(&agg.app.app_id.unwrap_or(0)) {
-                continue;
-            }
-            app_seconds += agg.seconds;
-        }
-        for (reference, app_id) in resolve_browser_apps(&apps, &excluded) {
-            browser_apps.insert(reference, app_id);
-        }
+        let attrib = compute_window_attribution(pool, config_service, utc_start, utc_end, &tz).await?;
+        let app_seconds = attrib.app_seconds;
+        let apps = attrib.apps;
+        let browser_apps = attrib.browser_apps;
         let browser_app_ids: HashSet<i64> = browser_apps.values().copied().collect();
+        let default_browser = attrib.default_browser;
+        let overflow_seconds = attrib.overflow_seconds;
+        let unmatched_seconds = attrib.unmatched_seconds;
 
-        // 没配默认浏览器时：先取浏览日志里出现最多的标识；一条都没有、又只识别到一个浏览器，
-        // 就归给它（老版本扩展上报的记录全是 NULL，这一步能让历史数据立刻有归属）
-        let default_browser = if configured_browser.is_empty() {
-            recommend_default_browser(pool, &browser_apps).await?
-        } else {
-            configured_browser.clone()
-        };
-
-        // 2. 浏览器会话区间（用于互斥扣减）
-        let sessions = load_session_intervals(pool, utc_start, utc_end).await?;
-
-        // 3. 站点日志按「站点 + 浏览器」求交
-        let logs = load_browse_logs(pool, utc_start, utc_end).await?;
         let mut sites: HashMap<i64, SiteAgg> = HashMap::new();
         let mut credited_by_browser: HashMap<i64, i64> = HashMap::new();
-        let mut overflow_seconds: i64 = 0;
-        let mut unmatched_seconds: i64 = 0;
-
-        for log in logs {
-            let clipped = clip_interval(log.start, log.end, utc_start.timestamp(), utc_end.timestamp());
-            if clipped <= 0 {
+        for ((_hour_ts, site_id), item) in attrib.site_hours {
+            if item.credited <= 0 {
                 continue;
             }
-            let reference = if log.browser.trim().is_empty() {
-                default_browser.clone()
-            } else {
-                log.browser.trim().to_lowercase()
-            };
-            let browser_app = browser_apps.get(&reference).copied();
-
-            let (credited, overflow, unmatched) = match browser_app {
-                Some(app_id) => {
-                    let merged = sessions.get(&app_id);
-                    match merged {
-                        Some(intervals) if !intervals.is_empty() => {
-                            let overlap = overlap_seconds(
-                                intervals,
-                                log.start.timestamp(),
-                                log.start.timestamp() + clipped,
-                            );
-                            let credited = overlap.min(clipped).max(0);
-                            (credited, clipped - credited, 0)
-                        }
-                        // 该浏览器在这段时间没有任何会话：不退化成扣减，站点照实计入并标记未对齐
-                        _ => (clipped, 0, clipped),
-                    }
-                }
-                // 没有归属浏览器（默认浏览器也没跑），照实计入
-                None => (clipped, 0, clipped),
-            };
-
-            if credited <= 0 {
-                overflow_seconds += overflow;
-                continue;
-            }
-            overflow_seconds += overflow;
-            unmatched_seconds += unmatched;
-
-            let site = sites.entry(log.site_id).or_default();
-            site.credited += credited;
-            if unmatched == 0 {
-                if let Some(app_id) = browser_app {
-                    *site.by_browser.entry(app_id).or_insert(0) += credited;
-                    *credited_by_browser.entry(app_id).or_insert(0) += credited;
-                }
+            let site = sites.entry(site_id).or_default();
+            site.credited += item.credited;
+            site.unmatched += item.unmatched;
+            for (app_id, sec) in item.by_browser {
+                *site.by_browser.entry(app_id).or_insert(0) += sec;
+                *credited_by_browser.entry(app_id).or_insert(0) += sec;
             }
         }
 
@@ -479,12 +696,17 @@ impl EntityService {
         // 网站侧总时长（含并入浏览器的部分）
         let site_seconds: i64 = sites.values().map(|agg| agg.credited).sum();
 
-        // 6. 未入组的站点行：关闭合并时全部独立成行；打开合并时只有「找不到归属浏览器」的站点还需要留行
+        // 6. 未入组的站点行：关闭合并时全部独立成行；打开合并时只留「未归属到活跃浏览器」的剩余秒数
         for (site_id, agg) in &sites {
             if agg.credited <= 0 || grouped_site_ids.contains(site_id) {
                 continue;
             }
-            if browser_merged && !agg.by_browser.is_empty() {
+            let display_seconds = if browser_merged {
+                agg.unmatched
+            } else {
+                agg.credited
+            };
+            if display_seconds <= 0 {
                 continue;
             }
             rows.push(EntityModel {
@@ -492,7 +714,7 @@ impl EntityService {
                 kind: "site".to_string(),
                 name: site_display_name(agg),
                 icon: agg.icon_file.clone(),
-                seconds: agg.credited,
+                seconds: display_seconds,
                 category_id: agg.category_id,
                 category_kind: "site".to_string(),
                 category_name: agg.category_name.clone(),
@@ -843,115 +1065,69 @@ impl EntityService {
         let utc_end = DateTime::from_timestamp(windows[bucket_count - 1].1, 0)
             .ok_or_else(|| AppError::Business("无效的时间范围".to_string()))?;
 
-        let config = config_service.get_or_load().await?;
-        let configured_browser = config.general.default_browser.trim().to_lowercase();
-        let excluded = config_service.get_excluded_app_id_set(pool).await;
-
-        let all_apps = load_app_aggregates_all(pool).await?;
-        let no_excluded: HashSet<i64> = HashSet::new();
-        let browser_apps = resolve_browser_apps(&all_apps, &no_excluded);
+        let attrib = compute_window_attribution(pool, config_service, utc_start, utc_end, &tz).await?;
+        let browser_apps = attrib.browser_apps;
         let browser_app_ids: HashSet<i64> = browser_apps.values().copied().collect();
-        let default_browser = if configured_browser.is_empty() {
-            recommend_default_browser(pool, &browser_apps).await?
-        } else {
-            configured_browser.clone()
-        };
 
-        // 1. 应用 × 桶（UTC 小时桶直接落到对应桶里）
-        #[derive(sqlx::FromRow)]
-        struct HourRow {
-            #[sqlx(rename = "AppModelID")]
-            app_id: i64,
-            #[sqlx(rename = "Hour")]
-            hour: DateTime<Utc>,
-            #[sqlx(rename = "total")]
-            total: i64,
-        }
-
-        let hour_rows: Vec<HourRow> = sqlx::query_as(
-            r#"
-            SELECT AppModelID, DataTime AS Hour, SUM(Time) AS total
-            FROM HoursLogModels
-            WHERE DataTime >= ? AND DataTime < ?
-            GROUP BY AppModelID, DataTime
-            "#,
-        )
-        .bind(utc_start)
-        .bind(utc_end)
-        .fetch_all(pool)
-        .await?;
-
+        // 1. 应用 × 桶（UTC 小时桶落到对应桶里）
         let mut app_matrix: HashMap<i64, Vec<i64>> = HashMap::new();
-        for row in hour_rows {
-            if excluded.contains(&row.app_id) {
-                continue;
-            }
-            if let Some(index) = bucket_index(&windows, row.hour.timestamp()) {
-                let entry = app_matrix
-                    .entry(row.app_id)
-                    .or_insert_with(|| vec![0_i64; bucket_count]);
-                entry[index] += row.total;
+        for (app_id, entries) in &attrib.app_hours {
+            for &(hour_ts, total) in entries {
+                if let Some(index) = bucket_index(&windows, hour_ts) {
+                    let entry = app_matrix
+                        .entry(*app_id)
+                        .or_insert_with(|| vec![0_i64; bucket_count]);
+                    entry[index] += total;
+                }
             }
         }
 
-        // 2. 站点 × 桶：只记与浏览器会话重叠的部分
-        let sessions = load_session_intervals(pool, utc_start, utc_end).await?;
-        let logs = load_browse_logs(pool, utc_start, utc_end).await?;
+        // 2. 站点 × 桶（复用与 list 相同的小时预算封顶与会话交集结果）
         let mut site_matrix: HashMap<i64, Vec<i64>> = HashMap::new();
+        let mut site_unmatched_matrix: HashMap<i64, Vec<i64>> = HashMap::new();
         let mut browser_site_matrix: HashMap<i64, Vec<i64>> = HashMap::new();
         let mut site_by_browser_matrix: HashMap<i64, HashMap<i64, Vec<i64>>> = HashMap::new();
         let mut attributed_sites: HashSet<i64> = HashSet::new();
 
-        for log in logs {
-            let Some(index) = bucket_index(&windows, log.start.timestamp()) else {
-                continue;
-            };
-            let (window_start, window_end) = windows[index];
-            let clip_start = log.start.timestamp().max(window_start);
-            let clip_end = log.end.timestamp().min(window_end);
-            let clipped = clip_end - clip_start;
-            if clipped <= 0 {
+        for ((hour_ts, site_id), item) in attrib.site_hours {
+            if item.credited <= 0 {
                 continue;
             }
-
-            let reference = if log.browser.trim().is_empty() {
-                default_browser.clone()
-            } else {
-                log.browser.trim().to_lowercase()
-            };
-            let browser_app = browser_apps.get(&reference).copied();
-
-            let credited = match browser_app {
-                Some(app_id) => match sessions.get(&app_id) {
-                    Some(intervals) if !intervals.is_empty() => {
-                        overlap_seconds(intervals, clip_start, clip_end).min(clipped)
-                    }
-                    _ => clipped,
-                },
-                None => clipped,
-            };
-            if credited <= 0 {
+            let effective_ts = hour_ts.max(windows[0].0);
+            let Some(index) = bucket_index(&windows, effective_ts) else {
                 continue;
-            }
+            };
 
             let site = site_matrix
-                .entry(log.site_id)
+                .entry(site_id)
                 .or_insert_with(|| vec![0_i64; bucket_count]);
-            site[index] += credited;
+            site[index] += item.credited;
 
-            if let Some(app_id) = browser_app {
-                attributed_sites.insert(log.site_id);
-                let entry = browser_site_matrix
-                    .entry(app_id)
+            if item.unmatched > 0 {
+                let unmatched_entry = site_unmatched_matrix
+                    .entry(site_id)
                     .or_insert_with(|| vec![0_i64; bucket_count]);
-                entry[index] += credited;
+                unmatched_entry[index] += item.unmatched;
+            }
 
-                let per_browser = site_by_browser_matrix
-                    .entry(log.site_id)
-                    .or_default()
-                    .entry(app_id)
-                    .or_insert_with(|| vec![0_i64; bucket_count]);
-                per_browser[index] += credited;
+            if !item.by_browser.is_empty() {
+                attributed_sites.insert(site_id);
+                for (app_id, sec) in item.by_browser {
+                    if sec <= 0 {
+                        continue;
+                    }
+                    let entry = browser_site_matrix
+                        .entry(app_id)
+                        .or_insert_with(|| vec![0_i64; bucket_count]);
+                    entry[index] += sec;
+
+                    let per_browser = site_by_browser_matrix
+                        .entry(site_id)
+                        .or_default()
+                        .entry(app_id)
+                        .or_insert_with(|| vec![0_i64; bucket_count]);
+                    per_browser[index] += sec;
+                }
             }
         }
 
@@ -962,24 +1138,7 @@ impl EntityService {
             .collect();
         fill_site_details(pool, &mut site_aggs).await?;
 
-        let app_meta: HashMap<i64, &AppAgg> = all_apps
-            .iter()
-            .filter_map(|agg| agg.app.app_id.map(|id| (id, agg)))
-            .collect();
-        let window_apps: Vec<AppAgg> = app_matrix
-            .iter()
-            .filter_map(|(app_id, values)| {
-                let sum: i64 = values.iter().sum();
-                if sum <= 0 {
-                    return None;
-                }
-                app_meta.get(app_id).map(|agg| {
-                    let mut app = (*agg).clone();
-                    app.seconds = sum;
-                    app
-                })
-            })
-            .collect();
+        let window_apps: Vec<AppAgg> = attrib.apps;
         sync_auto_groups(pool).await?;
         let groups = load_groups(pool).await?;
 
@@ -1337,14 +1496,29 @@ impl EntityService {
             });
         }
 
-        // 未入组的站点行：关闭合并时全部出现；打开合并时只留「归属不到浏览器」的那些
+        // 未入组的站点行：关闭合并时全部出现；打开合并时只留「未归属到活跃浏览器」的剩余秒数
         for (site_id, values) in &site_matrix {
             if values.iter().all(|value| *value <= 0) || grouped_site_ids.contains(site_id) {
                 continue;
             }
-            if browser_merged && attributed_sites.contains(site_id) {
-                continue;
-            }
+            let emitted_values = if browser_merged {
+                match site_unmatched_matrix.get(site_id) {
+                    Some(unmatched_vals) => {
+                        if unmatched_vals.iter().all(|v| *v <= 0) {
+                            continue;
+                        }
+                        unmatched_vals.clone()
+                    }
+                    None => {
+                        if attributed_sites.contains(site_id) {
+                            continue;
+                        }
+                        values.clone()
+                    }
+                }
+            } else {
+                values.clone()
+            };
             let agg = site_aggs.get(site_id);
             rows.push(EntityHoursRow {
                 key: format!("site:{}", site_id),
@@ -1356,7 +1530,7 @@ impl EntityService {
                 category_name: agg.and_then(|agg| agg.category_name.clone()),
                 category_color: agg.and_then(|agg| agg.category_color.clone()),
                 is_browser: false,
-                values: values.clone(),
+                values: emitted_values,
                 members: Vec::new(),
             });
         }
@@ -1461,19 +1635,25 @@ fn bucket_windows(
     let mut result: Vec<(i64, i64)> = Vec::new();
     match buckets {
         "hour" => {
-            for hour in 0..24u32 {
-                let from_local = start
-                    .and_hms_opt(hour, 0, 0)
-                    .unwrap();
-                let to_local = if hour == 23 {
-                    start.succ_opt().unwrap().and_hms_opt(0, 0, 0).unwrap()
-                } else {
-                    start.and_hms_opt(hour + 1, 0, 0).unwrap()
-                };
-                result.push((
-                    tz_naive_to_utc(from_local, tz).timestamp(),
-                    tz_naive_to_utc(to_local, tz).timestamp(),
-                ));
+            let mut day = start;
+            while day <= end {
+                let next_day = day.succ_opt();
+                for hour in 0..24u32 {
+                    let from_local = day.and_hms_opt(hour, 0, 0).unwrap();
+                    let to_local = if hour == 23 {
+                        next_day.unwrap().and_hms_opt(0, 0, 0).unwrap()
+                    } else {
+                        day.and_hms_opt(hour + 1, 0, 0).unwrap()
+                    };
+                    result.push((
+                        tz_naive_to_utc(from_local, tz).timestamp(),
+                        tz_naive_to_utc(to_local, tz).timestamp(),
+                    ));
+                }
+                match next_day {
+                    Some(next) => day = next,
+                    None => break,
+                }
             }
         }
         "month" => {
@@ -1526,41 +1706,6 @@ struct AppAggRow {
     total: i64,
     #[sqlx(flatten)]
     app: AppJoinCols,
-}
-
-const APP_AGG_SQL: &str = r#"
-SELECT h.AppModelID, SUM(h.Time) AS total, {cols}
-FROM HoursLogModels h
-JOIN AppModels a ON h.AppModelID = a.ID
-LEFT JOIN CategoryModels c ON a.CategoryID = c.ID
-WHERE h.DataTime >= ? AND h.DataTime < ?
-GROUP BY h.AppModelID
-"#;
-
-async fn load_app_aggregates(
-    pool: &SqlitePool,
-    utc_start: DateTime<Utc>,
-    utc_end: DateTime<Utc>,
-) -> Result<Vec<AppAgg>, AppError> {
-    let sql = APP_AGG_SQL.replace("{cols}", crate::models::app::APP_JOIN_COLS_SQL);
-    let rows: Vec<AppAggRow> = sqlx::query_as(&sql)
-        .bind(utc_start)
-        .bind(utc_end)
-        .fetch_all(pool)
-        .await?;
-    Ok(rows
-        .into_iter()
-        .filter_map(|row| {
-            let app = row.app;
-            if app.app_id.is_none() {
-                return None;
-            }
-            Some(AppAgg {
-                app,
-                seconds: row.total,
-            })
-        })
-        .collect())
 }
 
 /// 不分时间范围的应用时长（用于「默认浏览器」候选列表）
@@ -2282,17 +2427,6 @@ async fn recommend_default_browser(
 
 // ---------------------------------------------------------------- 纯函数
 
-fn clip_interval(
-    start: DateTime<Utc>,
-    end: DateTime<Utc>,
-    window_start: i64,
-    window_end: i64,
-) -> i64 {
-    let start = start.timestamp().max(window_start);
-    let end = end.timestamp().min(window_end);
-    (end - start).max(0)
-}
-
 /// 一个区间与一串（已排序、可重叠的）会话区间的交集长度
 fn overlap_seconds(intervals: &[(i64, i64)], start: i64, end: i64) -> i64 {
     let mut total = 0;
@@ -2378,6 +2512,17 @@ fn resolve_browser_apps(
 mod tests {
     use super::*;
     use chrono::TimeZone;
+
+    fn clip_interval(
+        start: DateTime<Utc>,
+        end: DateTime<Utc>,
+        window_start: i64,
+        window_end: i64,
+    ) -> i64 {
+        let start = start.timestamp().max(window_start);
+        let end = end.timestamp().min(window_end);
+        (end - start).max(0)
+    }
 
     fn ts(value: i64) -> DateTime<Utc> {
         Utc.timestamp_opt(value, 0).unwrap()
@@ -2899,5 +3044,194 @@ mod tests {
         assert_eq!(site_primary_row.category_kind, "site");
         assert_eq!(site_primary_row.category_id, site_cat);
         assert_eq!(site_primary_row.seconds, 3000);
+    }
+
+    #[tokio::test]
+    async fn multi_tab_same_hour_and_multi_day_conserve_list_hours_category_and_webdata() {
+        let pool = test_pool().await;
+        let (_chrome_id, _) = seed(&pool).await;
+        let config = ConfigService::new(&test_config_dir("conservation-multi"));
+
+        let ent_cat = sqlx::query(
+            "INSERT INTO CategoryModels (Name, IconFile, Color, IsDirectoryMatch, Directories, IsUrlMatch, UrlPatterns, IsSystem) VALUES ('娱乐', NULL, '#E07A5F', 0, '[]', 0, NULL, 0)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap()
+        .last_insert_rowid();
+
+        let ai_cat = sqlx::query(
+            "INSERT INTO CategoryModels (Name, IconFile, Color, IsDirectoryMatch, Directories, IsUrlMatch, UrlPatterns, IsSystem) VALUES ('AI', NULL, '#6366F1', 0, '[]', 0, NULL, 0)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap()
+        .last_insert_rowid();
+
+        let bilibili_site = sqlx::query(
+            "INSERT INTO WebSiteModels (Title, Domain, CategoryID, Duration) VALUES ('Bilibili', 'bilibili.com', ?, 5000)",
+        )
+        .bind(ent_cat)
+        .execute(&pool)
+        .await
+        .unwrap()
+        .last_insert_rowid();
+
+        let chatgpt_site = sqlx::query(
+            "INSERT INTO WebSiteModels (Title, Domain, CategoryID, Duration) VALUES ('ChatGPT', 'chatgpt.com', ?, 4000)",
+        )
+        .bind(ai_cat)
+        .execute(&pool)
+        .await
+        .unwrap()
+        .last_insert_rowid();
+
+        let ai_app = sqlx::query(
+            r#"INSERT INTO AppModels (Name, Alias, CategoryID, TotalTime, File, IconFile, Description, Publisher)
+               VALUES ('Cursor', NULL, ?, 1200, 'C:\Apps\Cursor.exe', NULL, 'Cursor', NULL)"#,
+        )
+        .bind(ai_cat)
+        .execute(&pool)
+        .await
+        .unwrap()
+        .last_insert_rowid();
+
+        // Day 1 (2026-11-12): seed() 已有 chrome HoursLogModels(04:00Z, 3600s), AppSessions(04:00Z..05:00Z), example.com(04:00Z, 1800s).
+        // 再向 04:00Z 同小时插入 Bilibili(2400s) + ChatGPT(1800s)（多标签叠加超过 3600s 预算！），
+        // 以及 05:00Z（无浏览器前台会话）中的 Bilibili 后台挂机 900s（应在会话存在当天被判为 overflow=900, credited=0）。
+        let bili_url1 = sqlx::query("INSERT INTO WebUrlModels (Url, Title) VALUES ('https://www.bilibili.com/video/1', 'v1')")
+            .execute(&pool)
+            .await
+            .unwrap()
+            .last_insert_rowid();
+        let bili_url2 = sqlx::query("INSERT INTO WebUrlModels (Url, Title) VALUES ('https://www.bilibili.com/video/2', 'v2')")
+            .execute(&pool)
+            .await
+            .unwrap()
+            .last_insert_rowid();
+        let gpt_url = sqlx::query("INSERT INTO WebUrlModels (Url, Title) VALUES ('https://chatgpt.com/c/1', 'gpt')")
+            .execute(&pool)
+            .await
+            .unwrap()
+            .last_insert_rowid();
+
+        for (url_id, log_time, dur, site_id) in [
+            (bili_url1, "2026-11-12T04:00:00+00:00", 2400_i64, bilibili_site),
+            (gpt_url, "2026-11-12T04:00:00+00:00", 1800_i64, chatgpt_site),
+            (bili_url2, "2026-11-12T05:00:00+00:00", 900_i64, bilibili_site),
+        ] {
+            sqlx::query("INSERT INTO WebBrowseLogModels (UrlId, LogTime, Duration, SiteId, BrowserRef) VALUES (?, ?, ?, ?, 'chrome')")
+                .bind(url_id)
+                .bind(log_time)
+                .bind(dur)
+                .bind(site_id)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+
+        sqlx::query("INSERT INTO HoursLogModels (DataTime, AppModelID, Time) VALUES ('2026-11-12T04:00:00+00:00', ?, 1200)")
+            .bind(ai_app)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        // Day 2 (2026-11-13): 纯未对齐网站（当天浏览器无 AppSessions，unmatched=600），再加跨午夜日志从 Day1 23:30Z 跨到 Day2
+        let day2_url = sqlx::query("INSERT INTO WebUrlModels (Url, Title) VALUES ('https://www.bilibili.com/video/3', 'v3')")
+            .execute(&pool)
+            .await
+            .unwrap()
+            .last_insert_rowid();
+        sqlx::query("INSERT INTO WebBrowseLogModels (UrlId, LogTime, Duration, SiteId, BrowserRef) VALUES (?, '2026-11-13T15:30:00+00:00', 3600, ?, 'chrome')")
+            .bind(day2_url)
+            .bind(bilibili_site)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let d1 = chrono::NaiveDate::from_ymd_opt(2026, 11, 12).unwrap();
+        let d2 = chrono::NaiveDate::from_ymd_opt(2026, 11, 13).unwrap();
+
+        for (start, end, buckets) in [
+            (d1, d1, "hour"),
+            (d1, d2, "day"),
+            (d1, d2, "hour"),
+        ] {
+            for merged in [false, true] {
+                let list = EntityService::list(&pool, &config, start, end, "Asia/Shanghai", merged, None)
+                    .await
+                    .expect("list");
+                let hours = EntityService::hours(&pool, &config, start, end, "Asia/Shanghai", buckets, merged)
+                    .await
+                    .expect("hours");
+
+                let list_rows_sum: i64 = list.rows.iter().map(|r| r.seconds).sum();
+                let hours_rows_sum: i64 = hours.rows.iter().flat_map(|r| r.values.iter()).sum();
+
+                assert_eq!(list.total_seconds, list_rows_sum, "list rows sum mismatch on {start}..{end} merged={merged}");
+                assert_eq!(list.total_seconds, hours_rows_sum, "hours rows sum mismatch on {start}..{end} ({buckets}) merged={merged}");
+            }
+        }
+
+        // 检查同一区间下 Bilibili（娱乐）和 AI 分类在实体列表、WebSiteDetailPage 统计接口、CategorySummaryService 中的严格一致
+        let list_2d = EntityService::list(&pool, &config, d1, d2, "Asia/Shanghai", false, None).await.unwrap();
+        let bilibili_entity_secs = list_2d
+            .rows
+            .iter()
+            .find(|r| r.key == format!("site:{}", bilibili_site))
+            .map(|r| r.seconds)
+            .unwrap_or(0);
+        let chatgpt_entity_secs = list_2d
+            .rows
+            .iter()
+            .find(|r| r.key == format!("site:{}", chatgpt_site))
+            .map(|r| r.seconds)
+            .unwrap_or(0);
+
+        // Day1: 04:00Z 预算 3600 被 example(1800) + bili(2400) + gpt(1800) = 6000 按比例分得 1080 + 1440 + 1080 = 3600
+        // Day2: 2026-11-13 15:30Z = 23:30 UTC+8 (1800s 在 11/13，1800s 在 11/14 不在 d1..d2) -> Day2 unmatched = 1800
+        assert_eq!(bilibili_entity_secs, 1440 + 1800);
+        assert_eq!(chatgpt_entity_secs, 1080);
+
+        let web_stats = crate::services::web_data::WebDataService::get_browse_data_statistics(
+            &pool,
+            d1.and_hms_opt(0, 0, 0).unwrap(),
+            d2.and_hms_opt(23, 59, 59).unwrap(),
+            bilibili_site,
+            "Asia/Shanghai",
+            &config,
+        )
+        .await
+        .expect("web stats");
+        let web_stats_total: i64 = web_stats.iter().map(|m| m.value).sum();
+        assert_eq!(web_stats_total, bilibili_entity_secs);
+
+        let web_cat_summary = crate::services::category_summary::CategorySummaryService::get_web_category_summary(
+            &pool,
+            ent_cat,
+            d1,
+            d2,
+            None,
+            None,
+            "Asia/Shanghai",
+            &config,
+        )
+        .await
+        .expect("web cat summary");
+        assert_eq!(web_cat_summary.total_seconds, bilibili_entity_secs);
+
+        let ai_unified_summary = crate::services::category_summary::CategorySummaryService::get_unified_category_summary(
+            &pool,
+            ai_cat,
+            d1,
+            d2,
+            None,
+            None,
+            "Asia/Shanghai",
+            &config,
+        )
+        .await
+        .expect("ai unified summary");
+        assert_eq!(ai_unified_summary.total_seconds, 1200 + chatgpt_entity_secs);
     }
 }

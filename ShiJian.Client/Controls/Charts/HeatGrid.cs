@@ -44,6 +44,9 @@ public class HeatGrid : Control
     public static readonly StyledProperty<string?> EmptyTextProperty =
         AvaloniaProperty.Register<HeatGrid, string?>(nameof(EmptyText));
 
+    public static readonly StyledProperty<bool> IsLoadingProperty =
+        AvaloniaProperty.Register<HeatGrid, bool>(nameof(IsLoading));
+
     /// <summary>行标题列宽，0 表示不画行标题</summary>
     public static readonly StyledProperty<double> RowLabelWidthProperty =
         AvaloniaProperty.Register<HeatGrid, double>(nameof(RowLabelWidth), 40d);
@@ -74,8 +77,8 @@ public class HeatGrid : Control
     static HeatGrid()
     {
         AffectsRender<HeatGrid>(RowsProperty, ColumnLabelsProperty, MaxValueProperty, AccentBrushProperty,
-            TextBrushProperty, MutedTextBrushProperty, HoverBrushProperty, EmptyTextProperty, RowLabelWidthProperty,
-            MaxCellHeightProperty, SquareCellsProperty);
+            TextBrushProperty, MutedTextBrushProperty, HoverBrushProperty, EmptyTextProperty, IsLoadingProperty,
+            RowLabelWidthProperty, MaxCellHeightProperty, SquareCellsProperty);
         AffectsMeasure<HeatGrid>(RowsProperty, ColumnLabelsProperty, RowLabelWidthProperty,
             MaxCellHeightProperty, SquareCellsProperty);
     }
@@ -126,6 +129,12 @@ public class HeatGrid : Control
     {
         get => GetValue(EmptyTextProperty);
         set => SetValue(EmptyTextProperty, value);
+    }
+
+    public bool IsLoading
+    {
+        get => GetValue(IsLoadingProperty);
+        set => SetValue(IsLoadingProperty, value);
     }
 
     public double RowLabelWidth
@@ -342,7 +351,7 @@ public class HeatGrid : Control
 
     private void DrawEmpty(DrawingContext context, double width, double height)
     {
-        if (string.IsNullOrEmpty(EmptyText) || MutedTextBrush is null) return;
+        if (IsLoading || string.IsNullOrEmpty(EmptyText) || MutedTextBrush is null) return;
         var text = MakeText(EmptyText, 12, MutedTextBrush);
         context.DrawText(text, new Point((width - text.Width) / 2, (height - text.Height) / 2));
     }

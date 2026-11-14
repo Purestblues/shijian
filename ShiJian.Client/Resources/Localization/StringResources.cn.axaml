@@ -70,6 +70,7 @@
     <system:String x:Key="DurationStatistics">时长统计</system:String>
     <system:String x:Key="ViewDetails">浏览详情</system:String>
     <system:String x:Key="MultipleWebsites">个网站</system:String>
+    <system:String x:Key="BrowseRecordsUnit">条浏览记录</system:String>
     <system:String x:Key="OpenWebPage">打开网页</system:String>
     <system:String x:Key="CopyURL">复制链接</system:String>
     <system:String x:Key="CopyTitle">复制标题</system:String>
@@ -582,4 +583,6 @@
     <system:String x:Key="WebDavRemoteEmpty">云端目录中暂无 .shijian-backup 备份文件</system:String>
     <system:String x:Key="WebDavMergeRestore">合并恢复</system:String>
     <system:String x:Key="WebDavReplaceRestore">覆盖恢复</system:String>
+    <system:String x:Key="View">查看详情</system:String>
+    <system:String x:Key="Retry">重试</system:String>
 </ResourceDictionary>

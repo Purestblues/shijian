@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -227,9 +228,11 @@ public class CategoryAppListPageViewModel : CategoryAppListPageModel
             if (string.IsNullOrWhiteSpace(displayName)) continue;
 
             var processName = (item.Name ?? string.Empty).Trim();
-            var dedupeKey = $"{displayName}\0{processName}";
+            var normalizedFile = (item.File ?? string.Empty).Trim();
+            var dedupeKey = $"{displayName}\0{processName}\0{normalizedFile}";
             if (!seenDisplayKeys.Add(dedupeKey)) continue;
 
+            var subTitle = FormatCandidateSubTitle(item, displayName);
             result.Add(new ChooseAppModel
             {
                 App = item,
@@ -237,6 +240,7 @@ public class CategoryAppListPageViewModel : CategoryAppListPageModel
                 Value =
                 {
                     Name = displayName,
+                    SubTitle = string.IsNullOrEmpty(subTitle) ? null : subTitle,
                     Img = item.IconFile
                 }
             });
@@ -246,6 +250,35 @@ public class CategoryAppListPageViewModel : CategoryAppListPageModel
             .OrderByDescending(m => m.IsChoosed)
             .ThenBy(m => m.Value.Name, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
+    }
+
+    internal static string FormatCandidateSubTitle(AppModel item, string displayName)
+    {
+        var parts = new List<string>(2);
+        var processName = (item.Name ?? string.Empty).Trim();
+        if (!string.IsNullOrEmpty(processName) &&
+            !string.Equals(processName, displayName, StringComparison.OrdinalIgnoreCase))
+        {
+            parts.Add(processName);
+        }
+
+        var file = (item.File ?? string.Empty).Trim();
+        if (!string.IsNullOrEmpty(file))
+        {
+            var folder = Path.GetFileName(Path.GetDirectoryName(file));
+            if (!string.IsNullOrEmpty(folder) &&
+                !string.Equals(folder, processName, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(folder, displayName, StringComparison.OrdinalIgnoreCase))
+            {
+                parts.Add(folder);
+            }
+            else if (parts.Count == 0)
+            {
+                parts.Add(Path.GetFileName(file));
+            }
+        }
+
+        return string.Join(" · ", parts);
     }
 
     internal static List<ChooseAppModel> FilterCandidateOptions(List<ChooseAppModel> source, string? keyword)

@@ -7,6 +7,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using ShiJian.Client;
+using ShiJian.Client.Controls.Base;
 using ShiJian.Client.Controls.SettingPanel;
 using ShiJian.Client.Librarys;
 using ShiJian.Client.Models;
@@ -334,23 +335,47 @@ public class SettingPageTests
             Assert.Contains("云端备份历史", texts);
             Assert.DoesNotContain("导出为csv格式", texts);
 
-            var buttonContents = page.GetVisualDescendants()
-                .OfType<ShiJian.Client.Controls.Button.Button>()
-                .Select(b => b.Content?.ToString())
-                .ToList();
-            Assert.Contains("保存", buttonContents);
-
-            var modalScrolls = page.GetVisualDescendants()
-                .OfType<ScrollViewer>()
-                .Where(s => s.Name != "ContentScrollViewer")
-                .ToList();
-            Assert.True(modalScrolls.Count >= 2);
-            Assert.All(modalScrolls, sv => Assert.True(sv.ClipToBounds));
-
             var toggles = page.GetVisualDescendants()
                 .OfType<ShiJian.Client.Controls.Toggle.Toggle>()
                 .ToList();
             Assert.Contains(toggles, t => t.OnText == "开" && t.OffText == "关");
+
+            // 弹窗内容现托管在 <base:PageModal> 的 ModalContent 中（关闭态未挂入可视化树，DynamicResource 尚未解析）；
+            // 先收集页面上的弹窗，再挂载到同一 Window 下以触发 DynamicResource 解析和可视树布局。
+            var modals = page.GetVisualDescendants().OfType<PageModal>().ToList();
+            var pageButtons = page.GetVisualDescendants()
+                .OfType<ShiJian.Client.Controls.Button.Button>()
+                .Select(b => b.Content?.ToString())
+                .ToList();
+            var pageScrolls = page.GetVisualDescendants()
+                .OfType<ScrollViewer>()
+                .Where(s => s.Name != "ContentScrollViewer")
+                .ToList();
+
+            var modalHost = new Panel { DataContext = vm };
+            foreach (var modal in modals)
+            {
+                if (modal.ModalContent is not { } content) continue;
+                modal.ClearValue(PageModal.ModalContentProperty);
+                modalHost.Children.Add(content);
+            }
+
+            window.Content = modalHost;
+            Dispatcher.UIThread.RunJobs();
+
+            var buttonContents = pageButtons
+                .Concat(modalHost.GetVisualDescendants()
+                    .OfType<ShiJian.Client.Controls.Button.Button>()
+                    .Select(b => b.Content?.ToString()))
+                .ToList();
+            Assert.Contains("保存", buttonContents);
+
+            var modalScrolls = pageScrolls
+                .Concat(modalHost.GetVisualDescendants().OfType<ScrollViewer>())
+                .Distinct()
+                .ToList();
+            Assert.True(modalScrolls.Count >= 2);
+            Assert.All(modalScrolls, sv => Assert.True(sv.ClipToBounds));
         }
         finally
         {

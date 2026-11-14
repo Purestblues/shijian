@@ -3,8 +3,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using ShiJian.Client.Logging;
@@ -12,13 +14,21 @@ using ShiJian.Client.Shared.Librarys;
 
 namespace ShiJian.Client.Librarys.Image;
 
+public enum IconTone
+{
+    Neutral,
+    LightForeground,
+    DarkForeground
+}
+
 public class Imager
 {
     private static volatile Bitmap? _defaultBitmap;
     private static readonly object DefaultBitmapLock = new();
     private const string DefaultAssetPath = "avares://ShiJian/Resources/Icons/defaultIcon.png";
 
-    private static readonly SimpleLruCache Cache = new(capacity: 50);
+    private static readonly SimpleLruCache Cache = new(capacity: 256);
+    private static readonly ConcurrentDictionary<string, IconTone> ToneCache = new();
     private static readonly SemaphoreSlim DecodeSemaphore = new(4, 4);
 
     public static bool TryGetFromCache(string filePath, out Bitmap? bitmap, int decodeWidth = 0, int decodeHeight = 0)
@@ -104,6 +114,9 @@ public class Imager
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+            if (!ToneCache.ContainsKey(failureKey))
+                ToneCache.TryAdd(failureKey, ClassifyIconTone(bitmap));
+
             if (noCache)
             {
                 Logger.Debug($"[Imager] 加载完成(无缓存) [{sw.ElapsedMilliseconds}ms]: {filePath}");
@@ -126,6 +139,136 @@ public class Imager
                 Cache.MarkFailed(failureKey);
             return GetDefaultBitmap(defaultPath);
         }
+    }
+
+    public static IconTone GetIconTone(string? filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return IconTone.Neutral;
+        return ToneCache.TryGetValue(NormalizeFailureKey(filePath), out var tone)
+            ? tone
+            : IconTone.Neutral;
+    }
+
+    internal static IconTone ClassifyIconTone(Bitmap bitmap)
+    {
+        try
+        {
+            if (bitmap is WriteableBitmap wb)
+            {
+                using var fb = wb.Lock();
+                var fbFormat = fb.Format;
+                if (fbFormat != PixelFormat.Bgra8888 && fbFormat != PixelFormat.Rgba8888)
+                    return IconTone.Neutral;
+
+                var fbW = fb.Size.Width;
+                var fbH = fb.Size.Height;
+                var fbStride = fb.RowBytes;
+                if (fbW <= 0 || fbH <= 0 || fbStride <= 0) return IconTone.Neutral;
+
+                var fbBytes = fbStride * fbH;
+                if (fbBytes <= 0 || fbBytes > 1024 * 1024)
+                    return IconTone.Neutral;
+
+                var fbBuffer = new byte[fbBytes];
+                Marshal.Copy(fb.Address, fbBuffer, 0, fbBytes);
+                return ClassifyPixelBuffer(
+                    fbBuffer,
+                    fbW,
+                    fbH,
+                    fbStride,
+                    fbFormat == PixelFormat.Bgra8888,
+                    wb.AlphaFormat == AlphaFormat.Premul);
+            }
+
+            var format = bitmap.Format;
+            if (format != PixelFormat.Bgra8888 && format != PixelFormat.Rgba8888)
+                return IconTone.Neutral;
+
+            var w = bitmap.PixelSize.Width;
+            var h = bitmap.PixelSize.Height;
+            if (w <= 0 || h <= 0) return IconTone.Neutral;
+
+            var stride = w * 4;
+            var totalBytes = stride * h;
+            if (totalBytes <= 0 || totalBytes > 1024 * 1024)
+                return IconTone.Neutral;
+
+            var buffer = new byte[totalBytes];
+            var ptr = Marshal.AllocHGlobal(totalBytes);
+            try
+            {
+                bitmap.CopyPixels(new PixelRect(0, 0, w, h), ptr, totalBytes, stride);
+                Marshal.Copy(ptr, buffer, 0, totalBytes);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(ptr);
+            }
+
+            return ClassifyPixelBuffer(
+                buffer,
+                w,
+                h,
+                stride,
+                format == PixelFormat.Bgra8888,
+                bitmap.AlphaFormat == AlphaFormat.Premul);
+        }
+        catch
+        {
+            return IconTone.Neutral;
+        }
+    }
+
+    private static IconTone ClassifyPixelBuffer(
+        byte[] buffer,
+        int w,
+        int h,
+        int stride,
+        bool isBgra,
+        bool premul)
+    {
+        var stepX = Math.Max(1, w / 16);
+        var stepY = Math.Max(1, h / 16);
+        var opaqueCount = 0;
+        var lightNeutral = 0;
+        var darkNeutral = 0;
+
+        for (var y = 0; y < h; y += stepY)
+        {
+            var rowStart = y * stride;
+            for (var x = 0; x < w; x += stepX)
+            {
+                var idx = rowStart + x * 4;
+                var a = buffer[idx + 3];
+                if (a < 64) continue;
+
+                double r = isBgra ? buffer[idx + 2] : buffer[idx];
+                double g = buffer[idx + 1];
+                double b = isBgra ? buffer[idx] : buffer[idx + 2];
+
+                if (premul && a < 255)
+                {
+                    var inv = 255.0 / a;
+                    r = Math.Min(255.0, r * inv);
+                    g = Math.Min(255.0, g * inv);
+                    b = Math.Min(255.0, b * inv);
+                }
+
+                opaqueCount++;
+                var max = Math.Max(r, Math.Max(g, b));
+                var min = Math.Min(r, Math.Min(g, b));
+                if (max - min > 55) continue;
+
+                var lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+                if (lum >= 0.78) lightNeutral++;
+                else if (lum <= 0.14) darkNeutral++;
+            }
+        }
+
+        if (opaqueCount < 4) return IconTone.Neutral;
+        if ((double)lightNeutral / opaqueCount >= 0.75) return IconTone.LightForeground;
+        if ((double)darkNeutral / opaqueCount >= 0.80) return IconTone.DarkForeground;
+        return IconTone.Neutral;
     }
 
     internal static string NormalizeFailureKey(string filePath)

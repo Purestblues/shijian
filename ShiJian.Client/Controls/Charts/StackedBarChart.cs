@@ -53,6 +53,9 @@ public class StackedBarChart : Control
     public static readonly StyledProperty<string?> EmptyTextProperty =
         AvaloniaProperty.Register<StackedBarChart, string?>(nameof(EmptyText));
 
+    public static readonly StyledProperty<bool> IsLoadingProperty =
+        AvaloniaProperty.Register<StackedBarChart, bool>(nameof(IsLoading));
+
     /// <summary>
     /// 对比序列（如「昨日同小时」总量），与 Series 的列一一对应；
     /// 不为空时在每根柱子后面画一根淡色柱，用来读出相对高低
@@ -121,7 +124,7 @@ public class StackedBarChart : Control
     {
         AffectsRender<StackedBarChart>(SeriesProperty, LabelsProperty, ProgressProperty,
             TextBrushProperty, MutedTextBrushProperty, AxisBrushProperty, HoverBrushProperty, EmptyTextProperty,
-            CompareValuesProperty, CompareBrushProperty);
+            IsLoadingProperty, CompareValuesProperty, CompareBrushProperty);
     }
 
     public IEnumerable<ChartsDataModel>? Series
@@ -170,6 +173,12 @@ public class StackedBarChart : Control
     {
         get => GetValue(EmptyTextProperty);
         set => SetValue(EmptyTextProperty, value);
+    }
+
+    public bool IsLoading
+    {
+        get => GetValue(IsLoadingProperty);
+        set => SetValue(IsLoadingProperty, value);
     }
 
     public IEnumerable<double>? CompareValues
@@ -390,6 +399,7 @@ public class StackedBarChart : Control
 
     private void DrawEmpty(DrawingContext context, double width, double height)
     {
+        if (IsLoading) return;
         var text = MakeText(EmptyText ?? "—", 12, MutedTextBrush ?? TextBrush);
         context.DrawText(text, new Point((width - text.Width) / 2, (height - text.Height) / 2));
     }

@@ -581,12 +581,11 @@
         </ScrollViewer>
 
         <!-- 手动 / 跨源合并组编辑弹窗（N2） -->
-        <Grid Grid.Row="0" Grid.RowSpan="2"
-              Margin="-24"
-              ZIndex="20"
-              IsVisible="{Binding MergeEditorVisible}">
-            <Border Background="{DynamicResource ScrimBrush}" />
-            <Border MaxWidth="540" MaxHeight="560"
+        <base:PageModal Grid.RowSpan="2"
+                        IsOpen="{Binding MergeEditorVisible}"
+                        CloseCommand="{Binding CloseMergeEditorCommand}">
+            <Border x:Name="MergeModalRoot"
+                    MaxWidth="540" MaxHeight="560"
                     Margin="24"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center"
@@ -660,13 +659,13 @@
                                                         Background="Transparent"
                                                         BorderBrush="{DynamicResource CardBorderBrush}"
                                                         BorderThickness="1"
-                                                        Command="{Binding $parent[UserControl].((model:SettingPageViewModel)DataContext).SetMergePrimaryCommand}"
+                                                        Command="{Binding #MergeModalRoot.((model:SettingPageViewModel)DataContext).SetMergePrimaryCommand}"
                                                         CommandParameter="{Binding}" />
                                                 <Button Content="×"
                                                         Padding="4,0" FontSize="12"
                                                         Background="Transparent" BorderThickness="0"
                                                         Foreground="{DynamicResource SubTextBrush}"
-                                                        Command="{Binding $parent[UserControl].((model:SettingPageViewModel)DataContext).ToggleMergeCandidateCommand}"
+                                                        Command="{Binding #MergeModalRoot.((model:SettingPageViewModel)DataContext).ToggleMergeCandidateCommand}"
                                                         CommandParameter="{Binding}" />
                                             </StackPanel>
                                         </Border>
@@ -692,7 +691,7 @@
                                                 Background="Transparent"
                                                 BorderThickness="0"
                                                 Padding="8,6"
-                                                Command="{Binding $parent[UserControl].((model:SettingPageViewModel)DataContext).ToggleMergeCandidateCommand}"
+                                                Command="{Binding #MergeModalRoot.((model:SettingPageViewModel)DataContext).ToggleMergeCandidateCommand}"
                                                 CommandParameter="{Binding}">
                                             <Grid ColumnDefinitions="Auto,24,*,Auto" ColumnSpacing="10">
                                                 <CheckBox Grid.Column="0"
@@ -746,15 +745,16 @@
                     </Grid>
                 </Grid>
             </Border>
-        </Grid>
+        </base:PageModal>
 
         <!-- WebDAV 云端备份历史弹窗（N15.3） -->
-        <Grid Grid.RowSpan="2"
-              IsVisible="{Binding WebDavRemoteModalVisible}"
-              Background="{DynamicResource ScrimBrush}"
-              ZIndex="210">
-            <Border HorizontalAlignment="Center"
+        <base:PageModal Grid.RowSpan="2"
+                        IsOpen="{Binding WebDavRemoteModalVisible}"
+                        CloseCommand="{Binding CloseWebDavRemoteModalCommand}">
+            <Border x:Name="WebDavModalRoot"
+                    HorizontalAlignment="Center"
                     VerticalAlignment="Center"
+                    Margin="24"
                     Width="620" MaxHeight="520"
                     Background="{DynamicResource PopupBackgroundBrush}"
                     BorderBrush="{DynamicResource PopupBorderBrush}"
@@ -807,14 +807,14 @@
                                                 <Btn:Button Grid.Column="1"
                                                             Content="{DynamicResource WebDavMergeRestore}"
                                                             Padding="10,0" Height="28" FontSize="12"
-                                                            Command="{Binding $parent[UserControl].((model:SettingPageViewModel)DataContext).RestoreWebDavMergeCommand}"
+                                                            Command="{Binding #WebDavModalRoot.((model:SettingPageViewModel)DataContext).RestoreWebDavMergeCommand}"
                                                             CommandParameter="{Binding}" />
                                                 <Btn:Button Grid.Column="2"
                                                             Content="{DynamicResource WebDavReplaceRestore}"
                                                             Padding="10,0" Height="28" FontSize="12"
                                                             Background="{DynamicResource DangerBrush}"
                                                             Foreground="{DynamicResource OnBrandBrush}"
-                                                            Command="{Binding $parent[UserControl].((model:SettingPageViewModel)DataContext).RestoreWebDavReplaceCommand}"
+                                                            Command="{Binding #WebDavModalRoot.((model:SettingPageViewModel)DataContext).RestoreWebDavReplaceCommand}"
                                                             CommandParameter="{Binding}" />
                                             </Grid>
                                         </Border>
@@ -831,7 +831,7 @@
                     </Grid>
                 </Grid>
             </Border>
-        </Grid>
+        </base:PageModal>
     </Grid>
 </UserControl>
 

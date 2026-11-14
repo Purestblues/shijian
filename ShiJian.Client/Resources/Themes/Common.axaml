@@ -295,7 +295,7 @@
 
     <ControlTheme x:Key="FluentScrollBarThumb" TargetType="Thumb">
         <Setter Property="Background" Value="{DynamicResource ScrollBarBrush}" />
-        <Setter Property="Opacity" Value="0.35" />
+        <Setter Property="Opacity" Value="0.50" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Border Background="{TemplateBinding Background}"

@@ -324,6 +324,7 @@
                                                         MaxHeight="420"
                                                         Thickness="30"
                                                         Margin="0,4,14,4"
+                                                        IsLoading="{Binding IsLoading}"
                                                         Segments="{Binding DayClock.Segments}"
                                                         TickMode="{Binding DayClock.TickMode}"
                                                         RangeStart="{Binding DayClock.RangeStart}"
@@ -406,7 +407,7 @@
                                                     MaxHeight="420"
                                                     Thickness="30"
                                                     Margin="0,0,14,0"
-                                                    IsVisible="{Binding WeekClock.HasData}"
+                                                    IsLoading="{Binding IsLoading}"
                                                     Segments="{Binding WeekClock.Segments}"
                                                     TickMode="{Binding WeekClock.TickMode}"
                                                     RangeStart="{Binding WeekClock.RangeStart}"
@@ -437,7 +438,7 @@
                                                     MaxHeight="420"
                                                     Thickness="30"
                                                     Margin="0,0,14,0"
-                                                    IsVisible="{Binding MonthClock.HasData}"
+                                                    IsLoading="{Binding IsLoading}"
                                                     Segments="{Binding MonthClock.Segments}"
                                                     TickMode="{Binding MonthClock.TickMode}"
                                                     RangeStart="{Binding MonthClock.RangeStart}"
@@ -468,7 +469,7 @@
                                                     MaxHeight="420"
                                                     Thickness="30"
                                                     Margin="0,0,14,0"
-                                                    IsVisible="{Binding YearClock.HasData}"
+                                                    IsLoading="{Binding IsLoading}"
                                                     Segments="{Binding YearClock.Segments}"
                                                     TickMode="{Binding YearClock.TickMode}"
                                                     RangeStart="{Binding YearClock.RangeStart}"
@@ -507,6 +508,7 @@
                                 </StackPanel>
                             </Grid>
                             <Charts:StackedBarChart Grid.Row="1" Margin="16,6,16,8"
+                                                    IsLoading="{Binding IsLoading}"
                                                     Series="{Binding CurrentInsight.HourSeries}"
                                                     Labels="{Binding CurrentInsight.HourLabels}"
                                                     CompareValues="{Binding CurrentInsight.CompareValues}"
@@ -591,6 +593,7 @@
                                        Text="{Binding CurrentInsight.Heatmap.Caption}" />
 
                             <Charts:HeatGrid Grid.Row="2"
+                                             IsLoading="{Binding IsLoading}"
                                              Rows="{Binding CurrentInsight.Heatmap.Rows}"
                                              ColumnLabels="{Binding CurrentInsight.Heatmap.ColumnLabels}"
                                              MaxValue="{Binding CurrentInsight.Heatmap.MaxValue}"
@@ -605,8 +608,8 @@
                     </Border>
 
                     <!-- E：分类占比 -->
-                    <Border Grid.Row="2" Classes="insightCard">
-                        <StackPanel Margin="16,12,16,12">
+                    <Border Grid.Row="2" Classes="insightCard" Margin="0,0,0,6">
+                        <Grid RowDefinitions="Auto,*" Margin="16,12,16,14">
                             <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
                                 <TextBlock Classes="cardTitle" Text="{DynamicResource InsightCategoryShare}" />
                                 <TextBlock Grid.Column="1" Classes="cardCaption"
@@ -614,9 +617,11 @@
                                            Text="{Binding CurrentInsight.CategoryCaption}" />
                             </Grid>
 
-                            <Grid ColumnDefinitions="Auto,*">
+                            <Grid Grid.Row="1" ColumnDefinitions="Auto,*">
                                 <Charts:DonutChart Width="104" Height="104"
                                                    Thickness="12"
+                                                   VerticalAlignment="Center"
+                                                   IsLoading="{Binding IsLoading}"
                                                    Series="{Binding CurrentInsight.CategorySeries}"
                                                    CenterText="{Binding CurrentInsight.CategoryTotalText}"
                                                    CenterCaption="{Binding CurrentInsight.CategoryCaption}"
@@ -626,6 +631,9 @@
                                                    TrackBrush="{DynamicResource Surface3Brush}" />
 
                                 <ScrollViewer Grid.Column="1" Margin="12,0,0,0"
+                                              Padding="0,0,6,0"
+                                              MaxHeight="168"
+                                              VerticalAlignment="Center"
                                               VerticalScrollBarVisibility="Auto"
                                               HorizontalScrollBarVisibility="Disabled">
                                     <ItemsControl ItemsSource="{Binding CurrentInsight.CategorySeries}">
@@ -642,6 +650,7 @@
                                                                VerticalAlignment="Center" />
                                                     <TextBlock Grid.Column="2" FontSize="11"
                                                                FontFeatures="tnum"
+                                                               Margin="6,0,0,0"
                                                                Text="{Binding Tag}"
                                                                Foreground="{DynamicResource SubTextBrush}"
                                                                VerticalAlignment="Center" />
@@ -651,7 +660,7 @@
                                     </ItemsControl>
                                 </ScrollViewer>
                             </Grid>
-                        </StackPanel>
+                        </Grid>
                     </Border>
                 </Grid>
                 </ScrollViewer>
@@ -661,8 +670,8 @@
         <!-- 悬浮展开按钮：头部收起时悬浮在页面右上角留白处，不占用布局、不遮挡内容 -->
         <Border HorizontalAlignment="Right"
                 VerticalAlignment="Top"
-                Margin="0,4,4,0"
-                Padding="1"
+                Margin="0,6,6,0"
+                Padding="2"
                 CornerRadius="8"
                 Background="{DynamicResource CardBgBrush}"
                 BorderBrush="{DynamicResource CardBorderBrush}"
@@ -679,7 +688,8 @@
                     </DoubleTransition>
                 </Transitions>
             </Border.Transitions>
-            <Button:IconButton Width="18" Height="18" FontSize="9"
+            <Button:IconButton Width="24" Height="24" FontSize="11"
+                               Foreground="{DynamicResource DefaultTextBrush}"
                                Icon="ChevronDownMed"
                                ToolTip.Tip="{DynamicResource ExpandHeader}"
                                Command="{Binding ToggleHeaderCommand}" />
