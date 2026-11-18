@@ -1,222 +1,203 @@
+<div align="center">
+
 # 时见 ShiJian
 
-> 在你自己的电脑上，记下每一分钟花在了哪个软件、哪个网站上。
+**在你自己的电脑上，安静、清晰地记下每一分钟花在哪个软件和网站。**
 
-时见是一款**本地优先**的屏幕使用时间统计工具，支持 Windows 与 macOS。数据只落在本机 SQLite 里，不上传、不联网、不需要账号。
+简体中文 · [English](README_EN.md)
 
-界面用 .NET 10 AOT + Avalonia 12 写的，后台采集用 Rust（macOS 的监控是 Swift）。客户端只负责展示，采集与存储交给三个常驻后台进程，加起来大约 21 MB 内存。
+[![Release](https://img.shields.io/github/v/release/Purestblues/shijian?color=527CE6&label=Release)](https://github.com/Purestblues/shijian/releases)
+[![License](https://img.shields.io/github/license/Purestblues/shijian?color=5E81AC)](LICENSE)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-4C566A)
+![Stack](https://img.shields.io/badge/.NET%2010%20AOT%20%2B%20Avalonia%2012%20%2B%20Rust-527CE6)
+
+</div>
+
+---
+
+**时见（ShiJian）** 是一款**本地优先、零打扰**的桌面屏幕使用时间统计工具，支持 Windows 与 macOS。  
+所有使用记录默认**永久保存**在本地 SQLite 数据库中——不强制联网、无需账号、绝不上传隐私数据。
+
+客户端采用 **.NET 10 Native AOT + Avalonia 12** 构建，仅在打开窗口时渲染；后台采集、聚合与守护完全由轻量化 **Rust** 进程承担（macOS 采集端为 Swift），核心三进程常驻内存仅约 **21 MB**。
+
+## 界面预览
+
+> 基于 **ShiJian 2.0**（Nord 极简素雅设计语言）实机截取，提供 **Nord Snow Storm（浅色）**、**Nord Polar Night（极夜深色）** 与 **Nord Frost（北极蔚蓝）** 三套主题。
 
 <p align="center">
-  <img src="docs/screenshots/01-overview-light.png" width="49%" alt="概览页（浅色）" />
-  <img src="docs/screenshots/02-detail-clock.png" width="49%" alt="详细页（环形时钟）" />
+  <img src="docs/screenshots/01-overview-light.png" width="49%" alt="概览页 — Nord Snow Storm 浅色" />
+  <img src="docs/screenshots/04-overview-dark.png" width="49%" alt="概览页 — Nord Polar Night 深色" />
 </p>
 <p align="center">
-  <img src="docs/screenshots/03-stats-month.png" width="49%" alt="统计页（月度）" />
-  <img src="docs/screenshots/04-overview-dark.png" width="49%" alt="概览页（深色）" />
+  <img src="docs/screenshots/02-detail-clock.png" width="49%" alt="详细页 — 24 小时环形时钟与使用热力看板" />
+  <img src="docs/screenshots/03-stats-month.png" width="49%" alt="统计页 — 月度堆叠柱图与分类雷达" />
 </p>
 
-## 它能给你什么
+<details>
+<summary>查看更多页面截图（Nord Frost 蔚蓝主题、统一分类、数据备份与 WebDAV、全局搜索）</summary>
+<br />
+<p align="center">
+  <img src="docs/screenshots/08-overview-frost.png" width="49%" alt="概览页 — Nord Frost 蔚蓝主题" />
+  <img src="docs/screenshots/06-category-unified.png" width="49%" alt="分类页 — 统一分类标签与 SVG 图标" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/07-settings-data.png" width="49%" alt="设置 → 数据 — 永久保留、.shijian-backup 与 WebDAV 云同步" />
+  <img src="docs/screenshots/09-search-palette.png" width="49%" alt="全局搜索面板 (Ctrl+K)" />
+</p>
+</details>
 
-- **应用 + 网站一起算**：前台窗口的焦点切换会被逐次记录；装了浏览器扩展之后，网页访问时长按标签页真实活跃时间统计，不再靠「浏览器开着就算」。
-- **看得清「什么时候」在干什么**：详细页的环形时钟把一天 24 小时画成一圈，扇区就是真实使用时段，点一下进应用详情。
-- **能对比**：所有柱图都能叠一根「昨日 / 上一周期」的淡色柱，环比直接写在卡片上。
-- **能分类**：应用和网站都能打分类标签，概览、统计、详细三处的分类占比用同一套配色。
-- **安静**：动效可以跟随系统的「减少动画」设置一键关掉；键盘能走完整个界面。
+---
 
-## 功能
+## 核心特点
 
-### 概览
+- **软件 + 网页统一视角**：后台精确捕捉前台焦点窗口与系统睡眠状态；配合浏览器扩展（Manifest V3），按标签页真实活跃时间记录网页访问，支持在概览页一键切换「独立显示 / 并入浏览器」。
+- **24 小时环形时钟与习惯洞察**：详细页以环形表盘呈现全天/周/月/年的真实使用时段，配合使用习惯偏好、热力矩阵与分类占比，一眼看清时间流向。
+- **全站对比与环比分析**：总览指标与时段柱图支持叠加「昨日 / 上一周期」淡色对比柱，支持自定义起止日期（自动取等长上一区间作环比基准）。
+- **统一分类与开箱即用智能归类**：应用与网站共享同一套分类标签，内置 **9 个常用分类**、**32 枚 24×24 SVG 矢量图标**及常见软件/网站匹配规则，支持一键智能归类；全站图表依据 WCAG 相对亮度自适应调整对比度。
+- **子母程序自动合并**：自动识别同目录/同发行商的版本变体（如自动更新生成的不同版本号安装程序）并在榜单中折叠合并，也可手动新建或调整混合合并组，原始流水一行不改。
+- **永久记录与多端加密同步**：移除历史记录天数限制，默认永久保存；提供基于 SQLite `VACUUM INTO` 的一致性快照备份（`.shijian-backup`，含 SHA-256 校验与导入前自动回滚点）及 **WebDAV 云同步**（兼容坚果云、Nextcloud 等）。
+- **轻量、丝滑与无障碍**：基于帧同步指数阻尼的平滑滚动，支持跟随系统「减少动画」一键关闭动效；支持全键盘导航（`Ctrl+K` 全局搜索、`Esc` 返回、方向键切换图表与榜单）。
 
-- 四张总览卡：总使用时长 / 应用量 / 站点 / 网页，前两项带「比昨日」环比
-- 使用时段堆叠柱图（按分类上色），可开关「比昨日」对比柱
-- 分类占比环形图，中心是该周期总时长
-- 「最为频繁」双列榜单（应用 / 网站），带分类徽章，点徽章直接进该分类的汇总页
-- 周期支持今日 / 本周 / **自定义起止日期**（单日按小时、多日按天，对比基准取等长的上一个区间）
+---
 
-### 统计
+## 功能概览
 
-- 应用 / 网站两个维度，天 / 周 / 月 / 年四种粒度
-- 柱图点击选中后下钻到该时段明细
-- 分类雷达图、最频繁榜单
-- 网站维度有独立的一套网站分类体系
+| 模块 | 核心能力 |
+| --- | --- |
+| **概览** | 总使用时长 / 应用量 / 站点 / 网页四项指标卡（带环比）；24h 分类堆叠柱图与「比昨日」叠加对比开关；分类占比环形图；「最为频繁」双列榜单与「更多」卡片；周期支持今日 / 本周 / 自定义日期范围；支持网页时长「独立显示 / 并入浏览器」切换 |
+| **统计** | 支持天 / 周 / 月 / 年四种粒度；多行自适应分类堆叠柱图（点击柱条直接下钻该时段明细）；分类雷达图与 Top 榜单；参考线标签自动避让防重叠 |
+| **详细看板** | **环形时钟**（日=24h 会话扇区、周=7 天、月=当月天数、年=12 个月，悬停看详情、点击进实体页）；时段分布柱图；使用习惯（首末次使用、峰值、时段偏好）；使用热力图（`HeatGrid`）；响应式布局（窄屏自动收起右侧洞察栏以保证表盘直径） |
+| **分类** | 应用与网站统一分类标签管理；支持「分类 / 应用与网站」双视图、紧凑/卡片切换与按时长/名称/数量排序；内置常用规则一键「智能归类」 |
+| **全局搜索** | 随时 `Ctrl+K` 呼出浮层，支持通配符（`*`、`?`）与正则表达式搜索应用、网站和分类，支持全键盘上下选择与回车跳转 |
+| **设置与扩展** | 5 大独立分页（常规 / 外观 / 统计与规则 / 数据 / 关于）；3 套 Nord 主题 + 12 款低饱和预设色板 + 自定义主色；应用/网站正则过滤规则与子母程序合并管理；内嵌 WebUI 管理提醒插件（支持可视化规则与 Lua 脚本） |
 
-### 详细（数据看板）
-
-- **环形时钟**：圆周就是周期（日 = 24 小时、周 = 7 天、月 = 当月天数、年 = 12 个月），扇区为真实使用时段，悬停看时间与名称，点击进应用详情
-- 四张指标卡：总使用时长 / 使用应用（网站）/ 会话次数（浏览记录）/ 最长单次，前两项带环比
-- 时段分布柱图，叠「上一周期」对比
-- 使用习惯：首次 / 末次使用、峰值时段、活跃小时 · 天数 · 月份、时段偏好（凌晨 / 上午 / 下午 / 晚上）
-- 使用热力：日 = 应用 × 小时、周 = 星期 × 小时、月 = 日历热力、年 = 月 × 日
-- 分类占比环形图
-- 响应式：窗口变窄收掉右侧洞察栏，变矮收掉底部柱图，保证表盘还有直径
-
-### 其它
-
-- 分类页与分类汇总页，分类维度贯穿全站
-- 全局搜索（应用 / 网站 / 分类）
-- 主题：跟随系统 / 浅色 / 深色 / 蔚蓝，主题色可自定义
-- 界面动效开关：跟随系统 / 始终开启 / 始终关闭
-- 键盘导航：`Esc` 返回上一页；侧边栏 `Tab` 可进、上下键换项、`Enter` 激活；周期与维度切换左右键；图表获得焦点后左右键切换选项并显示焦点环
-- 空态与加载态统一：加载中显示骨架，而不是先闪一下「暂无数据」
+---
 
 ## 下载与安装
 
-到 [Releases](https://github.com/Purestblues/shijian/releases) 下载最新版：
+前往 [GitHub Releases](https://github.com/Purestblues/shijian/releases) 下载最新版本（当前正式版：`v2.0`）：
 
-| 平台 | 产物 | 说明 |
+| 平台 | 发布产物 | 说明 |
 | --- | --- | --- |
-| Windows | `ShiJian-*-Setup.exe` | 安装版，可自选目录，会注册开机自启 |
-| Windows | `ShiJian-*-win-x64.zip` | 绿色版，解压即用，需要自己 `shijian-shell install` 注册自启 |
-| macOS | `ShiJian-*-macos-arm64.dmg` | Apple Silicon；后台组件与安装脚本在 `ShiJianTools/` 里 |
+| **Windows (x64)** | `ShiJian-*-Setup.exe` | 图形化安装程序，可自定义安装目录并自动注册开机自启 |
+| **Windows (x64)** | `ShiJian-*-win-x64.zip` | 绿色便携版，解压即用；如需开机自启，可在管理员终端运行 `shijian-shell install` |
+| **macOS (Apple Silicon)** | `ShiJian-*-macos-arm64.dmg` | 包含 `.app` 与 `ShiJianTools/` 后台安装脚本（*注：CI 已验证构建通路，暂未在 macOS 实机长期实测*） |
 
-> macOS 产物目前只验证过「能构建」，没有实机跑过。Windows 是逐项实测过的。
+### 后台进程与托盘
 
-首次启动后，托盘里会出现时见的图标。后台的 `shijian-server` 与 `shijian-monitor` 由 `shijian-shell` 看门狗自动拉起并守护，**不需要也不应该手动启动**。
+首次启动后，系统托盘会出现时见图标。后台服务 `shijian-server` 与焦点监控 `shijian-monitor` 由看门狗 `shijian-shell` 自动拉起与守护，**无需也不要手动单独启动**。关闭客户端主窗口时程序会退入托盘，再次唤醒可秒开。
 
-浏览器扩展（`shijian-browser-extension/`，Manifest V3）需要手动加载：打开 `chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」，选构建产物目录。扩展通过本机 WebSocket（默认 `127.0.0.1:8908`）把网页活跃时间推给 server。
+### 浏览器扩展（网页时长统计）
 
-## 架构
+仓库内 `shijian-browser-extension/` 提供了 Manifest V3 扩展（**ShiJian Web Sentry**，支持 Chrome / Edge / Firefox / Safari）：
 
-```
-ShiJian.exe (Avalonia, .NET 10 AOT)   ← 只负责展示，随时可关
-        │ HTTP 127.0.0.1:37091
+1. 若从源码构建，先在 `shijian-browser-extension/` 下执行 `npm ci && npm run build`（或直接选用其构建产物目录 `dist/chrome`）。
+2. 在浏览器打开 `chrome://extensions`（或 Edge `edge://extensions`）→ 开启**开发者模式** → 点击**加载已解压的扩展程序**，选择 `dist/chrome` 目录。
+3. 扩展通过本地 WebSocket（默认 `127.0.0.1:8908`）将标签页活跃时间实时推送给 `shijian-server`。
+
+---
+
+## 架构与资源占用
+
+### 进程架构
+
+```text
+ShiJian.exe (.NET 10 AOT + Avalonia 12)   ← 纯桌面 UI，随开随关
+        │ HTTP  http://127.0.0.1:37091
         ▼
-shijian-server (Rust)                 ← 计时、汇总、写 SQLite
-        ▲ 命名管道                ▲ WebSocket 8908
-        │                         │
-shijian-monitor (Rust/Swift)   浏览器扩展 (ShiJian Web Sentry)
-  焦点切换 / 睡眠监控
+shijian-server (Rust · Axum + SQLite)     ← 计时聚合、备份、WebDAV 同步、托管 WebUI
+        ▲ 命名管道 / IPC            ▲ WebSocket :8908
+        │                           │
+shijian-monitor (Rust / Swift)   浏览器扩展 (ShiJian Web Sentry)
+  窗口焦点与睡眠监控                 网页标签活跃时长采集
         ▲
-        │ 由它拉起并守护上面两个
-shijian-shell (Rust)                  ← 托盘 + 看门狗
+        │ 拉起并守护（含内置插件进程）
+shijian-shell (Rust)                      ← 系统托盘 + 看门狗
 ```
 
-| 组件 | 语言 | 职责 |
+### 仓库模块
+
+| 目录 / 组件 | 技术栈 | 职责 |
 | --- | --- | --- |
-| `ShiJian.Client` | C# / Avalonia | 客户端界面，307 个 `.cs`、67 个 `.axaml` |
-| `shijian-server` | Rust | 数据访问接口，接收计时数据并写入 SQLite |
-| `shijian-monitor` | Rust（Windows）/ Swift（macOS） | 监控应用睡眠与焦点切换，走命名管道与 server 通讯 |
-| `shijian-shell` | Rust | 创建托盘，拉起并守护 server 与 monitor，做到客户端随用随关 |
-| `shijian-browser-extension` | TypeScript | 网页活跃时长采集 |
-| `shijian-webui` | Svelte + Vite | 浏览器扩展的弹窗界面 |
-| `shijian-plugin-sdk` / `shijian-plugins` | Rust | 插件系统与内置插件（提醒等） |
-| `shijian-installer` | Rust | Windows 安装器与 macOS DMG 打包 |
-| `ShiJian.Tests` | xunit v3 + Avalonia.Headless | 79 个用例，CI 里先跑测试再打包 |
+| [`ShiJian.Client`](ShiJian.Client) | C# / .NET 10 AOT / Avalonia 12.1.1 | 跨平台桌面客户端界面（316 个 `.cs`、68 个 `.axaml`） |
+| [`shijian-server`](shijian-server) | Rust / Axum / SQLx (SQLite) | 数据采集聚合、REST API、`.shijian-backup` 快照与 WebDAV 同步 |
+| [`shijian-monitor-windows`](shijian-monitor-windows) / [`shijian-monitor-macos`](shijian-monitor-macos) | Rust (Win32) / Swift (macOS) | 监听前台窗口切换、应用发布者信息与系统休眠事件 |
+| [`shijian-shell`](shijian-shell) | Rust | 托盘图标、看门狗守护及插件生命周期管理 |
+| [`shijian-browser-extension`](shijian-browser-extension) | TypeScript / esbuild | 浏览器扩展（Chrome / Firefox / Safari） |
+| [`shijian-webui`](shijian-webui) | Svelte 5 / Vite 6 | 浏览器中或内置访问的插件配置管理面板 |
+| [`shijian-plugins`](shijian-plugins) / [`shijian-plugin-sdk`](shijian-plugin-sdk) | Rust | 插件 SDK 与内置「使用时长提醒」插件（可视化规则 + Lua） |
+| [`shijian-installer`](shijian-installer) | Rust / tao + wry | Windows GUI 安装器与 macOS DMG 打包脚本 |
+| [`ShiJian.Tests`](ShiJian.Tests) | xunit v3 + Avalonia.Headless | 202 个自动化单元测试与无头 UI 回归测试 |
 
-## 资源占用
+### 后台内存占用实测
 
-三个后台进程常驻合计约 21 MB（工作集口径，Windows 11 / 8 核，2026-11-12 实测）：
+Windows 11（8 逻辑核）静默后台采集状态下实测（WorkingSet64，2026-11-18）：核心三进程合计 **21.0 MB**（含可选提醒插件共 **23.6 MB**）：
 
-![后台内存占用](docs/screenshots/05-backend-memory.png)
+![后台内存占用实测](docs/screenshots/05-backend-memory.png)
 
-客户端 `ShiJian.exe` 单独计，关掉窗口不会退出（常驻托盘，从托盘唤醒是秒开）。
+---
 
-## 常见问题
+## 从源码构建与测试
 
-### 客户端提示「无法连接到服务端」
+### 环境依赖
 
-本质是后台进程没在运行。正常情况下 server 与 monitor 由 `shijian-shell` 自动拉起并守护，**只需确保 `shijian-shell` 在运行即可**。
+- [.NET 10 SDK](https://dotnet.microsoft.com/)
+- [Rust 工具链](https://rustup.rs/)（Windows 上需要 VS Build Tools / MSVC 链接器；macOS 监控端需 Swift）
+- [Node.js 22+](https://nodejs.org/)（仅构建 `shijian-webui`、浏览器扩展或插件 UI 时需要）
 
-若 server 自身异常（端口被占用、数据库损坏）导致启动即退出，看门狗虽会自动重试（间隔 5 秒起、退避至最长 30 秒），但服务始终不可用，此时应从 server 日志定位根因。
-
-- **开机自启失效**：Windows 检查任务计划中 **ShiJianShell** 任务的路径是否与安装目录一致；Setup 安装器与绿色版均可用管理员终端 `shijian-shell install` 补注册。macOS 运行 `/Applications/ShiJianTools/install-launchagent.sh`
-- **端口占用**：server 默认占 `127.0.0.1:37091`，浏览器扩展 WebSocket 占 `8908`。若 37091 被占用，可设置环境变量 `SHIJIAN_SERVER` 换端口（如 `http://127.0.0.1:37100`，客户端与 server 均读取该变量）
-- **日志位置**：按 `shijian-server.YYYY-MM-DD.log` 按天滚动。macOS 在 `~/Library/Logs/ShiJian/`；Windows 绿色版在程序目录的 `Logs\`（该目录不可写时不落盘，只输出到标准流）。插件与 shell 日志在同一目录，可用 `SHIJIAN_LOG_DIR` 覆盖
-
-## 从源码构建
-
-需要 .NET 10 SDK；后台组件与安装器需要 Rust 工具链，Windows 上还需要 MSVC 链接器（VS Build Tools）。macOS 的 monitor 需要 Swift。
+### 常用开发命令
 
 ```powershell
-# 客户端（调试版）
-.\script\dev-run.ps1              # 编译并启动
-.\script\dev-run.ps1 -NoBuild     # 跳过编译直接启动
-
-# 测试
+# 1. 运行测试（202 个用例）
 dotnet test ShiJian.Tests/ShiJian.Tests.csproj -c Release
 
-# 后台组件（每个 crate 独立，没有根 workspace）
+# 2. 本地一键调试预览客户端
+.\script\dev-run.ps1 -ClientOnly     # 快速构建调试版客户端并连接本机已有服务端
+.\script\dev-run.ps1                 # 连同本地 shijian-server 一起编译拉起（会临时替换安装版后台）
+.\script\dev-run.ps1 -Stop           # 停止调试环境并恢复安装版服务
+
+# 3. 单独构建 Rust 后台组件（各 crate 独立）
 cd shijian-server && cargo build --release
 cd ../shijian-monitor-windows && cargo build --release
 cd ../shijian-shell && cargo build --release
 ```
 
-- 开发运行时的数据目录是 `ShiJian.Client\bin\Debug\net10.0\`；图标目录为空时脚本会从安装目录（默认 `C:/Program Files/ShiJian`）复制 `Data/AppIcons` 与 `WebFavicons`，安装位置不同用 `-InstallDir` 指定
-- 调试版直接连本机已在运行的 `shijian-server`（`127.0.0.1:37091`），不需要另起后端
-- DEBUG 构建没有单实例锁，可与安装版同时运行；Release 构建有互斥锁，不能与安装版共存
+> **提示**：Debug 版客户端默认没有单实例互斥锁，可与正式安装版共存调试；运行 `dev-run.ps1` 时若调试目录图标为空，脚本会自动从默认安装目录复制 `Data/AppIcons` 与 `WebFavicons`（安装路径不同可通过 `-InstallDir` 指定）。
 
-### 发版
+---
 
-两个脚本都在 `script/` 下，需要 Windows PowerShell 5.1 及以上。
+## 常见问题
 
-| 脚本 | 用途 |
-| --- | --- |
-| `script/prepare-release.ps1` | 按上一个 tag 自动递增版本号 + 用区间提交生成 release notes 草稿 |
-| `script/release.ps1` | 一条命令打 tag 并触发 GitHub Actions 发 Release（版本号可省略，自动递增） |
+<details>
+<summary><strong>1. 客户端提示「无法连接到服务端」怎么办？</strong></summary>
 
-```powershell
-.\script\prepare-release.ps1            # 算出版本号 + 生成 notes 草稿到 .tmp/
-.\script\prepare-release.ps1 -Apply     # 确认后的草稿写进 release_notes.txt
-.\script\release.ps1 -DryRun            # 只预检，打印将执行的命令
-.\script\release.ps1 -Commit -Watch     # 发版并等待构建完成
-```
+`shijian-server` 与 `shijian-monitor` 由 `shijian-shell` 自动拉起并看门狗守护，请先确认系统托盘中 `shijian-shell` 正在运行。
 
-预检会拦下这些情况：不在 `main` 分支、工作区不干净（除非加 `-Commit`）、tag 已存在、Release 已存在。
+- **开机自启异常**：Windows 可检查任务计划程序中的 `ShiJianShell` 任务路径是否与当前目录一致，或用管理员终端执行 `shijian-shell install` 重新注册；macOS 可运行 `/Applications/ShiJianTools/install-launchagent.sh`。
+- **端口冲突**：服务端默认监听 `127.0.0.1:37091`，浏览器扩展 WebSocket 监听 `8908`。若 `37091` 被占用，可设置环境变量 `SHIJIAN_SERVER`（例如 `http://127.0.0.1:37100`，客户端与服务端均会读取）。
+- **查看日志**：日志按 `shijian-server.YYYY-MM-DD.log` 按天滚动，macOS 位于 `~/Library/Logs/ShiJian/`，Windows 位于程序目录的 `Logs\` 下（可用 `SHIJIAN_LOG_DIR` 覆盖）。
 
-> ⚠️ 在 fork 上 `git push` 一个 tag **不会**触发 Actions，脚本内部改用
-> `gh workflow run release.yml --ref <tag>`；`--ref` 必须指向 tag，`github.ref` 才是 `refs/tags/...`，
-> workflow 里的 release job 才会执行并上传产物。
+</details>
 
-> 本地打不出 `Setup.exe`：安装器（cargo）与客户端 AOT 发布都需要 MSVC 链接器，
-> 因此发版统一走 GitHub Actions 的 windows-latest / macos-latest。
+<details>
+<summary><strong>2. 如何备份或在不同电脑间同步数据？</strong></summary>
 
-## 数据兼容
+进入 **设置 → 数据**：
+- **本地快照备份**：点击「导出备份」生成 `.shijian-backup` 归档包（含 SQLite `VACUUM INTO` 事务一致性快照、图标资源与 SHA-256 校验清单）。恢复时支持**合并（Merge）**与**全量覆盖（Replace）**，并在导入前自动生成本地安全回滚点。
+- **WebDAV 云同步**：填写坚果云、Nextcloud 等标准 WebDAV 地址与应用密码，支持连接测试、手动同步、按启动/每小时/每天自动同步以及跨设备增量合并。
 
-- 1.2.0 前支持 Tai 最新版本的 db 文件，1.2.0 及后的新版本暂不确定；当前程序对旧版数据有较完整的迁移步骤，理论上支持
-- 迁移前请备份 db 文件
+</details>
 
-## 关于这个 fork
+<details>
+<summary><strong>3. 关于项目起源与从 Taix 改名为 ShiJian 的迁移说明</strong></summary>
 
-本仓库是 [NLick47/Taix](https://github.com/NLick47/Taix) 的个人 fork（上游 [Tai](https://github.com/Planshit/Tai) 的 .NET 10 + Avalonia + Rust 全面迁移）。2026-11 起改名为**时见 / ShiJian**，并**停止同步上游**：基线仍是上游 v1.3.4，之后不再 rebase，`LICENSE` 与上游署名照旧保留。
+- **项目起源**：本仓库最早 fork 自 [NLick47/Taix](https://github.com/NLick47/Taix)（上游 [Tai](https://github.com/Planshit/Tai) 的 .NET + Avalonia + Rust 跨平台重构版）。自 2026-11 起项目更名为**时见（ShiJian）**，在完成实体模型统一、N14 Nord 设计语言全面重构与 2.0 正式版发布后，已作为独立项目演进并停止同步上游。
+- **旧版数据迁移**：从 `Taix` 升级至 `ShiJian` 时，Windows Setup 安装器会自动迁移旧安装目录的 `Data/` 并清理旧自启任务；macOS 服务端启动时会自动将 `~/Library/Application Support/Taix` 缺失条目补全至 `ShiJian`。环境变量已由 `TAIX_SERVER` / `TAIX_LOG_DIR` 更名为 `SHIJIAN_SERVER` / `SHIJIAN_LOG_DIR`。
 
-改动集中在客户端。相对上游 v1.3.4，目前已有的变化：
+</details>
 
-- **概览页重做**：总览卡（带比昨日 / 比上周）、使用时段堆叠柱图、分类占比环形图，图表区可在应用 / 网站之间切换
-- **周期支持自定义起止日期**，对比基准取等长的上一个区间
-- **分类维度贯穿全站**：榜单 / 卡片显示分类徽章，点徽章进该分类汇总
-- **时段对比**：24 小时柱图叠加「昨日同小时」淡色柱，可开关
-- **详细页改用环形时钟**，去掉原来的多轨泳道；新增指标卡、时段分布、使用习惯、使用热力、分类占比组成的看板，窄窗口自动收起右侧栏
-- **图表配色统一**：改按 WCAG 相对亮度算对比度（目标 3:1），深色主题下不再偏暗；「未分类」跟随主题色
-- **视觉体系 v1**：8px 圆角 + 1px 发丝边 + 零阴影，明暗两套色板重做，主题色默认改为紫
-- **动效 v2**：页面淡入、总览卡错峰、图表生长、数字滚动、展开收起高度动画；动效开关跟随系统的「减少动画」偏好
-- **键盘导航**：`Esc` 返回、侧边栏与图表的方向键切换、榜单方向键选中 + `Enter` 进详情
-- **空态与加载态统一**（骨架屏），颜色跟随主题
-- **窗口修复**：双击标题栏最大化 / 还原、窗口最外缘可拖拽缩放、不再把满屏尺寸当成正常尺寸保存
-- **图标修复**：客户端改在 `<exe>\Data\AppIcons` 查找；0 字节 / 解码失败的网站图标降级为域名首字母色块；修复图标缓存淘汰释放仍在渲染的位图导致的闪退
-- **性能**：首屏请求从 16 个降到 10 个，`AppChanged` 事件去抖 100ms → 500ms
+---
 
-已知问题与后续计划见 [`docs/ROADMAP.md`](docs/ROADMAP.md)，设计与动效的目标与差距见 [`docs/DESIGN-SP-ALIGN.md`](docs/DESIGN-SP-ALIGN.md)。
+## 开源许可
 
-## 改名说明
-
-2026-11 起本项目由 **Taix** 改名为**时见 / ShiJian**：产品显示名为「时见」，英文界面显示 ShiJian，代码标识统一为 `ShiJian` / `shijian-*`。只碰标识，不动业务逻辑。
-
-| 项目 | 旧 | 新 |
-| --- | --- | --- |
-| 程序 / 目录 / crate | `Taix`、`taix-*` | `ShiJian`、`shijian-*` |
-| 安装目录（Windows） | `…\Taix` | `…\ShiJian`（Setup 仍可自选） |
-| 数据目录（macOS） | `~/Library/Application Support/Taix` | `~/Library/Application Support/ShiJian` |
-| 计划任务 / LaunchAgent | `TaixShell` / `com.taix.shell` | `ShiJianShell` / `com.shijian.shell` |
-| 环境变量 | `TAIX_SERVER` / `TAIX_LOG_DIR` | `SHIJIAN_SERVER` / `SHIJIAN_LOG_DIR` |
-| 浏览器扩展 | Taix Web Sentry | ShiJian Web Sentry（需重新「加载已解压的扩展」，扩展 ID 会变） |
-| 端口 | 37091（HTTP）/ 8908（WS） | 不变 |
-
-**数据不会丢**：
-
-- macOS：server 启动时把 `Application Support/Taix` 里缺失的条目补进 `ShiJian`（只补不覆盖），旧目录原地保留
-- Windows：Setup 安装前会停掉旧进程、摘掉旧自启动项，并把旧安装目录的 `Data/` 合并进新目录；旧安装目录本身不删，确认新版本正常后可手动清理
-- 旧的任务计划 / 注册表自启动项会一并清掉，不会出现新旧两份同时采集
-
-## 许可
-
-沿用上游 [LICENSE](LICENSE)，署名与版权声明照旧保留。
+本项目沿用并保留上游 [MIT License](LICENSE)。
