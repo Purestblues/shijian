@@ -29,10 +29,22 @@ public class RadarChart : Control
             o => o.Labels,
             (o, v) => o.Labels = v);
 
+    public static readonly DirectProperty<RadarChart, List<double>> CompareValuesProperty =
+        AvaloniaProperty.RegisterDirect<RadarChart, List<double>>(
+            nameof(CompareValues),
+            o => o.CompareValues,
+            (o, v) => o.CompareValues = v);
+
     private List<string> _labels = new();
     private double _maxValue = 100; // 保留默认值100
 
     private List<double> _values = new();
+    private List<double> _compareValues = new();
+
+    static RadarChart()
+    {
+        AffectsRender<RadarChart>(MaxValueProperty, ValuesProperty, LabelsProperty, CompareValuesProperty);
+    }
 
     public double MaxValue
     {
@@ -44,6 +56,12 @@ public class RadarChart : Control
     {
         get => _values;
         set => SetAndRaise(ValuesProperty, ref _values, value);
+    }
+
+    public List<double> CompareValues
+    {
+        get => _compareValues;
+        set => SetAndRaise(CompareValuesProperty, ref _compareValues, value);
     }
 
     public List<string> Labels
@@ -62,6 +80,8 @@ public class RadarChart : Control
         var radius = Math.Min(Bounds.Width, Bounds.Height) / 2 * 0.7;
 
         DrawGrid(context, center, radius);
+
+        DrawComparePolygon(context, center, radius);
 
         DrawDataPolygon(context, center, radius);
 
@@ -187,20 +207,55 @@ public class RadarChart : Control
         }
     }
 
-    private void DrawDataPolygon(DrawingContext context, Point center, double radius)
+    private static Color ExtractColor(IBrush brush, Color fallback) =>
+        brush is ISolidColorBrush solid ? solid.Color : fallback;
+
+    private List<Point> BuildPolygonPoints(IReadOnlyList<double> series, Point center, double radius)
     {
-        var points = new List<Point>();
-        for (var i = 0; i < Values.Count; i++)
+        var max = MaxValue > 0 ? MaxValue : 1;
+        var points = new List<Point>(series.Count);
+        for (var i = 0; i < series.Count; i++)
         {
-            var value = Values[i] / MaxValue;
-            value = value == 1 ? 0.97 : value;
+            var ratio = Math.Clamp(series[i] / max, 0, 1);
+            var value = Math.Abs(ratio - 1) < 1e-6 ? 0.97 : ratio;
             var r = radius * value;
-            var angle = 2 * Math.PI * i / Values.Count - Math.PI / 2;
+            var angle = 2 * Math.PI * i / series.Count - Math.PI / 2;
 
             points.Add(new Point(
                 center.X + r * Math.Cos(angle),
                 center.Y + r * Math.Sin(angle)));
         }
+        return points;
+    }
+
+    private void DrawComparePolygon(DrawingContext context, Point center, double radius)
+    {
+        if (CompareValues == null || CompareValues.Count != Values.Count || MaxValue <= 0) return;
+        var hasAny = false;
+        foreach (var v in CompareValues)
+        {
+            if (v > 0) { hasAny = true; break; }
+        }
+        if (!hasAny) return;
+
+        var points = BuildPolygonPoints(CompareValues, center, radius);
+        var muted = ExtractColor(ResolveBrush("SubTextBrush", "#5F6E82"), Color.Parse("#5F6E82"));
+        var fillBrush = new SolidColorBrush(Color.FromArgb(24, muted.R, muted.G, muted.B));
+        var strokePen = new Pen(
+            new SolidColorBrush(Color.FromArgb(148, muted.R, muted.G, muted.B)),
+            1.4,
+            new DashStyle([4, 3], 0));
+
+        context.DrawGeometry(fillBrush, strokePen, new PolylineGeometry(points, true));
+
+        var vertexFill = new SolidColorBrush(Color.FromArgb(165, muted.R, muted.G, muted.B));
+        foreach (var pt in points)
+            context.DrawEllipse(vertexFill, null, pt, 2.2, 2.2);
+    }
+
+    private void DrawDataPolygon(DrawingContext context, Point center, double radius)
+    {
+        var points = BuildPolygonPoints(Values, center, radius);
 
         var accent = ResolveAccentColor();
         var ramp = ChartColorHelper.BuildRamp(accent);
@@ -229,19 +284,9 @@ public class RadarChart : Control
         );
 
         // 绘制顶点圆形
-        for (var i = 0; i < Values.Count; i++)
-        {
-            var value = Values[i] / MaxValue;
-            value = value == 1 ? 0.97 : value;
-            var r = radius * value;
-            var angle = 2 * Math.PI * i / Values.Count - Math.PI / 2;
-
-            var point = new Point(
-                center.X + r * Math.Cos(angle),
-                center.Y + r * Math.Sin(angle));
-
+        var points = BuildPolygonPoints(Values, center, radius);
+        foreach (var point in points)
             context.DrawEllipse(centerBrush, vertexOutline, point, 3.5, 3.5);
-        }
     }
 
 

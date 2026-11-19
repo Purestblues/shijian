@@ -172,17 +172,10 @@
                     <TextBlock Text="{DynamicResource SortOrder}" FontSize="12"
                                Foreground="{DynamicResource SubTextBrush}"
                                VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <select:TabSwitch Margin="0,0,16,0" VerticalAlignment="Center"
+                    <select:TabSwitch VerticalAlignment="Center"
                                    ToolTip.Tip="{DynamicResource SortOrder}"
                                    IsShowIcon="False" SelectedItem="{Binding SortMode,Mode=TwoWay}"
                                    Options="{Binding SortOptions}" />
-                    <TextBlock Text="{DynamicResource ViewMode}" FontSize="12"
-                               Foreground="{DynamicResource SubTextBrush}"
-                               VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <select:TabSwitch VerticalAlignment="Center"
-                                   ToolTip.Tip="{DynamicResource ViewMode}"
-                                   IsShowIcon="False" SelectedItem="{Binding ViewMode,Mode=TwoWay}"
-                                   Options="{Binding ViewModeOptions}" />
                 </StackPanel>
             </StackPanel>
 
@@ -197,7 +190,7 @@
 
                     <ListBox Margin="10,12,10,0" ItemsSource="{Binding ActiveAppCategories}"
                              IsVisible="{Binding HasActiveAppCategories}"
-                             Classes="categoryList" Classes.card="{Binding IsCardView}"
+                             Classes="categoryList"
                              SelectedItem="{Binding SelectedAppCategoryItem,Mode=TwoWay}"
                              PointerPressed="OnAppCategoryListBoxPointerPressed"
                              behaviors:KeyboardListActivation.EnterCommand="{Binding GotoListCommand}"
@@ -214,11 +207,8 @@
                                 <MenuItem Header="{DynamicResource ViewCategorySummary}"
                                           Command="{Binding GotoListCommand}"
                                           CommandParameter="{Binding SelectedAppCategoryItem}" />
-                                <MenuItem Header="{DynamicResource ViewCategoryAppList}"
-                                          Command="{Binding GotoAppListCommand}"
-                                          CommandParameter="{Binding SelectedAppCategoryItem}" />
-                                <MenuItem Header="{DynamicResource ViewWebsiteList}"
-                                          Command="{Binding GotoWebListCommand}"
+                                <MenuItem Header="{DynamicResource ManageCategoryMembers}"
+                                          Command="{Binding GotoMembersCommand}"
                                           CommandParameter="{Binding SelectedAppCategoryItem}" />
                                 <Separator />
                                 <MenuItem Header="{DynamicResource Edit}" Command="{Binding EditCommand}"
@@ -331,7 +321,7 @@
 
                         <Border x:Name="EmptyAppCategoriesHost" IsVisible="False" Height="0" Opacity="1">
                             <ListBox Margin="0,6,0,0" ItemsSource="{Binding EmptyAppCategories}"
-                                     Classes="categoryList" Classes.card="{Binding IsCardView}"
+                                     Classes="categoryList"
                                      SelectedItem="{Binding SelectedAppCategoryItem,Mode=TwoWay}"
                                      PointerPressed="OnAppCategoryListBoxPointerPressed"
                                      behaviors:KeyboardListActivation.EnterCommand="{Binding GotoListCommand}"
@@ -348,11 +338,8 @@
                                         <MenuItem Header="{DynamicResource ViewCategorySummary}"
                                                   Command="{Binding GotoListCommand}"
                                                   CommandParameter="{Binding SelectedAppCategoryItem}" />
-                                        <MenuItem Header="{DynamicResource ViewCategoryAppList}"
-                                                  Command="{Binding GotoAppListCommand}"
-                                                  CommandParameter="{Binding SelectedAppCategoryItem}" />
-                                        <MenuItem Header="{DynamicResource ViewWebsiteList}"
-                                                  Command="{Binding GotoWebListCommand}"
+                                        <MenuItem Header="{DynamicResource ManageCategoryMembers}"
+                                                  Command="{Binding GotoMembersCommand}"
                                                   CommandParameter="{Binding SelectedAppCategoryItem}" />
                                         <Separator />
                                         <MenuItem Header="{DynamicResource Edit}" Command="{Binding EditCommand}"

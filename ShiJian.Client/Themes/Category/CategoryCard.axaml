@@ -53,51 +53,59 @@
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="{TemplateBinding CornerRadius}"
                         Padding="{TemplateBinding Padding}">
-                    <Grid RowDefinitions="Auto,*,Auto">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <Grid Width="28" Height="28" VerticalAlignment="Top">
-                                <Border CornerRadius="{StaticResource RadiusSmall}" Background="{DynamicResource Surface3Brush}">
-                                    <base:Img Radius="6" Width="22" Height="22" DecodeWidth="22"
-                                              URL="{Binding IconFile}"
-                                              Foreground="{Binding DisplayColor, Converter={StaticResource HextoColorConverter}}"
-                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <base:View Value="{Binding IsMatchFlag}">
-                                    <Ellipse Width="7" Height="7" Fill="{DynamicResource ThemeBrush}"
-                                             HorizontalAlignment="Right" VerticalAlignment="Top"
-                                             Margin="0,-2,-2,0"
-                                             ToolTip.Tip="{Binding MatchTip}" />
-                                </base:View>
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Border Grid.Column="0"
+                                Width="3"
+                                CornerRadius="1.5"
+                                Margin="0,1,10,1"
+                                Background="{Binding DisplayColor, Converter={StaticResource HextoColorConverter}}" />
+                        <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid Width="28" Height="28" VerticalAlignment="Top">
+                                    <Border CornerRadius="{StaticResource RadiusSmall}"
+                                            Background="{Binding AccentTintColor, Converter={StaticResource HextoColorConverter}}">
+                                        <base:Img Radius="6" Width="22" Height="22" DecodeWidth="22"
+                                                  URL="{Binding IconFile}"
+                                                  Foreground="{Binding DisplayColor, Converter={StaticResource HextoColorConverter}}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <base:View Value="{Binding IsMatchFlag}">
+                                        <Ellipse Width="7" Height="7" Fill="{DynamicResource ThemeBrush}"
+                                                 HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                 Margin="0,-2,-2,0"
+                                                 ToolTip.Tip="{Binding MatchTip}" />
+                                    </base:View>
+                                </Grid>
+
+                                <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource StandardTextBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding CountText}" FontSize="11" Margin="0,2,0,0"
+                                               FontFeatures="tnum"
+                                               Foreground="{DynamicResource SubTextBrush}" />
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" Text="{Binding DurationText}"
+                                           FontSize="14" FontWeight="SemiBold"
+                                           FontFeatures="tnum"
+                                           Foreground="{DynamicResource StandardTextBrush}"
+                                           VerticalAlignment="Center" />
                             </Grid>
 
-                            <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource StandardTextBrush}"
-                                           TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding CountText}" FontSize="11" Margin="0,2,0,0"
+                            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" VerticalAlignment="Bottom"
+                                  IsVisible="{Binding HasDuration}">
+                                <Border Height="3" CornerRadius="1.5"
+                                        Background="{DynamicResource DividerSubtleBrush}"
+                                        VerticalAlignment="Center">
+                                    <base:RatioBar Height="3" CornerRadius="1.5" MinWidth="3"
+                                                   Ratio="{Binding Ratio}"
+                                                   BarBrush="{Binding DisplayColor,Converter={StaticResource HextoColorConverter}}" />
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="{Binding RatioText}" FontSize="11" Margin="6,0,0,0"
                                            FontFeatures="tnum"
-                                           Foreground="{DynamicResource SubTextBrush}" />
-                            </StackPanel>
-
-                            <TextBlock Grid.Column="2" Text="{Binding DurationText}"
-                                       FontSize="14" FontWeight="SemiBold"
-                                       FontFeatures="tnum"
-                                       Foreground="{DynamicResource StandardTextBrush}"
-                                       VerticalAlignment="Center" />
-                        </Grid>
-
-                        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" VerticalAlignment="Bottom"
-                              IsVisible="{Binding HasDuration}">
-                            <Border Height="3" CornerRadius="1.5"
-                                    Background="{DynamicResource DividerSubtleBrush}"
-                                    VerticalAlignment="Center">
-                                <base:RatioBar Height="3" CornerRadius="1.5" MinWidth="3"
-                                               Ratio="{Binding Ratio}"
-                                               BarBrush="{Binding DisplayColor,Converter={StaticResource HextoColorConverter}}" />
-                            </Border>
-                            <TextBlock Grid.Column="1" Text="{Binding RatioText}" FontSize="11" Margin="6,0,0,0"
-                                       FontFeatures="tnum"
-                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                           Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                            </Grid>
                         </Grid>
                     </Grid>
                 </Border>
@@ -120,7 +128,7 @@
                         <Grid RowDefinitions="Auto,Auto,*,Auto">
                             <Grid ColumnDefinitions="*,Auto">
                                 <Grid Width="40" Height="40" HorizontalAlignment="Left">
-                                    <Border CornerRadius="{StaticResource RadiusMedium}" Background="{DynamicResource Surface3Brush}">
+                                    <Border CornerRadius="{StaticResource RadiusMedium}" Background="{Binding AccentTintColor, Converter={StaticResource HextoColorConverter}}">
                                         <base:Img Radius="6" Width="30" Height="30" DecodeWidth="30"
                                                   URL="{Binding IconFile}"
                                                   Foreground="{Binding DisplayColor, Converter={StaticResource HextoColorConverter}}"

@@ -39,18 +39,57 @@
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         </Style>
+        <Style Selector="Border.statCard.clickable">
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style Selector="Border.statCard.clickable:pointerover">
+            <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
+        </Style>
     </UserControl.Styles>
 
     <!-- 滚动由 PageContainer 模板里的 ScrollViewer 提供，这里不要再套一层 -->
     <StackPanel x:Name="PageRoot" Margin="24,10,24,64">
 
-            <!-- ═══ 头部：标题 + 周期切换 ═══ -->
+            <!-- ═══ 头部：标题 + 周期翻页 + 周期切换 ═══ -->
             <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,16">
                 <TextBlock Grid.Column="0" Text="{DynamicResource SideOverview}"
                            FontSize="18"
                            VerticalAlignment="Center" />
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                    <Border Background="{DynamicResource Surface3Brush}"
+                            BorderBrush="{DynamicResource CardBorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusMedium}"
+                            Padding="3"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Classes="subtle"
+                                    Width="26" Height="26" Padding="0"
+                                    ToolTip.Tip="{DynamicResource PreviousPeriod}"
+                                    AutomationProperties.Name="{DynamicResource PreviousPeriod}"
+                                    Command="{Binding PreviousPeriodCommand}">
+                                <base:Icon IconType="ChevronLeft" FontSize="11"
+                                           Foreground="{DynamicResource DefaultTextBrush}" />
+                            </Button>
+                            <TextBlock Text="{Binding PeriodLabel}"
+                                       FontSize="12"
+                                       FontFeatures="tnum"
+                                       VerticalAlignment="Center"
+                                       Margin="6,0"
+                                       Foreground="{DynamicResource DefaultTextBrush}" />
+                            <Button Classes="subtle"
+                                    Width="26" Height="26" Padding="0"
+                                    ToolTip.Tip="{DynamicResource NextPeriod}"
+                                    AutomationProperties.Name="{DynamicResource NextPeriod}"
+                                    IsEnabled="{Binding CanPageForward}"
+                                    Command="{Binding NextPeriodCommand}">
+                                <base:Icon IconType="ChevronRight" FontSize="11"
+                                           Foreground="{DynamicResource DefaultTextBrush}" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
                     <select:TabSwitch IsShowIcon="False"
                                       VerticalAlignment="Center"
                                       SelectedItem="{Binding WebMergeOption,Mode=TwoWay}"
@@ -91,15 +130,22 @@
             <!-- ═══ 总览卡片 ═══ -->
             <Grid x:Name="StatCardsPanel" ColumnDefinitions="*,10,*,10,*,10,*">
 
-                <!-- 总使用时长 -->
-                <Border Grid.Column="0" Classes="statCard">
+                <!-- 总使用时长（点击进入全部应用+网站时长排行） -->
+                <Border Grid.Column="0" Classes="statCard clickable"
+                        Tag="all"
+                        PointerReleased="OnClickableStatCardPointerReleased">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <base:Icon IconType="Stopwatch" FontSize="12"
-                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
-                            <TextBlock Classes="cardCaption" Text="{DynamicResource CategoryTotalUsage}"
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <base:Icon IconType="Stopwatch" FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                <TextBlock Classes="cardCaption" Text="{DynamicResource CategoryTotalUsage}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <base:Icon Grid.Column="1" IconType="ChevronRight" FontSize="10"
+                                       Foreground="{DynamicResource SubTextBrush}" Opacity="0.65"
                                        VerticalAlignment="Center" />
-                        </StackPanel>
+                        </Grid>
                         <base:CountUpText Classes="statValue" Kind="Duration" Value="{Binding TotalTime}" Margin="0,6,0,0" />
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,3,0,0">
                             <TextBlock Classes="cardCaption" Text="{Binding CompareCaption}"
@@ -110,15 +156,22 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 应用量 -->
-                <Border Grid.Column="2" Classes="statCard">
+                <!-- 应用量（点击进入全部应用时长排行） -->
+                <Border Grid.Column="2" Classes="statCard clickable"
+                        Tag="apps"
+                        PointerReleased="OnClickableStatCardPointerReleased">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <base:Icon IconType="Apps" FontSize="12"
-                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
-                            <TextBlock Classes="cardCaption" Text="{DynamicResource Usage}"
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <base:Icon IconType="Apps" FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                <TextBlock Classes="cardCaption" Text="{DynamicResource Usage}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <base:Icon Grid.Column="1" IconType="ChevronRight" FontSize="10"
+                                       Foreground="{DynamicResource SubTextBrush}" Opacity="0.65"
                                        VerticalAlignment="Center" />
-                        </StackPanel>
+                        </Grid>
                         <base:CountUpText Classes="statValue" Kind="Number" Value="{Binding AppCount}" Margin="0,6,0,0" />
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,3,0,0">
                             <TextBlock Classes="cardCaption" Text="{Binding CompareCaption}"
@@ -129,15 +182,22 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 站点 -->
-                <Border x:Name="SiteStatCard" Grid.Column="4" Classes="statCard">
+                <!-- 站点（点击进入全部网站时长排行） -->
+                <Border x:Name="SiteStatCard" Grid.Column="4" Classes="statCard clickable"
+                        Tag="sites"
+                        PointerReleased="OnClickableStatCardPointerReleased">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" Spacing="5">
-                            <base:Icon IconType="Website" FontSize="12"
-                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
-                            <TextBlock Classes="cardCaption" Text="{DynamicResource Site}"
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Orientation="Horizontal" Spacing="5">
+                                <base:Icon IconType="Website" FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                <TextBlock Classes="cardCaption" Text="{DynamicResource Site}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                            <base:Icon Grid.Column="1" IconType="ChevronRight" FontSize="10"
+                                       Foreground="{DynamicResource SubTextBrush}" Opacity="0.65"
                                        VerticalAlignment="Center" />
-                        </StackPanel>
+                        </Grid>
                         <base:CountUpText Classes="statValue" Kind="Number" Value="{Binding WebSiteCount}" Margin="0,6,0,0" />
                         <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,3,0,0">
                             <TextBlock Classes="cardCaption" Text="{Binding CompareCaption}"
@@ -207,8 +267,9 @@
                         <TextBlock Text="{DynamicResource ClassificationProportion}" FontSize="13" />
 
                         <Grid Grid.Row="1" ColumnDefinitions="Auto,*" Margin="0,6,0,0">
-                            <Charts:DonutChart Width="108" Height="108"
-                                               Thickness="11"
+                            <Charts:DonutChart Width="148" Height="148"
+                                               Thickness="15"
+                                               Margin="0,2,4,2"
                                                IsLoading="{Binding IsLoading}"
                                                Series="{Binding CategorySeries}"
                                                CenterText="{Binding CategoryTotalText}"
@@ -218,18 +279,18 @@
                                                MutedTextBrush="{DynamicResource SubTextBrush}"
                                                TrackBrush="{DynamicResource Surface3Brush}" />
 
-                            <ScrollViewer Grid.Column="1" Margin="10,0,0,0"
-                                          Padding="0,0,6,0"
+                            <ScrollViewer Grid.Column="1" Margin="6,0,0,0"
+                                          Padding="0,0,2,0"
                                           VerticalScrollBarVisibility="Auto"
                                           HorizontalScrollBarVisibility="Disabled">
                                 <ItemsControl ItemsSource="{Binding CategorySeries}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="models:ChartsDataModel">
-                                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,5">
-                                                <Border Width="8" Height="8" CornerRadius="4"
+                                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,4">
+                                                <Border Width="7" Height="7" CornerRadius="3.5"
                                                         VerticalAlignment="Center"
                                                         Background="{Binding Color, Converter={StaticResource HexToColor}}" />
-                                                <TextBlock Grid.Column="1" Margin="6,0,6,0" FontSize="11"
+                                                <TextBlock Grid.Column="1" Margin="5,0,4,0" FontSize="11"
                                                            Text="{Binding Name}"
                                                            TextTrimming="CharacterEllipsis"
                                                            Foreground="{DynamicResource DefaultTextBrush}"
@@ -257,18 +318,35 @@
                 <Border Grid.Column="0" Classes="card frequentAppColumn"
                         Classes.fullWidth="{Binding IsWebBrowserMerged}" Padding="8">
                     <StackPanel>
-                        <Border HorizontalAlignment="Left" Padding="9,4"
-                                CornerRadius="{StaticResource RadiusSmall}"
-                                Background="{DynamicResource Surface3Brush}"
-                                Margin="4,2,0,4">
-                            <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource SubTextBrush}">
-                                <base:Icon VerticalAlignment="Center" IconType="Apps" FontSize="12" />
-                                <TextBlock FontSize="10"
-                                           VerticalAlignment="Center"
-                                           Text="{DynamicResource App}"
-                                           Margin="5,0,0,0" />
-                            </StackPanel>
-                        </Border>
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2,4,4">
+                            <Border Grid.Column="0" HorizontalAlignment="Left" Padding="9,4"
+                                    CornerRadius="{StaticResource RadiusSmall}"
+                                    Background="{DynamicResource Surface3Brush}"
+                                    Cursor="Hand"
+                                    Tag="apps"
+                                    PointerReleased="OnClickableStatCardPointerReleased">
+                                <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource SubTextBrush}">
+                                    <base:Icon VerticalAlignment="Center" IconType="Apps" FontSize="12" />
+                                    <TextBlock FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Text="{DynamicResource App}"
+                                               Margin="5,0,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Button Grid.Column="2"
+                                    Classes="subtle"
+                                    Padding="6,2"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding OpenRankingCommand}"
+                                    CommandParameter="apps">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <TextBlock Text="{DynamicResource ViewAllRanking}" FontSize="11"
+                                               Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                    <base:Icon IconType="ChevronRight" FontSize="9"
+                                               Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
 
                         <Charts:ListChart IsLoading="{Binding IsLoading}" IconSize="{x:Static platform:PlatformConstants.SmallListIconSize}"
                                           Margin="0,2,0,0" IsCanScroll="False"
@@ -284,16 +362,33 @@
                 <!--网页-->
                 <Border Grid.Column="2" Classes="card" IsVisible="{Binding IsWebListVisible}" Padding="8">
                     <StackPanel>
-                        <Border HorizontalAlignment="Left" Padding="9,4"
-                                CornerRadius="{StaticResource RadiusSmall}"
-                                Background="{DynamicResource ThemeTintBrush}"
-                                Margin="4,2,0,4">
-                            <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource ThemeBrush}">
-                                <base:Icon VerticalAlignment="Center" IconType="Website" FontSize="12" />
-                                <TextBlock FontSize="10" VerticalAlignment="Center" Text="{DynamicResource Website}"
-                                           Margin="5,0,0,0" />
-                            </StackPanel>
-                        </Border>
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,2,4,4">
+                            <Border Grid.Column="0" HorizontalAlignment="Left" Padding="9,4"
+                                    CornerRadius="{StaticResource RadiusSmall}"
+                                    Background="{DynamicResource ThemeTintBrush}"
+                                    Cursor="Hand"
+                                    Tag="sites"
+                                    PointerReleased="OnClickableStatCardPointerReleased">
+                                <StackPanel Orientation="Horizontal" TextElement.Foreground="{DynamicResource ThemeBrush}">
+                                    <base:Icon VerticalAlignment="Center" IconType="Website" FontSize="12" />
+                                    <TextBlock FontSize="10" VerticalAlignment="Center" Text="{DynamicResource Website}"
+                                               Margin="5,0,0,0" />
+                                </StackPanel>
+                            </Border>
+                            <Button Grid.Column="2"
+                                    Classes="subtle"
+                                    Padding="6,2"
+                                    VerticalAlignment="Center"
+                                    Command="{Binding OpenRankingCommand}"
+                                    CommandParameter="sites">
+                                <StackPanel Orientation="Horizontal" Spacing="3">
+                                    <TextBlock Text="{DynamicResource ViewAllRanking}" FontSize="11"
+                                               Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                    <base:Icon IconType="ChevronRight" FontSize="9"
+                                               Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
 
                         <Charts:ListChart IsLoading="{Binding IsLoading}" IconSize="{x:Static platform:PlatformConstants.SmallListIconSize}"
                                           Margin="0,2,0,0" IsCanScroll="False"

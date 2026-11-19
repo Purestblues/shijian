@@ -41,12 +41,14 @@ public class Time
         return hours + "h";
     }
 
-    public static DateTime[] GetThisWeekDate()
+    public static DateTime[] GetThisWeekDate() => GetWeekDate(DateTime.Now);
+
+    public static DateTime[] GetWeekDate(DateTime date)
     {
-        var weekNum = (int)DateTime.Now.DayOfWeek;
+        var weekNum = (int)date.DayOfWeek;
         if (weekNum == 0) weekNum = 7;
         weekNum -= 1;
-        var weekStartDate = DateTime.Now.Date.AddDays(-weekNum);
+        var weekStartDate = date.Date.AddDays(-weekNum);
         var weekEndDate = weekStartDate.AddDays(6);
 
         return new[] { weekStartDate, weekEndDate };

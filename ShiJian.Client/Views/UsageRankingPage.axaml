@@ -1,0 +1,94 @@
+<c:TPage xmlns="https://github.com/avaloniaui"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+         mc:Ignorable="d" d:DesignWidth="860" d:DesignHeight="640"
+         xmlns:base="using:ShiJian.Client.Controls.Base"
+         xmlns:select="using:ShiJian.Client.Controls.Select"
+         xmlns:input="using:ShiJian.Client.Controls.Input"
+         xmlns:charts="using:ShiJian.Client.Controls.Charts"
+         xmlns:c="using:ShiJian.Client.Controls"
+         xmlns:platform="clr-namespace:ShiJian.Client.Platform"
+         xmlns:vm="using:ShiJian.Client.ViewModels"
+         x:DataType="vm:UsageRankingPageViewModel"
+         Foreground="{DynamicResource StandardTextBrush}"
+         IsFillPage="True"
+         x:Class="ShiJian.Client.Views.UsageRankingPage">
+    <Grid Margin="24,10,24,24" RowDefinitions="Auto,Auto,Auto,*">
+        <!-- 面包屑导航 + 周期徽章 -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Classes="subtle breadcrumb-root"
+                        Margin="-6,0,0,0"
+                        VerticalAlignment="Center"
+                        Command="{Binding GoBackCommand}">
+                    <TextBlock FontSize="18" Text="{DynamicResource SideOverview}" />
+                </Button>
+                <base:Icon IconType="ChevronRightMed" Margin="8,0,10,0" FontSize="12"
+                           Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                <TextBlock FontSize="18" Text="{Binding PageTitle}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <Border Grid.Column="1"
+                    Background="{DynamicResource Surface3Brush}"
+                    CornerRadius="{StaticResource RadiusSmall}"
+                    Padding="10,4"
+                    VerticalAlignment="Center">
+                <TextBlock Text="{Binding PeriodLabel}"
+                           FontSize="12"
+                           FontFeatures="tnum"
+                           Foreground="{DynamicResource SubTextBrush}" />
+            </Border>
+        </Grid>
+
+        <!-- 错误提示 -->
+        <Border Grid.Row="1"
+                IsVisible="{Binding HasEntityError}"
+                Background="{DynamicResource CardBgBrush}"
+                BorderBrush="{DynamicResource ThemeBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusMedium}"
+                Padding="14,10" Margin="0,0,0,12">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding EntityErrorText}" FontSize="12" TextWrapping="Wrap"
+                           Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Margin="12,0,0,0" Padding="10,0" Height="28"
+                        Content="{DynamicResource Retry}"
+                        Command="{Binding RefreshCommand}" />
+            </Grid>
+        </Border>
+
+        <!-- 筛选条：全部 | 应用 | 网站 + 统计汇总 + 搜索 -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12" Margin="0,0,0,12">
+            <select:TabSwitch Grid.Column="0"
+                              VerticalAlignment="Center"
+                              IsShowIcon="False"
+                              SelectedItem="{Binding SelectedFilterOption, Mode=TwoWay}"
+                              Options="{Binding FilterOptions}" />
+            <TextBlock Grid.Column="2"
+                       Text="{Binding SummaryText}"
+                       FontSize="12"
+                       FontFeatures="tnum"
+                       Foreground="{DynamicResource SubTextBrush}"
+                       VerticalAlignment="Center" />
+            <input:InputBox Grid.Column="3"
+                            Icon="Search"
+                            Width="220"
+                            Placeholder="{DynamicResource SearchUsagePlaceholder}"
+                            Text="{Binding SearchInput, Mode=TwoWay}" />
+        </Grid>
+
+        <!-- 全量排行列表 -->
+        <Border Grid.Row="3" Classes="card" Padding="8">
+            <charts:ListChart IsLoading="{Binding IsLoading}"
+                              IconSize="{x:Static platform:PlatformConstants.SmallListIconSize}"
+                              IsCanScroll="True"
+                              IsShowBadge="True"
+                              BarBrush="{DynamicResource ThemeBrush}"
+                              Data="{Binding Items}"
+                              BadgeClickCommand="{Binding CategoryClickCommand}"
+                              ClickCommand="{Binding ToDetailCommand}"
+                              MenuType="App" />
+        </Border>
+    </Grid>
+</c:TPage>

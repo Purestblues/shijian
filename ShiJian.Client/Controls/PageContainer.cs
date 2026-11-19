@@ -49,9 +49,11 @@ public class PageContainer : TemplatedControl
         ["SettingPage"] = typeof(Views.SettingPage),
         ["DetailPage"] = typeof(Views.DetailPage),
         ["CategoryPage"] = typeof(Views.CategoryPage),
+        ["CategoryMembersPage"] = typeof(Views.CategoryMembersPage),
         ["CategoryAppListPage"] = typeof(Views.CategoryAppListPage),
         ["CategoryWebSiteListPage"] = typeof(Views.CategoryWebSiteListPage),
         ["CategorySummaryPage"] = typeof(Views.CategorySummaryPage),
+        ["UsageRankingPage"] = typeof(Views.UsageRankingPage),
         ["ChartPage"] = typeof(Views.ChartPage),
         ["WebSiteDetailPage"] = typeof(Views.WebSiteDetailPage),
     };

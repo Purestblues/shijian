@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Styling;
 using ShiJian.Client.Librarys;
 using ShiJian.Client.ViewModels;
@@ -70,6 +71,13 @@ public partial class IndexPage : UserControl
 
         if (e.PropertyName != nameof(IndexPageViewModel.IsCustomRange) || CustomRangeHost == null) return;
         _ = ExpandMotion.SetExpandedAsync(CustomRangeHost, _viewModel?.IsCustomRange == true);
+    }
+
+    private void OnClickableStatCardPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (e.InitialPressMouseButton != MouseButton.Left) return;
+        if (sender is Control { Tag: string filter } && DataContext is IndexPageViewModel vm)
+            vm.OpenRankingCommand.Execute(filter);
     }
 
     /// <summary>「并入浏览器」时隐藏站点卡片并把总览网格切为 3 列等宽</summary>

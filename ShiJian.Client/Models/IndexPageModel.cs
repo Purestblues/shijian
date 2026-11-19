@@ -27,6 +27,9 @@ public partial class IndexPageModel : ModelBase
     private List<SelectItemModel> _periodOptions;
 
     private string _compareCaption = string.Empty;
+    private int _periodOffset;
+    private string _periodLabel = string.Empty;
+    private bool _canPageForward;
 
     private bool _isWebBrowserMerged;
     private SelectItemModel _webMergeOption;
@@ -43,6 +46,45 @@ public partial class IndexPageModel : ModelBase
         set
         {
             _compareCaption = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>N16：历史周期偏移量（0 = 当前周期，-1 = 上一周期，以此类推）</summary>
+    [PageState]
+    public int PeriodOffset
+    {
+        get => _periodOffset;
+        set
+        {
+            if (_periodOffset == value) return;
+            _periodOffset = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>N16：翻页条中间显示的当前周期文本</summary>
+    [PageState]
+    public string PeriodLabel
+    {
+        get => _periodLabel;
+        set
+        {
+            if (_periodLabel == value) return;
+            _periodLabel = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>N16：是否允许点击「下一周期」（当前已是最新周期时禁用）</summary>
+    [PageState]
+    public bool CanPageForward
+    {
+        get => _canPageForward;
+        set
+        {
+            if (_canPageForward == value) return;
+            _canPageForward = value;
             OnPropertyChanged();
         }
     }

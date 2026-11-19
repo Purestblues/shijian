@@ -293,6 +293,16 @@ public static class ResourceStrings
     public static string WebDavSyncSuccess => GetStringValue("WebDavSyncSuccess");
     public static string WebDavSyncFailed => GetStringValue("WebDavSyncFailed");
     public static string WebDavUrlRequired => GetStringValue("WebDavUrlRequired");
+    public static string YesterdayLabel => GetStringValue("YesterdayLabel");
+    public static string UsageRankingTitle => GetStringValue("UsageRankingTitle");
+    public static string UsageRankingAll => GetStringValue("UsageRankingAll");
+    public static string UsageRankingApps => GetStringValue("UsageRankingApps");
+    public static string UsageRankingSites => GetStringValue("UsageRankingSites");
+    public static string RankingTotalCount => GetStringValue("RankingTotalCount");
+    public static string RadarCurrent => GetStringValue("RadarCurrent");
+    public static string Yesterday => GetStringValue("Yesterday");
+    public static string LastMonth => GetStringValue("LastMonth");
+    public static string LastYear => GetStringValue("LastYear");
 
     private static string GetStringValue(string key)
     {

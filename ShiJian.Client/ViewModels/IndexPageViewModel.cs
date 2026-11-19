@@ -44,6 +44,9 @@ public partial class IndexPageViewModel : IndexPageModel
     private EntityHoursModel? _entityHours;
     private double[] _compareTotalsAll = [];
     private IReadOnlyList<CategoryModel>? _columnCategories;
+    private DateTime _activeStart = DateTime.Now.Date;
+    private DateTime _activeEnd = DateTime.Now.Date;
+    private bool _suppressCustomRangeReload;
 
     public IndexPageViewModel(
         IWebData webData,
@@ -67,6 +70,9 @@ public partial class IndexPageViewModel : IndexPageModel
         ToDetailCommand = AsyncRelayCommand.CreateFromTask<object>(OnToDetailAsync).DisposeWith(Disposables);
         CategoryClickCommand = AsyncRelayCommand.Create<object>(OnCategoryClick).DisposeWith(Disposables);
         RefreshCommand = AsyncRelayCommand.CreateFromTask<object>(OnRefreshAsync).DisposeWith(Disposables);
+        PreviousPeriodCommand = AsyncRelayCommand.CreateFromTask<object>(_ => ShiftPeriodAsync(-1)).DisposeWith(Disposables);
+        NextPeriodCommand = AsyncRelayCommand.CreateFromTask<object>(_ => ShiftPeriodAsync(1)).DisposeWith(Disposables);
+        OpenRankingCommand = AsyncRelayCommand.Create<object>(OnOpenRanking).DisposeWith(Disposables);
 
         InitializeStaticData();
 
@@ -81,6 +87,9 @@ public partial class IndexPageViewModel : IndexPageModel
     public ICommand ToDetailCommand { get; }
     public ICommand CategoryClickCommand { get; }
     public ICommand RefreshCommand { get; }
+    public ICommand PreviousPeriodCommand { get; }
+    public ICommand NextPeriodCommand { get; }
+    public ICommand OpenRankingCommand { get; }
 
 
     private void InitializeStaticData()
@@ -123,15 +132,34 @@ public partial class IndexPageViewModel : IndexPageModel
             return Task.CompletedTask;
         });
 
-        WhenPropertyChanged(this, x => x.TabbarSelectedIndex, _ => LoadDataAsync());
+        WhenPropertyChanged(this, x => x.TabbarSelectedIndex, _ =>
+        {
+            PeriodOffset = 0;
+            return LoadDataAsync();
+        });
         WhenPropertyChanged(this, x => x.IsWebBrowserMerged, OnWebBrowserMergedChangedAsync);
         WhenPropertyChanged(this, x => x.CustomStart, _ => OnCustomRangeChangedAsync());
         WhenPropertyChanged(this, x => x.CustomEnd, _ => OnCustomRangeChangedAsync());
+        PeriodLabel = ResourceStrings.Today;
+        CanPageForward = false;
     }
 
     public override Task OnNavigatedToAsync()
     {
         var restored = TryRestoreState(_navigationService, _stateService);
+        if (restored)
+        {
+            var range = ResolvePeriodRange(
+                TabbarSelectedIndex,
+                PeriodOffset,
+                DateTime.Now.Date,
+                CustomStart,
+                CustomEnd);
+            _activeStart = range.Start;
+            _activeEnd = range.End;
+            PeriodLabel = range.PeriodLabel;
+            CanPageForward = range.CanPageForward;
+        }
         return RestoreCachedDataOrLoadAsync(
             restored, _stateService, _appEventService, LoadDataAsync);
     }
@@ -172,43 +200,167 @@ public partial class IndexPageViewModel : IndexPageModel
 
     /// <summary>换日期只在意「自定义」模式下重新拉数据，其他周期不受影响</summary>
     private Task OnCustomRangeChangedAsync() =>
-        TabbarSelectedIndex == 2 ? LoadDataAsync() : Task.CompletedTask;
+        TabbarSelectedIndex == 2 && !_suppressCustomRangeReload ? LoadDataAsync() : Task.CompletedTask;
+
+    /// <summary>
+    /// N16：按当前周期模式向前/向后翻页。
+    /// </summary>
+    internal Task ShiftPeriodAsync(int delta)
+    {
+        if (delta == 0) return Task.CompletedTask;
+        if (delta > 0 && !CanPageForward) return Task.CompletedTask;
+
+        if (TabbarSelectedIndex == 2)
+        {
+            var (newStart, newEnd, canForward) = ShiftCustomRange(CustomStart, CustomEnd, delta, DateTime.Now.Date);
+            _suppressCustomRangeReload = true;
+            try
+            {
+                CustomStart = newStart;
+                CustomEnd = newEnd;
+            }
+            finally
+            {
+                _suppressCustomRangeReload = false;
+            }
+            CanPageForward = canForward;
+            CancelAndResetLoadToken();
+            return LoadDataAsync();
+        }
+
+        var nextOffset = Math.Min(0, PeriodOffset + delta);
+        if (nextOffset == PeriodOffset) return Task.CompletedTask;
+
+        PeriodOffset = nextOffset;
+        CancelAndResetLoadToken();
+        return LoadDataAsync();
+    }
+
+    internal static (DateTime Start, DateTime End, bool CanPageForward) ShiftCustomRange(
+        DateTime customStart,
+        DateTime customEnd,
+        int delta,
+        DateTime today)
+    {
+        var start = customStart.Date;
+        var end = customEnd.Date;
+        if (end < start) (start, end) = (end, start);
+
+        var spanDays = Math.Clamp((end - start).Days + 1, 1, 366);
+        var shiftedStart = start.AddDays(delta * spanDays);
+        var shiftedEnd = end.AddDays(delta * spanDays);
+
+        if (shiftedEnd > today)
+        {
+            var overflow = (shiftedEnd - today).Days;
+            shiftedEnd = today;
+            shiftedStart = shiftedStart.AddDays(-overflow);
+        }
+
+        return (shiftedStart, shiftedEnd, shiftedEnd < today);
+    }
+
+    internal readonly record struct ResolvedPeriodRange(
+        DateTime Start,
+        DateTime End,
+        DateTime PrevStart,
+        DateTime PrevEnd,
+        bool IsHourly,
+        string CompareCaption,
+        string PeriodLabel,
+        string[] Labels,
+        bool CanPageForward);
+
+    internal static ResolvedPeriodRange ResolvePeriodRange(
+        int tabIndex,
+        int periodOffset,
+        DateTime today,
+        DateTime customStart,
+        DateTime customEnd)
+    {
+        var baseToday = today.Date;
+        var clampedOffset = Math.Min(0, periodOffset);
+
+        if (tabIndex == 0)
+        {
+            var target = baseToday.AddDays(clampedOffset);
+            var prev = target.AddDays(-1);
+            var label = clampedOffset switch
+            {
+                0 => ResourceStrings.Today,
+                -1 => $"{ResourceStrings.YesterdayLabel} {target:M/d}",
+                _ => target.Year == baseToday.Year ? target.ToString("M/d") : target.ToString("yyyy/M/d")
+            };
+            var compare = clampedOffset == 0
+                ? ResourceStrings.CategoryVsYesterday
+                : ResourceStrings.CategoryVsPrevious;
+            return new ResolvedPeriodRange(
+                target, target, prev, prev, true, compare, label, HourLabels24(), clampedOffset < 0);
+        }
+
+        if (tabIndex == 1)
+        {
+            var week = Time.GetWeekDate(baseToday.AddDays(clampedOffset * 7));
+            var start = week[0].Date;
+            var end = week[1].Date;
+            var prevStart = start.AddDays(-7);
+            var prevEnd = end.AddDays(-7);
+            var span = start.Year == baseToday.Year ? $"{start:M/d}-{end:M/d}" : $"{start:yyyy/M/d}-{end:yyyy/M/d}";
+            var label = clampedOffset switch
+            {
+                0 => ResourceStrings.ThisWeek,
+                -1 => $"{ResourceStrings.LastWeek} {span}",
+                _ => span
+            };
+            var compare = clampedOffset == 0
+                ? ResourceStrings.CategoryVsLastWeek
+                : ResourceStrings.CategoryVsPrevious;
+            return new ResolvedPeriodRange(
+                start, end, prevStart, prevEnd, false, compare, label, WeekDayLabels(), clampedOffset < 0);
+        }
+
+        var cStart = customStart.Date;
+        var cEnd = customEnd.Date;
+        if (cEnd < cStart) (cStart, cEnd) = (cEnd, cStart);
+        if ((cEnd - cStart).TotalDays > 365) cEnd = cStart.AddDays(365);
+
+        var days = (cEnd - cStart).Days + 1;
+        var isHourly = days == 1;
+        var labels = isHourly ? HourLabels24() : DayLabels(cStart, days);
+        var customLabel = cStart == cEnd
+            ? (cStart.Year == baseToday.Year ? cStart.ToString("M/d") : cStart.ToString("yyyy/M/d"))
+            : $"{cStart:M/d}-{cEnd:M/d}";
+
+        return new ResolvedPeriodRange(
+            cStart, cEnd, cStart.AddDays(-days), cStart.AddDays(-1),
+            isHourly, ResourceStrings.CategoryVsPrevious, customLabel, labels, cEnd < baseToday);
+    }
 
     private Task LoadDataAsync()
     {
         return ExecuteAsync(async ct =>
         {
-            var today = DateTime.Now.Date;
-            switch (TabbarSelectedIndex)
-            {
-                case 0:
-                    await LoadRangeAsync(today, today, today.AddDays(-1), today.AddDays(-1), true,
-                        ResourceStrings.CategoryVsYesterday, HourLabels24(), ct);
-                    break;
-                case 1:
-                {
-                    var week = Time.GetThisWeekDate();
-                    await LoadRangeAsync(week[0], week[1], week[0].AddDays(-7), week[1].AddDays(-7), false,
-                        ResourceStrings.CategoryVsLastWeek, WeekDayLabels(), ct);
-                    break;
-                }
-                default:
-                {
-                    var start = CustomStart;
-                    var end = CustomEnd;
-                    if (end < start) (start, end) = (end, start);
+            var range = ResolvePeriodRange(
+                TabbarSelectedIndex,
+                PeriodOffset,
+                DateTime.Now.Date,
+                CustomStart,
+                CustomEnd);
 
-                    // 再长就不像图了，最多 366 天
-                    if ((end - start).TotalDays > 365) end = start.AddDays(365);
+            _activeStart = range.Start;
+            _activeEnd = range.End;
+            PeriodLabel = range.PeriodLabel;
+            CanPageForward = range.CanPageForward;
 
-                    var days = (end - start).Days + 1;
-                    var isHourly = days == 1;
-                    var labels = isHourly ? HourLabels24() : DayLabels(start, days);
-                    await LoadRangeAsync(start, end, start.AddDays(-days), start.AddDays(-1), isHourly,
-                        ResourceStrings.CategoryVsPrevious, labels, ct);
-                    break;
-                }
-            }
+            await LoadRangeAsync(
+                range.Start,
+                range.End,
+                range.PrevStart,
+                range.PrevEnd,
+                range.IsHourly,
+                range.CompareCaption,
+                range.Labels,
+                ct);
         });
     }
 
@@ -368,6 +520,7 @@ public partial class IndexPageViewModel : IndexPageModel
         HourTotalText = Time.ToString((int)series.Sum(m => m.Value));
 
         CategorySeries = series
+            .OrderByDescending(m => m.Value)
             .Select(m => new ChartsDataModel
             {
                 Name = m.Name,
@@ -421,11 +574,39 @@ public partial class IndexPageViewModel : IndexPageModel
             CategorySummaryNavigationContext.Create(CategorySummaryKind.Unified, badge.CategoryId, badge.Name));
     }
 
+    private void OnOpenRanking(object? param)
+    {
+        var filter = param switch
+        {
+            UsageRankingFilter f => f,
+            string s when s.Equals("apps", StringComparison.OrdinalIgnoreCase) => UsageRankingFilter.Apps,
+            string s when s.Equals("sites", StringComparison.OrdinalIgnoreCase) => UsageRankingFilter.Sites,
+            _ => UsageRankingFilter.All
+        };
+
+        var range = ResolvePeriodRange(
+            TabbarSelectedIndex,
+            PeriodOffset,
+            DateTime.Now.Date,
+            CustomStart,
+            CustomEnd);
+
+        _navigationService.NavigateTo(
+            nameof(UsageRankingPage),
+            new UsageRankingNavigationContext(
+                range.Start,
+                range.End,
+                string.IsNullOrEmpty(PeriodLabel) ? range.PeriodLabel : PeriodLabel,
+                TabbarSelectedIndex == 2 ? 0 : TabbarSelectedIndex,
+                IsWebBrowserMerged,
+                filter));
+    }
+
     private async Task OnToDetailAsync(object obj)
     {
         if (obj is not ChartsDataModel chartData) return;
 
-        var date = DateTime.Now.Date;
+        var date = _activeStart;
 
         // 实体行只带业务标识，详情页仍然要原始模型：按 Kind 取一次
         try

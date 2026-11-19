@@ -289,20 +289,23 @@ public partial class ChartPageViewModel : ChartPageModel
 
         // 统计页统一展示应用与网站：取站点独立成行口径并合并聚合所有分类与实体榜单
         var hoursTask = _entityData.GetEntityHoursAsync(start, end, buckets, false, cancellationToken);
+        var prevHoursTask = _entityData.GetEntityHoursAsync(prevStart, prevEnd, buckets, false, cancellationToken);
         var listTask = _entityData.GetEntityListAsync(start, end, false, cancellationToken);
         var summaryTask = _entityData.GetEntitySummaryAsync(start, end, false, cancellationToken);
         var prevSummaryTask = _entityData.GetEntitySummaryAsync(prevStart, prevEnd, false, cancellationToken);
         var categoriesTask = _categoryService.GetCategoriesAsync(cancellationToken);
 
         EntityHoursModel? entityHours;
+        EntityHoursModel? prevEntityHours;
         EntityListModel? entityList;
         EntitySummaryModel? summary;
         EntitySummaryModel? prevSummary;
         IReadOnlyList<CategoryModel> categories;
         try
         {
-            await Task.WhenAll(hoursTask, listTask, summaryTask, prevSummaryTask, categoriesTask);
+            await Task.WhenAll(hoursTask, prevHoursTask, listTask, summaryTask, prevSummaryTask, categoriesTask);
             entityHours = await hoursTask;
+            prevEntityHours = await prevHoursTask;
             entityList = await listTask;
             summary = await summaryTask;
             prevSummary = await prevSummaryTask;
@@ -319,9 +322,16 @@ public partial class ChartPageViewModel : ChartPageModel
         cancellationToken.ThrowIfCancellationRequested();
         _cachedEntityHours = entityHours;
 
+        var visualMap = ChartDataMapper.ToVisualMap(categories, ResourceStrings.Uncategorized);
         var categoryData = ChartDataMapper.BuildUnifiedCategorySeries(
             entityHours,
-            ChartDataMapper.ToVisualMap(categories, ResourceStrings.Uncategorized),
+            visualMap,
+            ResourceStrings.Uncategorized,
+            columnNames);
+
+        var prevCategoryData = ChartDataMapper.BuildUnifiedCategorySeries(
+            prevEntityHours,
+            visualMap,
             ResourceStrings.Uncategorized,
             columnNames);
 
@@ -329,6 +339,16 @@ public partial class ChartPageViewModel : ChartPageModel
         _totalTime = totalUse;
         Data = categoryData;
         RadarData = categoryData;
+        PrevRadarData = prevCategoryData;
+        RadarCompareLabel = TabbarSelectedIndex switch
+        {
+            0 => ResourceStrings.Yesterday,
+            1 => ResourceStrings.LastWeek,
+            2 => ResourceStrings.LastMonth,
+            3 => ResourceStrings.LastYear,
+            _ => ResourceStrings.Yesterday
+        };
+        HasRadarCompare = categoryData.Count > 2 && prevCategoryData.Any(m => m.Value > 0);
         TotalHours = Time.ToHoursString(totalUse);
 
         var topRows = (entityList?.Rows ?? []).OrderByDescending(r => r.Seconds).Take(5).ToList();
@@ -423,6 +443,8 @@ public partial class ChartPageViewModel : ChartPageModel
     {
         ChartColorHelper.ThemeChanged -= OnThemeChanged;
         Data = [];
+        RadarData = [];
+        PrevRadarData = [];
         TopData = [];
         base.Dispose();
     }

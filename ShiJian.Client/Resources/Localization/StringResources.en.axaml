@@ -572,4 +572,21 @@ Choose restore mode (an automatic local rollback point is saved before import):<
     <system:String x:Key="WebDavReplaceRestore">Replace</system:String>
     <system:String x:Key="View">View Details</system:String>
     <system:String x:Key="Retry">Retry</system:String>
+    <system:String x:Key="PreviousPeriod">Previous period</system:String>
+    <system:String x:Key="NextPeriod">Next period</system:String>
+    <system:String x:Key="YesterdayLabel">Yesterday</system:String>
+    <system:String x:Key="ViewAllRanking">View all</system:String>
+    <system:String x:Key="UsageRankingTitle">Usage Ranking</system:String>
+    <system:String x:Key="UsageRankingAll">All Usage Ranking</system:String>
+    <system:String x:Key="UsageRankingApps">All Apps Ranking</system:String>
+    <system:String x:Key="UsageRankingSites">All Websites Ranking</system:String>
+    <system:String x:Key="SearchUsagePlaceholder">Search apps or websites...</system:String>
+    <system:String x:Key="RankingTotalCount">{0} items</system:String>
+    <system:String x:Key="ManageCategoryMembers">Manage Apps &amp; Websites</system:String>
+    <system:String x:Key="AddApp">Add App</system:String>
+    <system:String x:Key="AddSite">Add Website</system:String>
+    <system:String x:Key="RadarCurrent">Current</system:String>
+    <system:String x:Key="Yesterday">Yesterday</system:String>
+    <system:String x:Key="LastMonth">Last month</system:String>
+    <system:String x:Key="LastYear">Last year</system:String>
 </ResourceDictionary>

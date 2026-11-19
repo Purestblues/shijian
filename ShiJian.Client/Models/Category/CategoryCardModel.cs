@@ -44,6 +44,9 @@ public abstract class CategoryCardModel
     /// <summary>卡片上展示的颜色：和图表同一套对比度规则</summary>
     public string DisplayColor => ChartColorHelper.Resolve(RawColor, IsSystemCategory);
 
+    /// <summary>图标容器底色（14% 透明度分类强调色浅染）</summary>
+    public string AccentTintColor => ChartColorHelper.WithAlpha(DisplayColor, 0x24);
+
     /// <summary>不足 1 秒按「没有数据」处理，避免卡片上出现 0s 和一条看不见的进度条</summary>
     public bool HasDuration => Duration >= 1;
 

@@ -24,6 +24,7 @@ public class Colors
 
     public static string[] MainColors =
     {
+        // 原有 12 色（Nord / Everforest 经典色，保持索引稳定）
         "#527CE6", // 矢车菊蓝 (Cornflower Frost - 默认主色)
         "#5E81AC", // 北极深冰蓝 (Nord Frost Blue)
         "#4D968E", // 松石青绿 (Sage Teal)
@@ -36,6 +37,20 @@ public class Colors
         "#9D7298", // 雾梅紫 (Aurora Plum)
         "#7E6BC4", // 薰衣草紫 (Muted Lavender)
         "#4C566A", // 极夜岩灰 (Polar Slate)
+
+        // N21 扩充 12 色（参考“长期洗涤”低饱和自然/影视氛围色系）
+        "#4A8FE7", // 晴空蔚蓝 (Sky Azure)
+        "#5D9CEC", // 浅雾天蓝 (Mist Blue)
+        "#3B9B96", // 翡翠海青 (Seafoam Jade)
+        "#529A74", // 冷杉森林 (Fir Forest)
+        "#78A55A", // 豆蔻青绿 (Matcha Sage)
+        "#B89B4D", // 麦穗暖金 (Wheat Ochre)
+        "#D99B52", // 落日杏黄 (Apricot Glow)
+        "#C97A63", // 赤陶珊瑚 (Terracotta)
+        "#C46D7A", // 干枯玫瑰 (Muted Rose)
+        "#A876A2", // 烟霞藕紫 (Mauve Haze)
+        "#6F7BB5", // 暮色靛蓝 (Twilight Indigo)
+        "#72808E", // 雾霾石青 (Fog Slate)
     };
 
     public static string[] TimelinePaletteDark { get; } = GenerateTimelinePalette(45, isDark: true);

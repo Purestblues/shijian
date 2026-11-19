@@ -586,4 +586,21 @@
     <system:String x:Key="WebDavReplaceRestore">覆盖恢复</system:String>
     <system:String x:Key="View">查看详情</system:String>
     <system:String x:Key="Retry">重试</system:String>
+    <system:String x:Key="PreviousPeriod">上一周期</system:String>
+    <system:String x:Key="NextPeriod">下一周期</system:String>
+    <system:String x:Key="YesterdayLabel">昨天</system:String>
+    <system:String x:Key="ViewAllRanking">查看全部</system:String>
+    <system:String x:Key="UsageRankingTitle">使用时长排行</system:String>
+    <system:String x:Key="UsageRankingAll">全部使用排行</system:String>
+    <system:String x:Key="UsageRankingApps">全部应用排行</system:String>
+    <system:String x:Key="UsageRankingSites">全部网站排行</system:String>
+    <system:String x:Key="SearchUsagePlaceholder">搜索应用或网站名称...</system:String>
+    <system:String x:Key="RankingTotalCount">共 {0} 项</system:String>
+    <system:String x:Key="ManageCategoryMembers">管理应用与网站</system:String>
+    <system:String x:Key="AddApp">添加应用</system:String>
+    <system:String x:Key="AddSite">添加网站</system:String>
+    <system:String x:Key="RadarCurrent">本期</system:String>
+    <system:String x:Key="Yesterday">昨日</system:String>
+    <system:String x:Key="LastMonth">上月</system:String>
+    <system:String x:Key="LastYear">去年</system:String>
 </ResourceDictionary>

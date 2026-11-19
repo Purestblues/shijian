@@ -1,0 +1,442 @@
+<c:TPage xmlns="https://github.com/avaloniaui"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:behaviors="using:ShiJian.Client.Behaviors"
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+         xmlns:base="using:ShiJian.Client.Controls.Base"
+         xmlns:select="using:ShiJian.Client.Controls.Select"
+         xmlns:input="using:ShiJian.Client.Controls.Input"
+         xmlns:c="using:ShiJian.Client.Controls"
+         xmlns:Button="clr-namespace:ShiJian.Client.Controls.Button"
+         xmlns:model="using:ShiJian.Client.ViewModels"
+         xmlns:shared="using:ShiJian.Client.Shared.Models"
+         xmlns:web="using:ShiJian.Client.Shared.Models.Web"
+         x:DataType="model:CategoryMembersPageViewModel"
+         Foreground="{DynamicResource StandardTextBrush}"
+         IsFillPage="True"
+         x:Class="ShiJian.Client.Views.CategoryMembersPage">
+    <Grid>
+        <!-- 选择应用 / 网站弹窗 -->
+        <base:PageModal IsOpen="{Binding ChooseVisibility}"
+                        CloseCommand="{Binding ChooseCloseCommand}">
+            <Border Background="{DynamicResource PopupBackgroundBrush}"
+                    CornerRadius="{StaticResource RadiusLarge}"
+                    BorderBrush="{DynamicResource PopupBorderBrush}"
+                    BorderThickness="1"
+                    BoxShadow="{DynamicResource Elevation3}"
+                    Width="560" MaxHeight="520"
+                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                    Margin="24">
+                <Grid RowDefinitions="44,Auto,*,Auto">
+                    <Grid>
+                        <TextBlock Text="{Binding ChooserTitle}" VerticalAlignment="Center" Margin="14,0,0,0" />
+                        <Button:IconButton Foreground="{DynamicResource SubTextBrush}" Icon="ChromeClose"
+                                           HorizontalAlignment="Right" FontSize="12" Margin="0,0,10,0"
+                                           Command="{Binding ChooseCloseCommand}" />
+                    </Grid>
+
+                    <input:InputBox Grid.Row="1"
+                                    Placeholder="{Binding ChooserSearchPlaceholder}"
+                                    Margin="12,4,12,10"
+                                    Text="{Binding SearchInput, Mode=TwoWay}" />
+
+                    <!-- 应用候选列表 -->
+                    <ListBox Grid.Row="2"
+                             IsVisible="{Binding IsAppTab}"
+                             ItemsSource="{Binding AppOptions}"
+                             Margin="20,0">
+                        <ListBox.Styles>
+                            <Style Selector="ListBox">
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <ScrollViewer>
+                                            <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                        </ScrollViewer>
+                                    </ControlTemplate>
+                                </Setter>
+                            </Style>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Width" Value="240" />
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <Border>
+                                            <ContentPresenter ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                              Content="{TemplateBinding Content}" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter>
+                                <Style Selector="^:pointerover /template/ Border">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected /template/ Border">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <select:Option HorizontalAlignment="Stretch"
+                                               IsChecked="{Binding IsChoosed, Mode=TwoWay}"
+                                               Value="{Binding Value}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- 网站候选列表 -->
+                    <ListBox Grid.Row="2"
+                             IsVisible="{Binding IsSiteTab}"
+                             ItemsSource="{Binding SiteOptions}"
+                             Margin="20,0">
+                        <ListBox.Styles>
+                            <Style Selector="ListBox">
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <ScrollViewer>
+                                            <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                        </ScrollViewer>
+                                    </ControlTemplate>
+                                </Setter>
+                            </Style>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Width" Value="240" />
+                                <Setter Property="Template">
+                                    <ControlTemplate>
+                                        <Border>
+                                            <ContentPresenter ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                              Content="{TemplateBinding Content}" />
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter>
+                                <Style Selector="^:pointerover /template/ Border">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                                <Style Selector="^:selected /template/ Border">
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                            </Style>
+                        </ListBox.Styles>
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <select:Option HorizontalAlignment="Stretch"
+                                               IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                               Value="{Binding OptionValue}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Button:Button Grid.Row="3"
+                                   HorizontalAlignment="Right"
+                                   Content="{DynamicResource Complete}"
+                                   Width="120" Margin="0,12,12,14"
+                                   VerticalAlignment="Center"
+                                   Command="{Binding ChoosedCommand}" />
+                </Grid>
+            </Border>
+        </base:PageModal>
+
+        <Grid Margin="20" RowDefinitions="Auto,Auto,*">
+            <!-- 面包屑导航（G26：根项可点返回上一级） -->
+            <StackPanel Orientation="Horizontal" Margin="0,5,0,20">
+                <Button Classes="subtle breadcrumb-root"
+                        Margin="-6,0,0,0"
+                        VerticalAlignment="Center"
+                        Command="{Binding GoBackCommand}">
+                    <TextBlock FontSize="18" Text="{DynamicResource SideSort}" />
+                </Button>
+                <base:Icon IconType="ChevronRightMed" Margin="8,0,10,0" FontSize="12"
+                           Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                <TextBlock FontSize="18" Text="{Binding Category.Data.Name}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- 工具栏：应用 | 网站切换 + 搜索 + 添加 -->
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="10">
+                <select:TabSwitch Grid.Column="0"
+                                  VerticalAlignment="Center"
+                                  IsShowIcon="False"
+                                  SelectedItem="{Binding SelectedTab, Mode=TwoWay}"
+                                  Options="{Binding TabOptions}" />
+                <input:InputBox Grid.Column="2"
+                                Placeholder="{DynamicResource Search}"
+                                Width="200"
+                                VerticalAlignment="Center"
+                                Text="{Binding MainSearchInput, Mode=TwoWay}" />
+                <Button:Button Grid.Column="3"
+                               Content="{DynamicResource Select}"
+                               Width="140"
+                               Command="{Binding ShowChooseCommand}" />
+            </Grid>
+
+            <!-- 应用列表 -->
+            <Grid Grid.Row="2" IsVisible="{Binding IsAppTab}">
+                <base:View Condition="empty" Value="{Binding Apps}">
+                    <base:EmptyData IsLoading="{Binding IsLoading}" />
+                </base:View>
+                <base:View Condition="not empty" Value="{Binding Apps}">
+                    <Border Classes="card" Margin="0,16,0,0" ClipToBounds="True">
+                        <ListBox x:Name="AppListBox"
+                                 ItemsSource="{Binding Apps}"
+                                 behaviors:KeyboardListActivation.EnterCommand="{Binding GotoAppDetailCommand}"
+                                 SelectedItem="{Binding SelectedApp, Mode=TwoWay}"
+                                 PointerPressed="OnAppListPointerPressed"
+                                 PointerReleased="OnAppListPointerReleased">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="{DynamicResource RemoveFromCategory}"
+                                              Command="{Binding RemoveAppCommand}"
+                                              IsVisible="{Binding !IsSystemCategory}"
+                                              CommandParameter="{Binding SelectedApp}" />
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
+                            <ListBox.Styles>
+                                <Style Selector="ListBox">
+                                    <Setter Property="Template">
+                                        <ControlTemplate>
+                                            <ScrollViewer>
+                                                <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                            </ScrollViewer>
+                                        </ControlTemplate>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="ListBoxItem">
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Template">
+                                        <ControlTemplate>
+                                            <Border x:Name="Border"
+                                                    MinHeight="48"
+                                                    Padding="14,8"
+                                                    Background="Transparent"
+                                                    BorderBrush="{DynamicResource DividerSubtleBrush}"
+                                                    BorderThickness="0,0,0,1"
+                                                    RenderTransform="scale(1)"
+                                                    RenderTransformOrigin="50%,50%">
+                                                <Border.Transitions>
+                                                    <Transitions>
+                                                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                                                    </Transitions>
+                                                </Border.Transitions>
+                                                <ContentPresenter x:Name="PART_ContentPresenter"
+                                                                  Background="Transparent"
+                                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                  Content="{TemplateBinding Content}" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter>
+                                    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="^:pointerover /template/ Border#Border">
+                                        <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                                    </Style>
+                                    <Style Selector="^:pressed /template/ Border#Border">
+                                        <Setter Property="RenderTransform" Value="scale(0.992)" />
+                                    </Style>
+                                    <Style Selector="^:selected /template/ Border#Border">
+                                        <Setter Property="Background" Value="{DynamicResource SelectionPillBrush}" />
+                                    </Style>
+                                </Style>
+                            </ListBox.Styles>
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="shared:AppModel">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                                        <Border Grid.Column="0" Width="28" Height="28"
+                                                CornerRadius="{StaticResource RadiusSmall}"
+                                                Background="{DynamicResource Surface3Brush}">
+                                            <base:Img Width="20" Height="20" DecodeWidth="20"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      URL="{Binding IconFile}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                            <base:View Condition="not empty" Value="{Binding Description}">
+                                                <TextBlock FontSize="13" FontWeight="Medium"
+                                                           Foreground="{DynamicResource DefaultTextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Description}" />
+                                            </base:View>
+                                            <base:View Condition="empty" Value="{Binding Description}">
+                                                <TextBlock FontSize="13" FontWeight="Medium"
+                                                           Foreground="{DynamicResource DefaultTextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Name}" />
+                                            </base:View>
+                                            <TextBlock FontSize="11.5"
+                                                       Foreground="{DynamicResource SubTextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding File, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                       Text="{Binding File}" />
+                                        </StackPanel>
+                                        <Button:IconButton Grid.Column="2"
+                                                           Icon="Delete"
+                                                           Width="30" Height="30"
+                                                           FontSize="13"
+                                                           HandlesPointerPressed="True"
+                                                           Tag="{Binding}"
+                                                           PointerReleased="OnRemoveAppButtonPointerReleased"
+                                                           ToolTip.Tip="{DynamicResource RemoveFromCategory}"
+                                                           AutomationProperties.Name="{DynamicResource RemoveFromCategory}"
+                                                           IsVisible="{Binding !$parent[UserControl].((model:CategoryMembersPageViewModel)DataContext).IsSystemCategory}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </base:View>
+            </Grid>
+
+            <!-- 网站列表 -->
+            <Grid Grid.Row="2" IsVisible="{Binding IsSiteTab}">
+                <base:View Condition="empty" Value="{Binding Sites}">
+                    <base:EmptyData IsLoading="{Binding IsLoading}" />
+                </base:View>
+                <base:View Condition="not empty" Value="{Binding Sites}">
+                    <Border Classes="card" Margin="0,16,0,0" ClipToBounds="True">
+                        <ListBox x:Name="SiteListBox"
+                                 ItemsSource="{Binding Sites}"
+                                 behaviors:KeyboardListActivation.EnterCommand="{Binding GotoSiteDetailCommand}"
+                                 SelectedItem="{Binding SelectedSite, Mode=TwoWay}"
+                                 PointerPressed="OnSiteListPointerPressed"
+                                 PointerReleased="OnSiteListPointerReleased">
+                            <ListBox.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="{DynamicResource RemoveFromCategory}"
+                                              Command="{Binding RemoveSiteCommand}"
+                                              IsVisible="{Binding !IsSystemCategory}"
+                                              CommandParameter="{Binding SelectedSite}" />
+                                </ContextMenu>
+                            </ListBox.ContextMenu>
+                            <ListBox.Styles>
+                                <Style Selector="ListBox">
+                                    <Setter Property="Template">
+                                        <ControlTemplate>
+                                            <ScrollViewer>
+                                                <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                            </ScrollViewer>
+                                        </ControlTemplate>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="ListBoxItem">
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                    <Setter Property="Template">
+                                        <ControlTemplate>
+                                            <Border x:Name="Border"
+                                                    MinHeight="48"
+                                                    Padding="14,8"
+                                                    Background="Transparent"
+                                                    BorderBrush="{DynamicResource DividerSubtleBrush}"
+                                                    BorderThickness="0,0,0,1"
+                                                    RenderTransform="scale(1)"
+                                                    RenderTransformOrigin="50%,50%">
+                                                <Border.Transitions>
+                                                    <Transitions>
+                                                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                                                    </Transitions>
+                                                </Border.Transitions>
+                                                <ContentPresenter x:Name="PART_ContentPresenter"
+                                                                  Background="Transparent"
+                                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                  Content="{TemplateBinding Content}" />
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter>
+                                    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="^:selected /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="Transparent" />
+                                    </Style>
+                                    <Style Selector="^:pointerover /template/ Border#Border">
+                                        <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                                    </Style>
+                                    <Style Selector="^:pressed /template/ Border#Border">
+                                        <Setter Property="RenderTransform" Value="scale(0.992)" />
+                                    </Style>
+                                    <Style Selector="^:selected /template/ Border#Border">
+                                        <Setter Property="Background" Value="{DynamicResource SelectionPillBrush}" />
+                                    </Style>
+                                </Style>
+                            </ListBox.Styles>
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="web:WebSiteModel">
+                                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12" VerticalAlignment="Center">
+                                        <Border Grid.Column="0" Width="28" Height="28"
+                                                CornerRadius="{StaticResource RadiusSmall}"
+                                                Background="{DynamicResource Surface3Brush}">
+                                            <base:Img Width="20" Height="20" DecodeWidth="20"
+                                                      HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                      URL="{Binding IconFile}"
+                                                      FallbackText="{Binding Domain}" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                                            <base:View Condition="not empty" Value="{Binding Title}">
+                                                <TextBlock FontSize="13" FontWeight="Medium"
+                                                           Foreground="{DynamicResource DefaultTextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Title}" />
+                                            </base:View>
+                                            <base:View Condition="empty" Value="{Binding Title}">
+                                                <TextBlock FontSize="13" FontWeight="Medium"
+                                                           Foreground="{DynamicResource DefaultTextBrush}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Domain}" />
+                                            </base:View>
+                                            <TextBlock FontSize="11.5"
+                                                       Foreground="{DynamicResource SubTextBrush}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       IsVisible="{Binding Domain, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                                       Text="{Binding Domain}" />
+                                        </StackPanel>
+                                        <Button:IconButton Grid.Column="2"
+                                                           Icon="Delete"
+                                                           Width="30" Height="30"
+                                                           FontSize="13"
+                                                           HandlesPointerPressed="True"
+                                                           Tag="{Binding}"
+                                                           PointerReleased="OnRemoveSiteButtonPointerReleased"
+                                                           ToolTip.Tip="{DynamicResource RemoveFromCategory}"
+                                                           AutomationProperties.Name="{DynamicResource RemoveFromCategory}"
+                                                           IsVisible="{Binding !$parent[UserControl].((model:CategoryMembersPageViewModel)DataContext).IsSystemCategory}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+                </base:View>
+            </Grid>
+        </Grid>
+    </Grid>
+</c:TPage>

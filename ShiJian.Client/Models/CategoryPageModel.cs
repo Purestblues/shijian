@@ -19,7 +19,6 @@ public partial class CategoryPageModel : ModelBase
     public CategoryPageModel()
     {
         BrowseMode = BrowseModeOptions[0];
-        ViewMode = ViewModeOptions[0];
         SortMode = SortOptions[0];
         EntityTypeMode = EntityTypeOptions[0];
         EntityFilterMode = EntityFilterOptions[0];
@@ -214,40 +213,6 @@ public partial class CategoryPageModel : ModelBase
     {
         OnPropertyChanged(nameof(HasFilteredEntities));
     }
-
-    private SelectItemModel _viewMode;
-
-    /// <summary>
-    /// 紧凑 / 卡片视图（N7-b）。纯展示层开关：不重拉数据，也不重建列表项，
-    /// 所以切换时滚动位置与选中态都不会丢。
-    /// </summary>
-    [PageState(LookupFrom = nameof(ViewModeOptions))]
-    public SelectItemModel ViewMode
-    {
-        get => _viewMode;
-        set
-        {
-            _viewMode = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(IsCardView));
-        }
-    }
-
-    public List<SelectItemModel> ViewModeOptions { get; } =
-    [
-        new()
-        {
-            Id = 0,
-            Name = ResourceStrings.ViewCompact
-        },
-        new()
-        {
-            Id = 1,
-            Name = ResourceStrings.ViewCard
-        }
-    ];
-
-    public bool IsCardView => ViewMode?.Id == 1;
 
     private SelectItemModel _sortMode;
 

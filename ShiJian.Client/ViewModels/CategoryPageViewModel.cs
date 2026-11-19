@@ -82,6 +82,7 @@ public class CategoryPageViewModel : CategoryPageModel
         EditUrlPatterns = new ObservableCollection<string>();
 
         GotoListCommand = AsyncRelayCommand.Create<object>(OnGotoList).DisposeWith(Disposables);
+        GotoMembersCommand = AsyncRelayCommand.Create<object>(OnGotoMembers).DisposeWith(Disposables);
         GotoAppListCommand = AsyncRelayCommand.Create<object>(OnGotoAppList).DisposeWith(Disposables);
         GotoWebListCommand = AsyncRelayCommand.Create<object>(OnGotoWebList).DisposeWith(Disposables);
         EditCommand = AsyncRelayCommand.Create<object>(OnEdit).DisposeWith(Disposables);
@@ -186,6 +187,7 @@ public class CategoryPageViewModel : CategoryPageModel
     }
 
     public ICommand GotoListCommand { get; }
+    public ICommand GotoMembersCommand { get; }
     public ICommand GotoAppListCommand { get; }
     public ICommand GotoWebListCommand { get; }
     public ICommand EditCommand { get; }
@@ -889,6 +891,23 @@ public class CategoryPageViewModel : CategoryPageModel
             {
                 _navigationService.NavigateTo(nameof(CategorySummaryPage),
                     CategorySummaryNavigationContext.Create(CategorySummaryKind.Unified, selected.Data.ID, selected.Data.Name));
+                SelectedAppCategoryItem = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Error(ex.Message, ex);
+        }
+    }
+
+    private void OnGotoMembers(object obj)
+    {
+        try
+        {
+            var selected = obj as CategoryModel ?? SelectedAppCategoryItem;
+            if (selected != null)
+            {
+                _navigationService.NavigateTo(nameof(CategoryMembersPage), selected);
                 SelectedAppCategoryItem = null;
             }
         }

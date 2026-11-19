@@ -118,6 +118,9 @@ public partial class ChartPageModel : ModelBase
     private int _nameIndexStart;
 
     private List<ChartsDataModel> _radarData;
+    private List<ChartsDataModel> _prevRadarData = [];
+    private string _radarCompareLabel = string.Empty;
+    private bool _hasRadarCompare;
 
     private DateTime _weekDate;
 
@@ -402,6 +405,42 @@ public partial class ChartPageModel : ModelBase
         set
         {
             _radarData = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>
+    /// 上一周期雷达图对比数据（昨日 / 上周 / 上月 / 去年）
+    /// </summary>
+    [PageState(DataCache = true)]
+    public List<ChartsDataModel> PrevRadarData
+    {
+        get => _prevRadarData;
+        set
+        {
+            _prevRadarData = value;
+            OnPropertyChanged();
+        }
+    }
+
+    [PageState]
+    public string RadarCompareLabel
+    {
+        get => _radarCompareLabel;
+        set
+        {
+            _radarCompareLabel = value;
+            OnPropertyChanged();
+        }
+    }
+
+    [PageState]
+    public bool HasRadarCompare
+    {
+        get => _hasRadarCompare;
+        set
+        {
+            _hasRadarCompare = value;
             OnPropertyChanged();
         }
     }

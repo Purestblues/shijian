@@ -56,6 +56,8 @@ namespace ShiJian.Client;
 [Transient(typeof(DetailPageViewModel))]
 [Transient(typeof(CategoryPage))]
 [Transient(typeof(CategoryPageViewModel))]
+[Transient(typeof(CategoryMembersPage))]
+[Transient(typeof(CategoryMembersPageViewModel))]
 [Transient(typeof(CategoryAppListPage))]
 [Transient(typeof(CategoryAppListPageViewModel))]
 [Transient(typeof(CategoryWebSiteListPage))]
@@ -66,6 +68,8 @@ namespace ShiJian.Client;
 [Transient(typeof(WebSiteDetailPageViewModel))]
 [Transient(typeof(CategorySummaryPage))]
 [Transient(typeof(CategorySummaryPageViewModel))]
+[Transient(typeof(UsageRankingPage))]
+[Transient(typeof(UsageRankingPageViewModel))]
 [Transient(typeof(SearchPaletteViewModel))]
 internal partial class AppServiceProvider
 {
