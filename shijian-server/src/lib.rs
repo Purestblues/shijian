@@ -2,6 +2,7 @@ pub mod constants;
 pub mod db;
 pub mod error;
 pub mod legacy;
+pub mod mcp;
 pub mod migrations;
 pub mod models;
 pub mod origin_check;
@@ -73,7 +74,7 @@ pub fn create_app(
                 .collect::<Vec<_>>(),
         )
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([header::CONTENT_TYPE]);
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION]);
 
     let webui_dir = std::env::var("SHIJIAN_WEBUI_DIR")
         .map(PathBuf::from)
@@ -92,6 +93,7 @@ pub fn create_app(
         .merge(routes::health::router())
         .merge(routes::plugins::router())
         .merge(routes::events::router())
+        .merge(mcp::router())
         .merge(routes::ui::router(webui_dir))
         .layer(TraceLayer::new_for_http())
         .layer(cors)

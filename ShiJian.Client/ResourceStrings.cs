@@ -75,6 +75,7 @@ public static class ResourceStrings
     public static string SettingTabTracking => GetStringValue("SettingTabTracking");
     public static string SettingTabData => GetStringValue("SettingTabData");
     public static string SettingTabAbout => GetStringValue("SettingTabAbout");
+    public static string SettingTabAiMcp => GetStringValue("SettingTabAiMcp");
     public static string SearchDefaultHint => GetStringValue("SearchDefaultHint");
     public static string SearchResultCount => GetStringValue("SearchResultCount");
     public static string SearchResults => GetStringValue("SearchResults");
@@ -303,6 +304,14 @@ public static class ResourceStrings
     public static string Yesterday => GetStringValue("Yesterday");
     public static string LastMonth => GetStringValue("LastMonth");
     public static string LastYear => GetStringValue("LastYear");
+    public static string McpStatusEnabled => GetStringValue("McpStatusEnabled");
+    public static string McpStatusDisabled => GetStringValue("McpStatusDisabled");
+    public static string McpShowToken => GetStringValue("McpShowToken");
+    public static string McpHideToken => GetStringValue("McpHideToken");
+    public static string McpCopiedToast => GetStringValue("McpCopiedToast");
+    public static string McpTokenRegeneratedToast => GetStringValue("McpTokenRegeneratedToast");
+    public static string McpEnableFirstToast => GetStringValue("McpEnableFirstToast");
+    public static string McpPromptDisabledPreview => GetStringValue("McpPromptDisabledPreview");
 
     private static string GetStringValue(string key)
     {

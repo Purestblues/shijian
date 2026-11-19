@@ -38,7 +38,8 @@ public partial class SettingPage : UserControl
             TabPanelAppearance,
             TabPanelTracking,
             TabPanelData,
-            TabPanelAbout
+            TabPanelAbout,
+            TabPanelAiMcp
         ];
 
         _boundVm = vm;

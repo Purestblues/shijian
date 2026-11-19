@@ -589,4 +589,28 @@ Choose restore mode (an automatic local rollback point is saved before import):<
     <system:String x:Key="Yesterday">Yesterday</system:String>
     <system:String x:Key="LastMonth">Last month</system:String>
     <system:String x:Key="LastYear">Last year</system:String>
+
+    <!-- AI & MCP -->
+    <system:String x:Key="SettingTabAiMcp">AI &amp; MCP</system:String>
+    <system:String x:Key="McpSectionTitle">Local MCP Server</system:String>
+    <system:String x:Key="McpSectionDesc">Allow local AI agents to read summaries and raw usage details (strictly read-only), and help manage categories, merge groups, rules, and plugin settings.</system:String>
+    <system:String x:Key="McpEnableLabel">Enable MCP</system:String>
+    <system:String x:Key="McpStatusEnabled">Enabled · Ready for local agents</system:String>
+    <system:String x:Key="McpStatusDisabled">Disabled · Rejects all MCP requests</system:String>
+    <system:String x:Key="McpConnectionInfoTitle">Connection Endpoints &amp; Priority</system:String>
+    <system:String x:Key="McpHttpLabel">Streamable HTTP (Preferred · zero child process)</system:String>
+    <system:String x:Key="McpStdioLabel">STDIO Bridge (Fallback when HTTP is unsupported)</system:String>
+    <system:String x:Key="McpTokenLabel">Local Bearer Token</system:String>
+    <system:String x:Key="McpCopy">Copy</system:String>
+    <system:String x:Key="McpShowToken">Show</system:String>
+    <system:String x:Key="McpHideToken">Hide</system:String>
+    <system:String x:Key="McpRegenerateToken">Regenerate</system:String>
+    <system:String x:Key="McpCopiedToast">Copied to clipboard</system:String>
+    <system:String x:Key="McpTokenRegeneratedToast">Bearer Token regenerated. Re-copy the setup prompt or update your agent config.</system:String>
+    <system:String x:Key="McpEnableFirstToast">Please enable MCP first</system:String>
+    <system:String x:Key="McpPromptTitle">One-Click Agent Setup Prompt</system:String>
+    <system:String x:Key="McpPromptDesc">Copy this prompt and send it directly to any local AI agent (Claude Desktop, Cursor, Antigravity, Claude Code, Codex, etc.) to install and verify ShiJian MCP automatically.</system:String>
+    <system:String x:Key="McpCopyPrompt">Copy Setup Prompt</system:String>
+    <system:String x:Key="McpRedlineNotice">Safety boundary: Raw usage logs are strictly read-only; WebDAV credentials and backup overwrite/rollback are excluded from MCP.</system:String>
+    <system:String x:Key="McpPromptDisabledPreview">Enable MCP above to generate the full auto-setup prompt with your local endpoint and Bearer token.</system:String>
 </ResourceDictionary>

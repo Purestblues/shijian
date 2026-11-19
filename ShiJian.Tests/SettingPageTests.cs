@@ -72,8 +72,8 @@ public class SettingPageTests
         Assert.Contains(nameof(SettingPageModel.IsTab3Selected), changedProps);
 
         model.TabbarSelectedIndex = 99;
-        Assert.Equal(4, model.TabbarSelectedIndex);
-        Assert.True(model.IsTab4Selected);
+        Assert.Equal(5, model.TabbarSelectedIndex);
+        Assert.True(model.IsTab5Selected);
 
         model.TabbarSelectedIndex = -5;
         Assert.Equal(0, model.TabbarSelectedIndex);
@@ -452,10 +452,45 @@ public class SettingPageTests
         var nav = StubProxy<ShiJian.Client.Servicers.Interfaces.INavigationService>.Create(new());
         var state = StubProxy<ShiJian.Client.Servicers.Interfaces.IStateService>.Create(new());
         var apiClient = StubProxy<ShiJian.Client.Librarys.Api.IShiJianApiClient>.Create(apiHandlers ?? []);
+        var clipboard = StubProxy<ShiJian.Client.Servicers.Interfaces.IClipboardService>.Create(new());
 
         return new ShiJian.Client.ViewModels.SettingPageViewModel(
             appConfig, toast, data, webData, appData, webSiteData,
-            dialog, process, updater, merge, entityData, nav, state, apiClient);
+            dialog, process, updater, merge, entityData, nav, state, apiClient, clipboard);
+    }
+
+    [Fact]
+    public void SettingPageViewModel_HasSixTabsIncludingAiMcp_AndDefaultsMcpDisabled()
+    {
+        var vm = CreateViewModel();
+
+        Assert.Equal(6, vm.TabbarData.Count);
+        Assert.Equal(6, vm.TabbarIcons.Count);
+        Assert.False(vm.McpEnabled);
+        Assert.False(vm.HasMcpToken);
+        Assert.Contains("/mcp", vm.McpHttpUrl);
+        Assert.Contains("--mcp", vm.McpStdioCommand);
+    }
+
+    [Fact]
+    public void SettingPageViewModel_EnablingMcpAutoGeneratesTokenAndPromptWithPriorityRules()
+    {
+        var vm = CreateViewModel();
+
+        vm.McpEnabled = true;
+
+        Assert.True(vm.HasMcpToken);
+        Assert.StartsWith("sj_mcp_", vm.McpToken);
+        Assert.Contains(vm.McpHttpUrl, vm.McpInstallPrompt);
+        Assert.Contains(vm.McpToken, vm.McpInstallPrompt);
+        Assert.Contains("--mcp", vm.McpInstallPrompt);
+        Assert.Contains("优先", vm.McpInstallPrompt);
+        Assert.Contains("只读", vm.McpInstallPrompt);
+
+        var oldToken = vm.McpToken;
+        vm.RegenerateMcpTokenCommand.Execute(null);
+        Assert.NotEqual(oldToken, vm.McpToken);
+        Assert.Contains(vm.McpToken, vm.McpInstallPrompt);
     }
 
     private class StubProxy<T> : DispatchProxy where T : class

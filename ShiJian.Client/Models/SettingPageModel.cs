@@ -44,6 +44,13 @@ public partial class SettingPageModel : ModelBase
     private bool _webDavBusy;
     private bool _webDavRemoteModalVisible;
     private ObservableCollection<RemoteBackupItem> _webDavRemoteBackups = [];
+    private bool _mcpEnabled;
+    private string _mcpToken = string.Empty;
+    private bool _mcpTokenRevealed;
+    private string _mcpHttpUrl = string.Empty;
+    private string _mcpStdioCommand = string.Empty;
+    private string _mcpStatusText = string.Empty;
+    private string _mcpInstallPrompt = string.Empty;
 
     public object? Data
     {
@@ -81,7 +88,7 @@ public partial class SettingPageModel : ModelBase
         get => _tabbarSelectedIndex;
         set
         {
-            var normalized = Math.Clamp(value, 0, 4);
+            var normalized = Math.Clamp(value, 0, 5);
             if (_tabbarSelectedIndex == normalized) return;
             _tabbarSelectedIndex = normalized;
             OnPropertyChanged();
@@ -90,6 +97,7 @@ public partial class SettingPageModel : ModelBase
             OnPropertyChanged(nameof(IsTab2Selected));
             OnPropertyChanged(nameof(IsTab3Selected));
             OnPropertyChanged(nameof(IsTab4Selected));
+            OnPropertyChanged(nameof(IsTab5Selected));
         }
     }
 
@@ -98,6 +106,7 @@ public partial class SettingPageModel : ModelBase
     public bool IsTab2Selected => _tabbarSelectedIndex == 2;
     public bool IsTab3Selected => _tabbarSelectedIndex == 3;
     public bool IsTab4Selected => _tabbarSelectedIndex == 4;
+    public bool IsTab5Selected => _tabbarSelectedIndex == 5;
 
     /// <summary>子母程序合并的自动组（N6）</summary>
     public ObservableCollection<AppMergeGroupRow> MergeGroups
@@ -411,4 +420,103 @@ public partial class SettingPageModel : ModelBase
     }
 
     public bool HasWebDavRemoteBackups => _webDavRemoteBackups.Count > 0;
+
+    public bool McpEnabled
+    {
+        get => _mcpEnabled;
+        set
+        {
+            if (_mcpEnabled == value) return;
+            _mcpEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string McpToken
+    {
+        get => _mcpToken;
+        set
+        {
+            var next = value ?? string.Empty;
+            if (_mcpToken == next) return;
+            _mcpToken = next;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(McpDisplayToken));
+            OnPropertyChanged(nameof(HasMcpToken));
+        }
+    }
+
+    public bool McpTokenRevealed
+    {
+        get => _mcpTokenRevealed;
+        set
+        {
+            if (_mcpTokenRevealed == value) return;
+            _mcpTokenRevealed = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(McpDisplayToken));
+            OnPropertyChanged(nameof(McpTokenToggleText));
+        }
+    }
+
+    public bool HasMcpToken => !string.IsNullOrWhiteSpace(_mcpToken);
+
+    public string McpDisplayToken
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_mcpToken)) return "—";
+            if (_mcpTokenRevealed) return _mcpToken;
+            if (_mcpToken.Length <= 12) return new string('•', _mcpToken.Length);
+            return $"{_mcpToken[..10]}••••••••••••{_mcpToken[^4..]}";
+        }
+    }
+
+    public string McpTokenToggleText => _mcpTokenRevealed
+        ? ResourceStrings.McpHideToken
+        : ResourceStrings.McpShowToken;
+
+    public string McpHttpUrl
+    {
+        get => _mcpHttpUrl;
+        set
+        {
+            if (_mcpHttpUrl == value) return;
+            _mcpHttpUrl = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string McpStdioCommand
+    {
+        get => _mcpStdioCommand;
+        set
+        {
+            if (_mcpStdioCommand == value) return;
+            _mcpStdioCommand = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string McpStatusText
+    {
+        get => _mcpStatusText;
+        set
+        {
+            if (_mcpStatusText == value) return;
+            _mcpStatusText = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string McpInstallPrompt
+    {
+        get => _mcpInstallPrompt;
+        set
+        {
+            if (_mcpInstallPrompt == value) return;
+            _mcpInstallPrompt = value;
+            OnPropertyChanged();
+        }
+    }
 }

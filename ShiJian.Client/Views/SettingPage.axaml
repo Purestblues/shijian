@@ -555,6 +555,155 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+
+                <!-- Tab 5：AI 与 MCP -->
+                <StackPanel x:Name="TabPanelAiMcp" IsVisible="False" Spacing="16">
+                    <!-- 开关与安全红线卡片 -->
+                    <Border Background="{DynamicResource CardBgBrush}"
+                            CornerRadius="{StaticResource RadiusMedium}"
+                            BorderBrush="{DynamicResource CardBorderBrush}"
+                            BorderThickness="1"
+                            Padding="16,14">
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                                <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                    <TextBlock Text="{DynamicResource McpSectionTitle}" FontSize="14" FontWeight="Medium" />
+                                    <TextBlock Text="{DynamicResource McpSectionDesc}" FontSize="12"
+                                               Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <TextBlock Text="{DynamicResource McpEnableLabel}" FontSize="12"
+                                               Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                    <toggle:Toggle x:Name="McpEnableToggle"
+                                                   IsChecked="{Binding McpEnabled, Mode=TwoWay}"
+                                                   OnText="{DynamicResource ToggleOn}"
+                                                   OffText="{DynamicResource ToggleOff}"
+                                                   VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Height="1" Background="{DynamicResource DividerSubtleBrush}" />
+
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding McpStatusText}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+
+                            <Border Background="{DynamicResource Surface2Brush}"
+                                    BorderBrush="{DynamicResource DividerSubtleBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12,10">
+                                <TextBlock Text="{DynamicResource McpRedlineNotice}"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}"
+                                           TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 连接入口与 Bearer Token -->
+                    <Border Background="{DynamicResource CardBgBrush}"
+                            CornerRadius="{StaticResource RadiusMedium}"
+                            BorderBrush="{DynamicResource CardBorderBrush}"
+                            BorderThickness="1"
+                            Padding="16,14">
+                        <StackPanel Spacing="12">
+                            <TextBlock Text="{DynamicResource McpConnectionInfoTitle}" FontSize="14" FontWeight="Medium" />
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{DynamicResource McpHttpLabel}" FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding McpHttpUrl, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             FontSize="12" />
+                                    <Btn:Button Grid.Column="1"
+                                                Content="{DynamicResource McpCopy}"
+                                                Height="30" Padding="12,0" FontSize="12"
+                                                Command="{Binding CopyMcpHttpUrlCommand}" />
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{DynamicResource McpStdioLabel}" FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}" />
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding McpStdioCommand, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             FontSize="12" />
+                                    <Btn:Button Grid.Column="1"
+                                                Content="{DynamicResource McpCopy}"
+                                                Height="30" Padding="12,0" FontSize="12"
+                                                Command="{Binding CopyMcpStdioCommand}" />
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="{DynamicResource McpTokenLabel}" FontSize="12"
+                                           Foreground="{DynamicResource SubTextBrush}" />
+                                <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding McpDisplayToken, Mode=OneWay}"
+                                             IsReadOnly="True"
+                                             FontSize="12" />
+                                    <Btn:Button Grid.Column="1"
+                                                Content="{Binding McpTokenToggleText}"
+                                                Height="30" Padding="10,0" FontSize="12"
+                                                IsEnabled="{Binding HasMcpToken}"
+                                                Command="{Binding ToggleMcpTokenVisibilityCommand}" />
+                                    <Btn:Button Grid.Column="2"
+                                                Content="{DynamicResource McpCopy}"
+                                                Height="30" Padding="12,0" FontSize="12"
+                                                IsEnabled="{Binding HasMcpToken}"
+                                                Command="{Binding CopyMcpTokenCommand}" />
+                                    <Btn:Button Grid.Column="3"
+                                                Content="{DynamicResource McpRegenerateToken}"
+                                                Height="30" Padding="12,0" FontSize="12"
+                                                Command="{Binding RegenerateMcpTokenCommand}" />
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 一键复制 Agent 全自动安装提示词 -->
+                    <Border Background="{DynamicResource CardBgBrush}"
+                            CornerRadius="{StaticResource RadiusMedium}"
+                            BorderBrush="{DynamicResource CardBorderBrush}"
+                            BorderThickness="1"
+                            Padding="16,14">
+                        <StackPanel Spacing="12">
+                            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                                <StackPanel Grid.Column="0" Spacing="3" VerticalAlignment="Center">
+                                    <TextBlock Text="{DynamicResource McpPromptTitle}" FontSize="14" FontWeight="Medium" />
+                                    <TextBlock Text="{DynamicResource McpPromptDesc}" FontSize="12"
+                                               Foreground="{DynamicResource SubTextBrush}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <Btn:Button Grid.Column="1"
+                                            x:Name="CopyMcpPromptButton"
+                                            Classes="primary"
+                                            Icon="Share"
+                                            Content="{DynamicResource McpCopyPrompt}"
+                                            Height="32" Padding="14,0" FontSize="12"
+                                            VerticalAlignment="Center"
+                                            Command="{Binding CopyMcpPromptCommand}" />
+                            </Grid>
+
+                            <TextBox Text="{Binding McpInstallPrompt, Mode=OneWay}"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     MinHeight="180"
+                                     MaxHeight="340"
+                                     FontSize="12" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
 

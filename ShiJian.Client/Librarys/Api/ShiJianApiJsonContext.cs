@@ -79,6 +79,7 @@ namespace ShiJian.Client.Librarys.Api;
 [JsonSerializable(typeof(BehaviorModel))]
 [JsonSerializable(typeof(ShortcutModel))]
 [JsonSerializable(typeof(WebDavModel))]
+[JsonSerializable(typeof(McpModel))]
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(BackupCounts))]
 [JsonSerializable(typeof(BackupManifest))]

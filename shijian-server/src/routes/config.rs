@@ -44,7 +44,7 @@ async fn save_config(
     Json(mut req): Json<Value>,
 ) -> Json<ApiResponse<()>> {
     to_pascal_case_keys(&mut req);
-    let config: ConfigModel = match serde_json::from_value(req) {
+    let mut config: ConfigModel = match serde_json::from_value(req) {
         Ok(c) => c,
         Err(e) => {
             return Json(ApiResponse {
@@ -54,6 +54,7 @@ async fn save_config(
             });
         }
     };
+    config.ensure_mcp_token();
 
     // 读取旧配置，用于比较 is_web_enabled 是否变化
     let old_enabled = match service.get_cached().await {
@@ -92,7 +93,7 @@ async fn save_config(
     }
 }
 
-fn to_camel_case_keys(value: &mut Value) {
+pub(crate) fn to_camel_case_keys(value: &mut Value) {
     if let Value::Object(map) = value {
         let old_map = std::mem::take(map);
         for (k, mut v) in old_map {
@@ -106,7 +107,7 @@ fn to_camel_case_keys(value: &mut Value) {
     }
 }
 
-fn to_pascal_case_keys(value: &mut Value) {
+pub(crate) fn to_pascal_case_keys(value: &mut Value) {
     if let Value::Object(map) = value {
         let old_map = std::mem::take(map);
         for (k, mut v) in old_map {

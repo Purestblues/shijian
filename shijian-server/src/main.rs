@@ -16,8 +16,22 @@ use shijian_server::{
     services, single_instance, utils, websocket_manager,
 };
 
-#[tokio::main]
-async fn main() {
+fn main() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.iter().any(|a| a == "--mcp" || a == "--mcp-stdio") {
+        let code = shijian_server::mcp::stdio::run_stdio_bridge(&args);
+        std::process::exit(code);
+    }
+
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .expect("Failed to create tokio runtime");
+
+    rt.block_on(async_main());
+}
+
+async fn async_main() {
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|p| p.to_path_buf()))

@@ -11,4 +11,6 @@ public class ConfigModel
     public ShortcutModel Shortcut { get; set; } = new();
 
     public WebDavModel WebDav { get; set; } = new();
+
+    public McpModel Mcp { get; set; } = new();
 }

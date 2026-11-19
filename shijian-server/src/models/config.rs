@@ -1,3 +1,4 @@
+use base64::Engine as _;
 use crate::constants;
 use serde::{Deserialize, Serialize};
 
@@ -13,7 +14,8 @@ use serde::{Deserialize, Serialize};
 /// - v5: 添加 MotionMode（客户端动效开关，0 跟随系统 / 1 始终开启 / 2 始终关闭）
 /// - v6: 添加 DefaultBrowser（历史站点记录没有浏览器标识时归属给谁）
 /// - v7: 添加 WebDav 云同步配置（N15）
-pub const CURRENT_CONFIG_VERSION: u32 = 7;
+/// - v8: 添加 Mcp 本地 AI 接入配置（默认关闭 + Bearer Token）
+pub const CURRENT_CONFIG_VERSION: u32 = 8;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -28,6 +30,8 @@ pub struct ConfigModel {
     pub shortcut: ShortcutModel,
     #[serde(rename = "WebDav")]
     pub webdav: WebDavModel,
+    #[serde(rename = "Mcp")]
+    pub mcp: McpModel,
 }
 
 impl Default for ConfigModel {
@@ -38,6 +42,7 @@ impl Default for ConfigModel {
             behavior: BehaviorModel::default(),
             shortcut: ShortcutModel::default(),
             webdav: WebDavModel::default(),
+            mcp: McpModel::default(),
         }
     }
 }
@@ -246,6 +251,79 @@ impl Default for WebDavModel {
             last_sync_status: String::new(),
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct McpModel {
+    #[serde(rename = "Enabled")]
+    pub enabled: bool,
+    #[serde(rename = "Token")]
+    pub token: String,
+}
+
+impl ConfigModel {
+    /// 启用 MCP 但未设置 Token 时自动生成一个本地高熵 Bearer Token
+    pub fn ensure_mcp_token(&mut self) {
+        if self.mcp.enabled && self.mcp.token.trim().is_empty() {
+            self.mcp.token = generate_mcp_token();
+        }
+    }
+}
+
+/// 生成本地高熵 MCP Bearer Token（`sj_mcp_<base64url>`）
+pub fn generate_mcp_token() -> String {
+    let mut bytes = [0u8; 24];
+    if fill_os_random(&mut bytes).is_err() {
+        // 兜底：使用时间戳 + 地址熵经 SHA-256 哈希，确保任何平台都不会 panic
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        hasher.update(now.to_le_bytes());
+        hasher.update(std::process::id().to_le_bytes());
+        hasher.update((&bytes as *const _ as usize).to_le_bytes());
+        let digest = hasher.finalize();
+        bytes.copy_from_slice(&digest[..24]);
+    }
+    let encoded = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(bytes);
+    format!("sj_mcp_{encoded}")
+}
+
+#[cfg(windows)]
+fn fill_os_random(buf: &mut [u8]) -> Result<(), ()> {
+    #[link(name = "bcrypt")]
+    extern "system" {
+        fn BCryptGenRandom(
+            hAlgorithm: *mut core::ffi::c_void,
+            pbBuffer: *mut u8,
+            cbBuffer: u32,
+            dwFlags: u32,
+        ) -> i32;
+    }
+    const BCRYPT_USE_SYSTEM_PREFERRED_RNG: u32 = 0x0000_0002;
+    let status = unsafe {
+        BCryptGenRandom(
+            core::ptr::null_mut(),
+            buf.as_mut_ptr(),
+            buf.len() as u32,
+            BCRYPT_USE_SYSTEM_PREFERRED_RNG,
+        )
+    };
+    if status == 0 {
+        Ok(())
+    } else {
+        Err(())
+    }
+}
+
+#[cfg(unix)]
+fn fill_os_random(buf: &mut [u8]) -> Result<(), ()> {
+    use std::io::Read;
+    let mut f = std::fs::File::open("/dev/urandom").map_err(|_| ())?;
+    f.read_exact(buf).map_err(|_| ())
 }
 
 

@@ -70,7 +70,8 @@ public class ApiAppConfig : IAppConfig
             General = new GeneralModel(),
             Behavior = new BehaviorModel(),
             Shortcut = new ShortcutModel(),
-            WebDav = new WebDavModel()
+            WebDav = new WebDavModel(),
+            Mcp = new McpModel()
         };
         ApplyConfig(fallback);
         _ = LoadFromRemoteAndApplyAsync();
@@ -188,9 +189,10 @@ public class ApiAppConfig : IAppConfig
 
     private void ApplyConfig(ConfigModel config)
     {
-        // 老服务端/老缓存可能缺 Shortcut / WebDav 字段，归一化后再 apply，避免到处 ?? 兜底
+        // 老服务端/老缓存可能缺 Shortcut / WebDav / Mcp 字段，归一化后再 apply，避免到处 ?? 兜底
         NormalizeShortcut(config);
         config.WebDav ??= new WebDavModel();
+        config.Mcp ??= new McpModel();
 
         var previousConfig = _config;
         _config = config;
@@ -204,7 +206,8 @@ public class ApiAppConfig : IAppConfig
                 General = new GeneralModel(),
                 Behavior = new BehaviorModel(),
                 Shortcut = new ShortcutModel(),
-                WebDav = new WebDavModel()
+                WebDav = new WebDavModel(),
+                Mcp = new McpModel()
             };
             var changes = DetectChanges(emptyConfig, config);
             args = new ConfigChangedEventArgs(emptyConfig, config, changes);
@@ -239,7 +242,8 @@ public class ApiAppConfig : IAppConfig
                 General = new GeneralModel(),
                 Behavior = new BehaviorModel(),
                 Shortcut = new ShortcutModel(),
-                WebDav = new WebDavModel()
+                WebDav = new WebDavModel(),
+                Mcp = new McpModel()
             };
         }
 
@@ -361,6 +365,13 @@ public class ApiAppConfig : IAppConfig
             changes.Add("WebDav.SyncMode");
         if (oldWebDav.LastSyncAtUtc != nextWebDav.LastSyncAtUtc)
             changes.Add("WebDav.LastSyncAtUtc");
+
+        var oldMcp = old.Mcp ?? new McpModel();
+        var nextMcp = next.Mcp ?? new McpModel();
+        if (oldMcp.Enabled != nextMcp.Enabled)
+            changes.Add("Mcp.Enabled");
+        if (oldMcp.Token != nextMcp.Token)
+            changes.Add("Mcp.Token");
 
         return changes;
     }

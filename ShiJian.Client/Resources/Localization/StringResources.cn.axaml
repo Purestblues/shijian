@@ -603,4 +603,28 @@
     <system:String x:Key="Yesterday">昨日</system:String>
     <system:String x:Key="LastMonth">上月</system:String>
     <system:String x:Key="LastYear">去年</system:String>
+
+    <!-- AI 与 MCP -->
+    <system:String x:Key="SettingTabAiMcp">AI 与 MCP</system:String>
+    <system:String x:Key="McpSectionTitle">MCP 本地 AI 服务</system:String>
+    <system:String x:Key="McpSectionDesc">允许电脑上安装的 AI Agent 安全读取统计摘要与细粒度使用明细，并协助管理分类、子母程序合并组、过滤规则与插件配置。</system:String>
+    <system:String x:Key="McpEnableLabel">启用 MCP 服务</system:String>
+    <system:String x:Key="McpStatusEnabled">已启用 · 等待本机 Agent 连接</system:String>
+    <system:String x:Key="McpStatusDisabled">已关闭 · 拒绝所有 MCP 请求</system:String>
+    <system:String x:Key="McpConnectionInfoTitle">连接入口与优先级</system:String>
+    <system:String x:Key="McpHttpLabel">Streamable HTTP（首选推荐，零额外进程）</system:String>
+    <system:String x:Key="McpStdioLabel">STDIO 命令行桥接（仅在 Agent 不支持 HTTP 时回退）</system:String>
+    <system:String x:Key="McpTokenLabel">本地 Bearer Token</system:String>
+    <system:String x:Key="McpCopy">复制</system:String>
+    <system:String x:Key="McpShowToken">显示</system:String>
+    <system:String x:Key="McpHideToken">隐藏</system:String>
+    <system:String x:Key="McpRegenerateToken">重新生成</system:String>
+    <system:String x:Key="McpCopiedToast">已复制到剪贴板</system:String>
+    <system:String x:Key="McpTokenRegeneratedToast">已重新生成 Bearer Token，请重新复制安装提示词或更新 Agent 配置</system:String>
+    <system:String x:Key="McpEnableFirstToast">请先开启「启用 MCP 服务」开关</system:String>
+    <system:String x:Key="McpPromptTitle">Agent 全自动安装提示词</system:String>
+    <system:String x:Key="McpPromptDesc">复制下方提示词并直接发给电脑上任意 AI Agent（如 Claude Desktop、Cursor、Antigravity、Claude Code、Codex 等），即可自动识别环境并完成安装。</system:String>
+    <system:String x:Key="McpCopyPrompt">复制安装提示词</system:String>
+    <system:String x:Key="McpRedlineNotice">安全红线：所有原始使用流水绝对只读，绝不开放篡改或删除；WebDAV 云同步配置及密码、备份覆盖导入与回滚均对 MCP 屏蔽。</system:String>
+    <system:String x:Key="McpPromptDisabledPreview">开启上方的「启用 MCP 服务」后，此处将自动生成包含本机真实地址与 Bearer Token 的全自动安装提示词。</system:String>
 </ResourceDictionary>

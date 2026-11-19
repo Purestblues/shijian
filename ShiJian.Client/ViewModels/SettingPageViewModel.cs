@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -41,11 +42,13 @@ public class SettingPageViewModel : SettingPageModel
     private readonly INavigationService _navigationService;
     private readonly IStateService _stateService;
     private readonly IShiJianApiClient _apiClient;
+    private readonly IClipboardService? _clipboardService;
 
     /// <summary>与 <c>BrowserOptions</c> 一一对应的浏览器标识（第一项是空串 = 自动推荐）</summary>
     private readonly List<string> _browserReferences = [];
     private bool _isLoadingBrowsers;
     private bool _isLoadingWebDav;
+    private bool _isLoadingMcp;
     private CancellationTokenSource? _webDavSaveDebounceCts;
     private readonly IToastService _toastService;
     private readonly ConfigModel _config;
@@ -66,7 +69,8 @@ public class SettingPageViewModel : SettingPageModel
         IEntityData entityData,
         INavigationService navigationService,
         IStateService stateService,
-        IShiJianApiClient apiClient)
+        IShiJianApiClient apiClient,
+        IClipboardService? clipboardService = null)
     {
         _appConfig = appConfig;
         _toastService = toastService;
@@ -82,6 +86,7 @@ public class SettingPageViewModel : SettingPageModel
         _navigationService = navigationService;
         _stateService = stateService;
         _apiClient = apiClient;
+        _clipboardService = clipboardService;
         _config = appConfig.GetConfig();
 
         OpenURL = AsyncRelayCommand.Create<object>(OnOpenURL).DisposeWith(Disposables);
@@ -104,10 +109,24 @@ public class SettingPageViewModel : SettingPageModel
         SetMergePrimaryCommand = AsyncRelayCommand.Create<object>(OnSetMergePrimary).DisposeWith(Disposables);
         SaveMergeGroupCommand = AsyncRelayCommand.CreateFromTask(OnSaveMergeGroupAsync).DisposeWith(Disposables);
         CloseMergeEditorCommand = AsyncRelayCommand.Create<object>(_ => { MergeEditorVisible = false; }).DisposeWith(Disposables);
+        CopyMcpHttpUrlCommand = AsyncRelayCommand.CreateFromTask(_ => CopyTextAsync(McpHttpUrl)).DisposeWith(Disposables);
+        CopyMcpStdioCommand = AsyncRelayCommand.CreateFromTask(_ => CopyTextAsync(McpStdioCommand)).DisposeWith(Disposables);
+        CopyMcpTokenCommand = AsyncRelayCommand.CreateFromTask(_ => CopyMcpTokenAsync()).DisposeWith(Disposables);
+        ToggleMcpTokenVisibilityCommand = AsyncRelayCommand.Create<object>(_ => { McpTokenRevealed = !McpTokenRevealed; }).DisposeWith(Disposables);
+        RegenerateMcpTokenCommand = AsyncRelayCommand.CreateFromTask(OnRegenerateMcpTokenAsync).DisposeWith(Disposables);
+        CopyMcpPromptCommand = AsyncRelayCommand.CreateFromTask(_ => CopyMcpPromptAsync()).DisposeWith(Disposables);
 
         appConfig.ConfigChanged += OnConfigChanged;
 
         Initialize();
+
+        PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(McpEnabled))
+            {
+                _ = OnMcpEnabledChangedAsync();
+            }
+        };
 
         // 默认浏览器下拉框换项即保存（没有「保存」按钮，和其他设置项一致）
         WhenPropertyChanged(this, x => x.SelectedBrowser, _ => OnSelectedBrowserChangedAsync());
@@ -134,6 +153,12 @@ public class SettingPageViewModel : SettingPageModel
     public ICommand SetMergePrimaryCommand { get; }
     public ICommand SaveMergeGroupCommand { get; }
     public ICommand CloseMergeEditorCommand { get; }
+    public ICommand CopyMcpHttpUrlCommand { get; }
+    public ICommand CopyMcpStdioCommand { get; }
+    public ICommand CopyMcpTokenCommand { get; }
+    public ICommand ToggleMcpTokenVisibilityCommand { get; }
+    public ICommand RegenerateMcpTokenCommand { get; }
+    public ICommand CopyMcpPromptCommand { get; }
 
     /// <summary>进设置页时恢复分页状态并刷新一次（应用表可能在别的页面里改过）</summary>
     public override async Task OnNavigatedToAsync()
@@ -547,8 +572,10 @@ public class SettingPageViewModel : SettingPageModel
             if (TabbarData.Count > 2) TabbarData[2] = ResourceStrings.SettingTabTracking;
             if (TabbarData.Count > 3) TabbarData[3] = ResourceStrings.SettingTabData;
             if (TabbarData.Count > 4) TabbarData[4] = ResourceStrings.SettingTabAbout;
+            if (TabbarData.Count > 5) TabbarData[5] = ResourceStrings.SettingTabAiMcp;
             OnPropertyChanged(nameof(TabbarData));
             RefreshWebDavSyncModeOptions();
+            RefreshMcpDerivedViews();
         }
 
         // 别处编辑了 Shortcut 也同步刷新本地输入框
@@ -563,6 +590,11 @@ public class SettingPageViewModel : SettingPageModel
         {
             LoadWebDavFromConfig();
         }
+
+        if (e.HasAnyChange("Mcp.Enabled", "Mcp.Token"))
+        {
+            LoadMcpFromConfig();
+        }
     }
 
     private void Initialize()
@@ -574,7 +606,8 @@ public class SettingPageViewModel : SettingPageModel
             ResourceStrings.SettingTabAppearance,
             ResourceStrings.SettingTabTracking,
             ResourceStrings.SettingTabData,
-            ResourceStrings.SettingTabAbout
+            ResourceStrings.SettingTabAbout,
+            ResourceStrings.SettingTabAiMcp
         ];
         TabbarIcons =
         [
@@ -582,7 +615,8 @@ public class SettingPageViewModel : SettingPageModel
             IconTypes.SetlockScreen,
             IconTypes.BulletedList,
             IconTypes.Folder,
-            IconTypes.Info
+            IconTypes.Info,
+            IconTypes.OEM
         ];
         Version = AppVersionHelper.GetDisplayVersion();
         DelDataStartMonthDate = DateTime.Now;
@@ -591,6 +625,7 @@ public class SettingPageViewModel : SettingPageModel
         ExportDataEndMonthDate = DateTime.Now;
         RefreshWebDavSyncModeOptions();
         LoadWebDavFromConfig();
+        LoadMcpFromConfig();
     }
 
     private static readonly string[] WebDavSyncModes = ["manual", "startup", "hourly", "daily"];
@@ -1001,6 +1036,241 @@ public class SettingPageViewModel : SettingPageModel
         var url = obj?.ToString();
         if (!string.IsNullOrEmpty(url))
             _processService.OpenUrl(url);
+    }
+
+    private void LoadMcpFromConfig()
+    {
+        _isLoadingMcp = true;
+        try
+        {
+            _config.Mcp ??= new McpModel();
+            McpEnabled = _config.Mcp.Enabled;
+            McpToken = _config.Mcp.Token ?? string.Empty;
+            RefreshMcpDerivedViews();
+        }
+        finally
+        {
+            _isLoadingMcp = false;
+        }
+    }
+
+    private async Task OnMcpEnabledChangedAsync()
+    {
+        if (_isLoadingMcp) return;
+        _config.Mcp ??= new McpModel();
+        _config.Mcp.Enabled = McpEnabled;
+        if (McpEnabled && string.IsNullOrWhiteSpace(_config.Mcp.Token))
+        {
+            _config.Mcp.Token = GenerateMcpToken();
+            McpToken = _config.Mcp.Token;
+        }
+        RefreshMcpDerivedViews();
+        try
+        {
+            await _appConfig.SaveAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"保存 MCP 开关配置失败：{ex.Message}", ex);
+            _toastService.Error(ResourceStrings.OperationFailedRetry);
+        }
+    }
+
+    private async Task OnRegenerateMcpTokenAsync()
+    {
+        _config.Mcp ??= new McpModel();
+        _config.Mcp.Token = GenerateMcpToken();
+        McpToken = _config.Mcp.Token;
+        RefreshMcpDerivedViews();
+        try
+        {
+            await _appConfig.SaveAsync();
+            _toastService.Success(ResourceStrings.McpTokenRegeneratedToast);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"重新生成 MCP Token 失败：{ex.Message}", ex);
+            _toastService.Error(ResourceStrings.OperationFailedRetry);
+        }
+    }
+
+    private async Task CopyTextAsync(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text) || _clipboardService == null) return;
+        await _clipboardService.SetTextAsync(text);
+        _toastService.Success(ResourceStrings.McpCopiedToast);
+    }
+
+    private async Task CopyMcpTokenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(McpToken))
+        {
+            _toastService.Toast(ResourceStrings.McpEnableFirstToast, ToastType.Error, IconTypes.IncidentTriangle);
+            return;
+        }
+        await CopyTextAsync(McpToken);
+    }
+
+    private async Task CopyMcpPromptAsync()
+    {
+        if (!McpEnabled || string.IsNullOrWhiteSpace(McpToken))
+        {
+            _toastService.Toast(ResourceStrings.McpEnableFirstToast, ToastType.Error, IconTypes.IncidentTriangle);
+            return;
+        }
+        await CopyTextAsync(McpInstallPrompt);
+    }
+
+    private void RefreshMcpDerivedViews()
+    {
+        var serverBase = ServerEndpoints.ServerUrl.TrimEnd('/');
+        var httpUrl = $"{serverBase}/mcp";
+        var stdioPath = ResolveStdioBinaryPath();
+        var stdioCmd = $"\"{stdioPath}\" --mcp";
+
+        McpHttpUrl = httpUrl;
+        McpStdioCommand = stdioCmd;
+        McpStatusText = McpEnabled
+            ? ResourceStrings.McpStatusEnabled
+            : ResourceStrings.McpStatusDisabled;
+        OnPropertyChanged(nameof(McpTokenToggleText));
+        var isEnglish = !CultureInfo.CurrentUICulture.TwoLetterISOLanguageName
+            .Equals("zh", StringComparison.OrdinalIgnoreCase);
+        McpInstallPrompt = BuildMcpInstallPrompt(httpUrl, stdioPath, serverBase, McpEnabled, McpToken, isEnglish);
+    }
+
+    public static string GenerateMcpToken()
+    {
+        var bytes = RandomNumberGenerator.GetBytes(24);
+        var encoded = Convert.ToBase64String(bytes)
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
+        return $"sj_mcp_{encoded}";
+    }
+
+    public static string ResolveStdioBinaryPath()
+    {
+        var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        if (OperatingSystem.IsMacOS())
+        {
+            var bundled = Path.Combine(baseDir, "shijian-server");
+            if (File.Exists(bundled)) return bundled;
+            var toolsPath = "/Applications/ShiJianTools/shijian-server";
+            return File.Exists(toolsPath) ? toolsPath : bundled;
+        }
+
+        return Path.Combine(baseDir, "shijian-server.exe");
+    }
+
+    public static string BuildMcpInstallPrompt(
+        string httpUrl,
+        string stdioBinaryPath,
+        string serverBaseUrl,
+        bool enabled,
+        string token,
+        bool isEnglish = false)
+    {
+        if (!enabled || string.IsNullOrWhiteSpace(token))
+        {
+            return ResourceStrings.McpPromptDisabledPreview;
+        }
+
+        var stdioArgsJson = $"[\"--mcp\", \"--url\", \"{serverBaseUrl}\", \"--token\", \"{token}\"]";
+        var escapedPath = stdioBinaryPath.Replace("\\", "\\\\");
+
+        if (isEnglish)
+        {
+            return
+                $$"""
+                Please install and configure the local "ShiJian" screen-time MCP server into the AI Agent / client on this computer (including your own host client, or Claude Desktop, Cursor, Antigravity, Claude Code, Codex, OpenCode, etc.).
+
+                [Connection Parameters]
+                - Server Name: shijian
+                - Option A (Preferred - Streamable HTTP):
+                  - URL: {{httpUrl}}
+                  - Header: `Authorization: Bearer {{token}}`
+                - Option B (Fallback - STDIO local process bridge):
+                  - Executable: {{stdioBinaryPath}}
+                  - Args: `--mcp --url {{serverBaseUrl}} --token {{token}}`
+
+                [Priority Rules (Follow Strictly)]
+                1. Prefer Option A (Streamable HTTP) first — it avoids spawning child processes and connects directly to the running ShiJian background server.
+                2. Only fall back to Option B (STDIO) if the target client/agent does not support HTTP MCP (only supports `command` + `args`) or if Option A fails.
+                3. When editing config files, preserve existing MCP servers and only add/update the `shijian` entry.
+
+                [Reference Snippets]
+                - HTTP client config:
+                  {
+                    "mcpServers": {
+                      "shijian": {
+                        "url": "{{httpUrl}}",
+                        "headers": {
+                          "Authorization": "Bearer {{token}}"
+                        }
+                      }
+                    }
+                  }
+                - STDIO fallback config:
+                  {
+                    "mcpServers": {
+                      "shijian": {
+                        "command": "{{escapedPath}}",
+                        "args": {{stdioArgsJson}}
+                      }
+                    }
+                  }
+
+                [Verification & Safety Rules]
+                1. Verify the setup by calling `tools/list` or `get_usage_overview`.
+                2. Strict boundary: All raw screen-time logs, app sessions, and web browse logs are strictly READ-ONLY and cannot be modified or deleted; WebDAV credentials and backup overwrite/rollback are excluded. You may read/summarize usage data and manage categories, merge groups, ignore rules, and plugin settings.
+                """;
+        }
+
+        return
+            $$"""
+            请帮我把本地「时见（ShiJian）」屏幕使用时间工具的 MCP 服务安装并配置到当前电脑上我所使用的 AI Agent / 客户端中（包括但不限于你自身所在的客户端，或 Claude Desktop、Cursor、Antigravity、Claude Code、Codex、OpenCode 等）。
+
+            【连接参数】
+            - 服务名称：shijian
+            - 方式 A（首选，Streamable HTTP）：
+              - URL：{{httpUrl}}
+              - Header：`Authorization: Bearer {{token}}`
+            - 方式 B（回退，STDIO 本地进程桥接）：
+              - 可执行文件：{{stdioBinaryPath}}
+              - 启动参数：`--mcp --url {{serverBaseUrl}} --token {{token}}`
+
+            【优先选择规则（请严格遵守）】
+            1. 优先配置方式 A（Streamable HTTP），因为它零子进程开销且直接连接正在运行的时见后台服务。
+            2. 仅当你所在的客户端/Agent 不支持远程或本地 HTTP MCP（只支持 `command` + `args` 的 STDIO 配置），或方式 A 实测连接失败时，才回退配置方式 B（STDIO）。
+            3. 修改配置文件时请先读取原有 JSON/TOML，只合并/更新 `shijian` 这一项，不要覆盖用户已有的其他 MCP 服务器配置；若不确定当前客户端的配置文件路径，先检查常见默认路径并向我确认。
+
+            【参考配置片段】
+            - HTTP 客户端参考（支持 url + headers 的客户端）：
+              {
+                "mcpServers": {
+                  "shijian": {
+                    "url": "{{httpUrl}}",
+                    "headers": {
+                      "Authorization": "Bearer {{token}}"
+                    }
+                  }
+                }
+              }
+            - STDIO 回退参考（仅不支持 HTTP 时使用）：
+              {
+                "mcpServers": {
+                  "shijian": {
+                    "command": "{{escapedPath}}",
+                    "args": {{stdioArgsJson}}
+                  }
+                }
+              }
+
+            【安装后自检与使用约束】
+            1. 配置完成后，请尝试调用 `tools/list` 或执行一次 `get_usage_overview` 验证连接是否畅通。
+            2. 红线说明：所有原始屏幕使用记录、应用会话片段与网页浏览流水均为绝对只读，不可修改或删除；WebDAV 云同步配置与密码及备份覆盖恢复也不对外开放；你可以帮我读取总结统计数据，以及协助整理应用/网站分类、子母程序合并组、忽略规则和提醒插件配置。
+            """;
     }
 
     public override void Dispose()
