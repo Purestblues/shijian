@@ -427,6 +427,29 @@ impl CategoryService {
         Ok(id)
     }
 
+    /// 按候选优先级列表解析首个存在的非系统分类 ID
+    async fn resolve_first_category_id<'e, E>(
+        executor: E,
+        candidates: &[&str],
+    ) -> Result<Option<i64>, AppError>
+    where
+        E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+    {
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+        let rows: Vec<(String, i64)> =
+            sqlx::query_as("SELECT Name, ID FROM CategoryModels WHERE IsSystem = 0")
+                .fetch_all(executor)
+                .await?;
+        for candidate in candidates {
+            if let Some((_, id)) = rows.iter().find(|(n, _)| n == candidate) {
+                return Ok(Some(*id));
+            }
+        }
+        Ok(None)
+    }
+
     /// 在已有事务/连接上为应用匹配分类：目录规则优先，未命中则按内置应用规则匹配
     pub async fn match_category_for_app_conn(
         conn: &mut sqlx::SqliteConnection,
@@ -449,8 +472,8 @@ impl CategoryService {
             }
         }
 
-        let preset_name = auto_category::match_builtin_app(name, description, file, publisher)?;
-        Self::resolve_category_id_by_name(&mut *conn, preset_name)
+        let candidates = auto_category::match_builtin_app_candidates(name, description, file, publisher);
+        Self::resolve_first_category_id(&mut *conn, candidates)
             .await
             .ok()
             .flatten()
@@ -468,8 +491,8 @@ impl CategoryService {
             return Some(id);
         }
 
-        let preset_name = auto_category::match_builtin_app(name, description, file, publisher)?;
-        Self::resolve_category_id_by_name(pool, preset_name)
+        let candidates = auto_category::match_builtin_app_candidates(name, description, file, publisher);
+        Self::resolve_first_category_id(pool, candidates)
             .await
             .ok()
             .flatten()
@@ -480,14 +503,14 @@ impl CategoryService {
     where
         E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
     {
-        let preset_name = auto_category::match_builtin_domain(domain)?;
-        Self::resolve_category_id_by_name(executor, preset_name)
+        let candidates = auto_category::match_builtin_domain_candidates(domain);
+        Self::resolve_first_category_id(executor, candidates)
             .await
             .ok()
             .flatten()
     }
 
-    /// 批量对仍处于「未分类」（或 CategoryID <= 0）的应用与网站应用目录匹配 + 内置自动归类规则（不覆盖用户手动分类）
+    /// 批量对仍处于「未分类」（或 CategoryID <= 0 / IS NULL）的应用与网站应用目录匹配 + 内置自动归类规则（不覆盖用户手动分类）
     pub async fn backfill_builtin_categories_tx(
         conn: &mut sqlx::SqliteConnection,
     ) -> Result<usize, AppError> {
@@ -516,7 +539,7 @@ impl CategoryService {
 
         let apps: Vec<(i64, String, Option<String>, Option<String>, Option<String>)> =
             sqlx::query_as(
-                "SELECT ID, Name, Description, File, Publisher FROM AppModels WHERE CategoryID = ? OR CategoryID <= 0",
+                "SELECT ID, Name, Description, File, Publisher FROM AppModels WHERE CategoryID = ? OR CategoryID <= 0 OR CategoryID IS NULL",
             )
             .bind(sys_id)
             .fetch_all(&mut *conn)
@@ -528,18 +551,18 @@ impl CategoryService {
                 .as_deref()
                 .and_then(|path| match_against_rules(&dir_rules, path));
             let cat_id = dir_matched.or_else(|| {
-                auto_category::match_builtin_app(
+                let candidates = auto_category::match_builtin_app_candidates(
                     &name,
                     desc.as_deref(),
                     file.as_deref(),
                     publisher.as_deref(),
-                )
-                .and_then(|preset| name_to_id.get(preset).copied())
+                );
+                resolve_candidate_id(&name_to_id, candidates)
             });
 
             if let Some(target_cat_id) = cat_id {
                 let res = sqlx::query(
-                    "UPDATE AppModels SET CategoryID = ? WHERE ID = ? AND (CategoryID = ? OR CategoryID <= 0)",
+                    "UPDATE AppModels SET CategoryID = ? WHERE ID = ? AND (CategoryID = ? OR CategoryID <= 0 OR CategoryID IS NULL)",
                 )
                 .bind(target_cat_id)
                 .bind(app_id)
@@ -551,18 +574,17 @@ impl CategoryService {
         }
 
         let sites: Vec<(i64, String)> = sqlx::query_as(
-            "SELECT ID, Domain FROM WebSiteModels WHERE CategoryID = ? OR CategoryID <= 0",
+            "SELECT ID, Domain FROM WebSiteModels WHERE CategoryID = ? OR CategoryID <= 0 OR CategoryID IS NULL",
         )
         .bind(sys_id)
         .fetch_all(&mut *conn)
         .await?;
 
         for (site_id, domain) in sites {
-            if let Some(target_cat_id) = auto_category::match_builtin_domain(&domain)
-                .and_then(|preset| name_to_id.get(preset).copied())
-            {
+            let candidates = auto_category::match_builtin_domain_candidates(&domain);
+            if let Some(target_cat_id) = resolve_candidate_id(&name_to_id, candidates) {
                 let res = sqlx::query(
-                    "UPDATE WebSiteModels SET CategoryID = ? WHERE ID = ? AND (CategoryID = ? OR CategoryID <= 0)",
+                    "UPDATE WebSiteModels SET CategoryID = ? WHERE ID = ? AND (CategoryID = ? OR CategoryID <= 0 OR CategoryID IS NULL)",
                 )
                 .bind(target_cat_id)
                 .bind(site_id)
@@ -608,6 +630,11 @@ fn build_match_rules(categories: &[CategoryModel]) -> Vec<(i64, Vec<String>)> {
 }
 
 #[inline]
+fn resolve_candidate_id(name_to_id: &HashMap<String, i64>, candidates: &[&str]) -> Option<i64> {
+    candidates.iter().find_map(|name| name_to_id.get(*name).copied())
+}
+
+#[inline]
 fn match_against_rules(rules: &[(i64, Vec<String>)], file_path: &str) -> Option<i64> {
     let path_lower = file_path.to_lowercase();
     for (category_id, dirs) in rules {
@@ -621,4 +648,180 @@ fn match_against_rules(rules: &[(i64, Vec<String>)], file_path: &str) -> Option<
         }
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::sqlite::SqlitePoolOptions;
+
+    async fn setup_test_pool(include_research: bool) -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        sqlx::query(
+            r#"
+            CREATE TABLE CategoryModels (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT,
+                IconFile TEXT,
+                Directories TEXT,
+                IsDirectoryMatch INTEGER NOT NULL DEFAULT 0,
+                Color TEXT,
+                IsSystem INTEGER NOT NULL DEFAULT 0,
+                IsUrlMatch INTEGER NOT NULL DEFAULT 0,
+                UrlPatterns TEXT
+            );
+            CREATE TABLE AppModels (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                Description TEXT,
+                File TEXT,
+                CategoryID INTEGER DEFAULT 0,
+                IconFile TEXT,
+                TotalTime INTEGER NOT NULL DEFAULT 0,
+                Alias TEXT,
+                Publisher TEXT
+            );
+            CREATE TABLE WebSiteModels (
+                ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                Title TEXT,
+                Domain TEXT,
+                IconFile TEXT,
+                CategoryID INTEGER NOT NULL DEFAULT 0,
+                Alias TEXT,
+                Duration INTEGER NOT NULL DEFAULT 0
+            );
+            "#,
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query("INSERT INTO CategoryModels (ID, Name, IsSystem) VALUES (1, '未分类', 1)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let mut presets = vec![
+            (2, "学习"),
+            (3, "AI"),
+            (5, "开发"),
+            (7, "办公"),
+            (8, "社交"),
+            (10, "影音"),
+            (11, "工具"),
+        ];
+        if include_research {
+            presets.push((4, "科研"));
+        }
+        for (id, name) in presets {
+            sqlx::query("INSERT INTO CategoryModels (ID, Name, IsSystem) VALUES (?, ?, 0)")
+                .bind(id)
+                .bind(name)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        pool
+    }
+
+    #[tokio::test]
+    async fn apply_auto_classify_routes_research_and_fallbacks_without_overwriting_manual() {
+        let pool = setup_test_pool(true).await;
+
+        sqlx::query("INSERT INTO AppModels (Name, Description, File, CategoryID) VALUES (?, ?, ?, ?)")
+            .bind("Qoder CN Launcher")
+            .bind(" ")
+            .bind("C:\\Users\\demo\\Qoder CN Launcher.exe")
+            .bind(1)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO AppModels (Name, Description, File, CategoryID) VALUES (?, ?, ?, ?)")
+            .bind("stats")
+            .bind("IBM SPSS Statistics 26.0")
+            .bind("D:\\Program Files\\SPSS\\stats.exe")
+            .bind(1)
+            .execute(&pool)
+            .await
+            .unwrap();
+        // 手动分类过的应用不应被覆盖
+        sqlx::query("INSERT INTO AppModels (Name, Description, File, CategoryID) VALUES (?, ?, ?, ?)")
+            .bind("wpscloudsvr")
+            .bind("WPS服务程序")
+            .bind(Option::<String>::None)
+            .bind(11)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        sqlx::query("INSERT INTO WebSiteModels (Title, Domain, CategoryID) VALUES (?, ?, ?)")
+            .bind("Scopus")
+            .bind("www.scopus.com")
+            .bind(1)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO WebSiteModels (Title, Domain, CategoryID) VALUES (?, ?, ?)")
+            .bind("Exa")
+            .bind("exa.ai")
+            .bind(0)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO WebSiteModels (Title, Domain, CategoryID) VALUES (?, ?, ?)")
+            .bind("Unknown")
+            .bind("unmatched.example.invalid")
+            .bind(1)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let updated = CategoryService::apply_auto_classify(&pool).await.unwrap();
+        assert_eq!(updated, 4);
+
+        let qoder_cat: i64 = sqlx::query_scalar("SELECT CategoryID FROM AppModels WHERE Name = 'Qoder CN Launcher'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let stats_cat: i64 = sqlx::query_scalar("SELECT CategoryID FROM AppModels WHERE Name = 'stats'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let wps_cat: i64 = sqlx::query_scalar("SELECT CategoryID FROM AppModels WHERE Name = 'wpscloudsvr'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let scopus_cat: i64 = sqlx::query_scalar("SELECT CategoryID FROM WebSiteModels WHERE Domain = 'www.scopus.com'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let exa_cat: i64 = sqlx::query_scalar("SELECT CategoryID FROM WebSiteModels WHERE Domain = 'exa.ai'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(qoder_cat, 3); // AI
+        assert_eq!(stats_cat, 4); // 科研
+        assert_eq!(wps_cat, 11); // 保留用户原有分类
+        assert_eq!(scopus_cat, 4); // 科研
+        assert_eq!(exa_cat, 3); // AI
+
+        // 无「科研」分类时自动回退至「学习」
+        let pool_no_research = setup_test_pool(false).await;
+        sqlx::query("INSERT INTO WebSiteModels (Title, Domain, CategoryID) VALUES ('Scopus', 'www.scopus.com', 1)")
+            .execute(&pool_no_research)
+            .await
+            .unwrap();
+        let fallback_updated = CategoryService::apply_auto_classify(&pool_no_research).await.unwrap();
+        assert_eq!(fallback_updated, 1);
+        let fallback_cat: i64 = sqlx::query_scalar("SELECT CategoryID FROM WebSiteModels WHERE Domain = 'www.scopus.com'")
+            .fetch_one(&pool_no_research)
+            .await
+            .unwrap();
+        assert_eq!(fallback_cat, 2); // 学习
+    }
 }

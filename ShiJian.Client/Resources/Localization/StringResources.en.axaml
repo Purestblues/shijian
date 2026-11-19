@@ -171,6 +171,7 @@
     <system:String x:Key="AutoClassify">Auto Classify</system:String>
     <system:String x:Key="AutoClassifyTip">Automatically classify uncategorized apps and websites using built-in and custom rules</system:String>
     <system:String x:Key="AutoClassifySuccess">Auto classification finished, updated {0} items</system:String>
+    <system:String x:Key="AutoClassifyNoMatch">No uncategorized items matched auto-classification rules</system:String>
     <system:String x:Key="UrlMatch">Wildcard Match</system:String>
     <system:String x:Key="AddUrlPattern">Add Wildcard</system:String>
     <system:String x:Key="UrlPatternPlaceholder">Supports wildcards(* ?) or regex, e.g. *.bilibili.com or ^(www|m)\.google\.com$</system:String>

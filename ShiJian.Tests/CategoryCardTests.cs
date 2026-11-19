@@ -1,7 +1,13 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Headless.XUnit;
 using Avalonia.Layout;
+using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Styling;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using ShiJian.Client.Controls.Category;
 using ShiJian.Client.Models.Category;
 using Xunit;
@@ -95,5 +101,48 @@ public class CategoryCardTests
         Assert.Equal("×8", card.CountText);
         Assert.Equal("50m", card.DurationText);
         Assert.NotEmpty(card.DisplayColor);
+    }
+
+    [AvaloniaFact]
+    public void ListBoxCardClass_SwitchesNestedCategoryCardToCardView()
+    {
+        var listBox = new ListBox
+        {
+            ItemsSource = new[] { AppCard() },
+            ItemTemplate = new FuncDataTemplate<CategoryModel>((_, _) => new Card(), true)
+        };
+        listBox.Classes.Add("categoryList");
+
+        var window = new Window { Width = 400, Height = 400, Content = listBox };
+        window.Styles.Add(new StyleInclude(new Uri("avares://ShiJian/"))
+        {
+            Source = new Uri("avares://ShiJian/Themes/Base/UiKit.axaml")
+        });
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        try
+        {
+            var card = listBox.FindDescendantOfType<Card>();
+            Assert.NotNull(card);
+            Assert.False(card!.IsCard);
+            Assert.Equal(92, card.Bounds.Height);
+
+            listBox.Classes.Add("card");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.True(card.IsCard);
+            Assert.Equal(148, card.Bounds.Height);
+
+            listBox.Classes.Remove("card");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.False(card.IsCard);
+            Assert.Equal(92, card.Bounds.Height);
+        }
+        finally
+        {
+            window.Close();
+        }
     }
 }

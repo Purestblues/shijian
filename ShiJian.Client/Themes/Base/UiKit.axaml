@@ -124,6 +124,7 @@
 
     <!-- 分类页列表卡片交互 -->
     <Style Selector="ListBox.categoryList.card cat|CategoryCard">
+        <Setter Property="IsCard" Value="True" />
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />

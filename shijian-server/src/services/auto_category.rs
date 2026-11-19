@@ -1,15 +1,44 @@
 use crate::services::web_domain::{host_without_port, is_loopback_site_domain};
 
-/// 9 个预设内置分类名（与 migrations::PRESET_CATEGORIES 保持一致）
+/// 9 个预设内置分类名（与 migrations::PRESET_CATEGORIES 保持一致）+ 可选扩展分类（科研）
 pub const CAT_DEV: &str = "开发";
 pub const CAT_OFFICE: &str = "办公";
 pub const CAT_AI: &str = "AI";
 pub const CAT_ENTERTAINMENT: &str = "娱乐";
 pub const CAT_SOCIAL: &str = "社交";
 pub const CAT_STUDY: &str = "学习";
+pub const CAT_RESEARCH: &str = "科研";
 pub const CAT_DESIGN: &str = "设计";
 pub const CAT_MEDIA: &str = "影音";
 pub const CAT_TOOLS: &str = "工具";
+
+const CAND_DEV: &[&str] = &[CAT_DEV];
+const CAND_OFFICE: &[&str] = &[CAT_OFFICE];
+const CAND_AI: &[&str] = &[CAT_AI];
+const CAND_ENTERTAINMENT: &[&str] = &[CAT_ENTERTAINMENT];
+const CAND_SOCIAL: &[&str] = &[CAT_SOCIAL];
+const CAND_STUDY: &[&str] = &[CAT_STUDY];
+const CAND_RESEARCH: &[&str] = &[CAT_RESEARCH, CAT_STUDY];
+const CAND_RESEARCH_DEV: &[&str] = &[CAT_RESEARCH, CAT_DEV, CAT_STUDY];
+const CAND_DESIGN: &[&str] = &[CAT_DESIGN];
+const CAND_MEDIA: &[&str] = &[CAT_MEDIA];
+const CAND_TOOLS: &[&str] = &[CAT_TOOLS];
+
+fn category_to_candidates(category: &str) -> &'static [&'static str] {
+    match category {
+        CAT_DEV => CAND_DEV,
+        CAT_OFFICE => CAND_OFFICE,
+        CAT_AI => CAND_AI,
+        CAT_ENTERTAINMENT => CAND_ENTERTAINMENT,
+        CAT_SOCIAL => CAND_SOCIAL,
+        CAT_STUDY => CAND_STUDY,
+        CAT_RESEARCH => CAND_RESEARCH,
+        CAT_DESIGN => CAND_DESIGN,
+        CAT_MEDIA => CAND_MEDIA,
+        CAT_TOOLS => CAND_TOOLS,
+        _ => &[],
+    }
+}
 
 /// 判断 domain 是否精确匹配 pattern 或为其子域名（零分配）
 fn domain_matches(host: &str, pattern: &str) -> bool {
@@ -38,6 +67,9 @@ const SPECIFIC_DOMAIN_RULES: &[(&str, &str)] = &[
     ("kimi.moonshot.cn", CAT_AI),
     ("chatglm.cn", CAT_AI),
     ("yuanbao.tencent.com", CAT_AI),
+    ("hunyuan.tencent.com", CAT_AI),
+    ("lightai.cloud.tencent.com", CAT_AI),
+    ("bailian.console.aliyun.com", CAT_AI),
     ("grok.com", CAT_AI),
     ("x.ai", CAT_AI),
     // 开发（Google / 腾讯 / 微软 / 阿里 等旗下开发平台子域名）
@@ -78,6 +110,7 @@ const SPECIFIC_DOMAIN_RULES: &[(&str, &str)] = &[
     ("pan.baidu.com", CAT_TOOLS),
     ("www.aliyundrive.com", CAT_TOOLS),
     ("alipan.com", CAT_TOOLS),
+    ("pan.quark.cn", CAT_TOOLS),
     // 社交
     ("wx.qq.com", CAT_SOCIAL),
     ("web.whatsapp.com", CAT_SOCIAL),
@@ -90,9 +123,10 @@ const SPECIFIC_DOMAIN_RULES: &[(&str, &str)] = &[
     ("music.youtube.com", CAT_MEDIA),
     ("music.apple.com", CAT_MEDIA),
     ("tv.apple.com", CAT_MEDIA),
-    // 学习
-    ("scholar.google.com", CAT_STUDY),
+    // 科研 / 学习
+    ("scholar.google.com", CAT_RESEARCH),
     ("translate.google.com", CAT_TOOLS),
+    ("app.immersivetranslate.com", CAT_TOOLS),
 ];
 
 /// 根域名规则表（支持精确域名与 *.domain 子域名匹配）
@@ -122,11 +156,39 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("siliconflow.cn", CAT_AI),
     ("openrouter.ai", CAT_AI),
     ("ollama.com", CAT_AI),
+    ("exa.ai", CAT_AI),
+    ("qwen.ai", CAT_AI),
+    ("qwenwork.cn", CAT_AI),
+    ("arena.ai", CAT_AI),
+    ("lmarena.ai", CAT_AI),
+    ("lm-studio.cn", CAT_AI),
+    ("lmstudio.ai", CAT_AI),
+    ("inceptionlabs.ai", CAT_AI),
+    ("xiaomimimo.com", CAT_AI),
+    ("modelscope.cn", CAT_AI),
+    ("unifuncs.com", CAT_AI),
+    ("rtk-ai.app", CAT_AI),
+    ("trae.cn", CAT_AI),
+    ("trae.ai", CAT_AI),
+    ("qoder.com", CAT_AI),
+    ("manus.im", CAT_AI),
+    ("genspark.ai", CAT_AI),
+    ("devin.ai", CAT_AI),
+    ("bigmodel.cn", CAT_AI),
+    ("zhipuai.cn", CAT_AI),
+    ("minimaxi.com", CAT_AI),
+    ("minimax.io", CAT_AI),
+    ("kimi.com", CAT_AI),
+    ("claude.com", CAT_AI),
+    ("windsurf.com", CAT_AI),
     // 开发
     ("github.com", CAT_DEV),
+    ("github.io", CAT_DEV),
     ("githubusercontent.com", CAT_DEV),
     ("gitlab.com", CAT_DEV),
+    ("gitlab.io", CAT_DEV),
     ("gitee.com", CAT_DEV),
+    ("gitcode.com", CAT_DEV),
     ("bitbucket.org", CAT_DEV),
     ("stackoverflow.com", CAT_DEV),
     ("stackexchange.com", CAT_DEV),
@@ -137,6 +199,12 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("v2ex.com", CAT_DEV),
     ("oschina.net", CAT_DEV),
     ("npmjs.com", CAT_DEV),
+    ("pnpm.io", CAT_DEV),
+    ("yarnpkg.com", CAT_DEV),
+    ("bun.sh", CAT_DEV),
+    ("deno.com", CAT_DEV),
+    ("nodejs.org", CAT_DEV),
+    ("go.dev", CAT_DEV),
     ("crates.io", CAT_DEV),
     ("docs.rs", CAT_DEV),
     ("pypi.org", CAT_DEV),
@@ -150,9 +218,18 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("react.dev", CAT_DEV),
     ("vuejs.org", CAT_DEV),
     ("nextjs.org", CAT_DEV),
+    ("svelte.dev", CAT_DEV),
+    ("vite.dev", CAT_DEV),
+    ("vitejs.dev", CAT_DEV),
     ("tailwindcss.com", CAT_DEV),
+    ("tauri.app", CAT_DEV),
+    ("avaloniaui.net", CAT_DEV),
     ("vercel.com", CAT_DEV),
+    ("vercel.app", CAT_DEV),
     ("netlify.com", CAT_DEV),
+    ("netlify.app", CAT_DEV),
+    ("pages.dev", CAT_DEV),
+    ("readthedocs.io", CAT_DEV),
     ("cloudflare.com", CAT_DEV),
     ("supabase.com", CAT_DEV),
     ("leetcode.com", CAT_DEV),
@@ -161,17 +238,30 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("kaggle.com", CAT_DEV),
     ("jetbrains.com", CAT_DEV),
     ("visualstudio.com", CAT_DEV),
+    ("jupyter.org", CAT_DEV),
+    ("anaconda.com", CAT_DEV),
+    ("anaconda.org.cn", CAT_DEV),
+    ("posit.co", CAT_DEV),
+    ("aliyun.com", CAT_DEV),
+    ("cloud.tencent.com", CAT_DEV),
+    ("huaweicloud.com", CAT_DEV),
+    ("volcengine.com", CAT_DEV),
+    ("hf.co", CAT_DEV),
+    ("greasyfork.org", CAT_DEV),
     // 办公
     ("feishu.cn", CAT_OFFICE),
     ("larksuite.com", CAT_OFFICE),
     ("dingtalk.com", CAT_OFFICE),
     ("notion.so", CAT_OFFICE),
     ("notion.site", CAT_OFFICE),
+    ("notion.com", CAT_OFFICE),
+    ("jianguoyun.com", CAT_OFFICE),
     ("yuque.com", CAT_OFFICE),
     ("wolai.com", CAT_OFFICE),
     ("flowus.cn", CAT_OFFICE),
     ("kdocs.cn", CAT_OFFICE),
     ("wps.cn", CAT_OFFICE),
+    ("wps.com", CAT_OFFICE),
     ("shimo.im", CAT_OFFICE),
     ("modao.cc", CAT_OFFICE),
     ("processon.com", CAT_OFFICE),
@@ -187,6 +277,9 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("sharepoint.com", CAT_OFFICE),
     ("airtable.com", CAT_OFFICE),
     ("monday.com", CAT_OFFICE),
+    ("craft.do", CAT_OFFICE),
+    ("coda.io", CAT_OFFICE),
+    ("clickup.com", CAT_OFFICE),
     // 设计
     ("figma.com", CAT_DESIGN),
     ("canva.com", CAT_DESIGN),
@@ -208,7 +301,7 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("sketch.com", CAT_DESIGN),
     ("framer.com", CAT_DESIGN),
     ("lucide.dev", CAT_DESIGN),
-    // 学习
+    // 学习 & 科研（有「科研」分类时优先归入科研，否则回退学习）
     ("wikipedia.org", CAT_STUDY),
     ("zhihu.com", CAT_STUDY),
     ("coursera.org", CAT_STUDY),
@@ -218,20 +311,55 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("icourse163.org", CAT_STUDY),
     ("xuetangx.com", CAT_STUDY),
     ("mooc.org", CAT_STUDY),
-    ("arxiv.org", CAT_STUDY),
-    ("cnki.net", CAT_STUDY),
-    ("wanfangdata.com.cn", CAT_STUDY),
-    ("semanticscholar.org", CAT_STUDY),
-    ("researchgate.net", CAT_STUDY),
-    ("ieee.org", CAT_STUDY),
-    ("springer.com", CAT_STUDY),
-    ("sciencedirect.com", CAT_STUDY),
+    ("chaoxing.com", CAT_STUDY),
     ("duolingo.com", CAT_STUDY),
     ("ankiweb.net", CAT_STUDY),
     ("weread.qq.com", CAT_STUDY),
     ("read.douban.com", CAT_STUDY),
-    ("zotero.org", CAT_STUDY),
     ("brilliant.org", CAT_STUDY),
+    ("z-lib.ac", CAT_STUDY),
+    ("z-library.sk", CAT_STUDY),
+    ("arxiv.org", CAT_RESEARCH),
+    ("cnki.net", CAT_RESEARCH),
+    ("wanfangdata.com.cn", CAT_RESEARCH),
+    ("cqvip.com", CAT_RESEARCH),
+    ("semanticscholar.org", CAT_RESEARCH),
+    ("researchgate.net", CAT_RESEARCH),
+    ("ieee.org", CAT_RESEARCH),
+    ("springer.com", CAT_RESEARCH),
+    ("springernature.com", CAT_RESEARCH),
+    ("sciencedirect.com", CAT_RESEARCH),
+    ("sciencedirectassets.com", CAT_RESEARCH),
+    ("elsevier.com", CAT_RESEARCH),
+    ("scopus.com", CAT_RESEARCH),
+    ("sagepub.com", CAT_RESEARCH),
+    ("tandfonline.com", CAT_RESEARCH),
+    ("taylorfrancis.com", CAT_RESEARCH),
+    ("wiley.com", CAT_RESEARCH),
+    ("nature.com", CAT_RESEARCH),
+    ("science.org", CAT_RESEARCH),
+    ("acm.org", CAT_RESEARCH),
+    ("ncbi.nlm.nih.gov", CAT_RESEARCH),
+    ("apa.org", CAT_RESEARCH),
+    ("frontiersin.org", CAT_RESEARCH),
+    ("crossref.org", CAT_RESEARCH),
+    ("repec.org", CAT_RESEARCH),
+    ("econbiz.de", CAT_RESEARCH),
+    ("researchbox.org", CAT_RESEARCH),
+    ("sciencegate.app", CAT_RESEARCH),
+    ("jstor.org", CAT_RESEARCH),
+    ("webofscience.com", CAT_RESEARCH),
+    ("clarivate.com", CAT_RESEARCH),
+    ("orcid.org", CAT_RESEARCH),
+    ("ssrn.com", CAT_RESEARCH),
+    ("nber.org", CAT_RESEARCH),
+    ("dbpia.co.kr", CAT_RESEARCH),
+    ("kci.go.kr", CAT_RESEARCH),
+    ("seamlessaccess.org", CAT_RESEARCH),
+    ("atypon.com", CAT_RESEARCH),
+    ("copyright.com", CAT_RESEARCH),
+    ("pdf2zh.com", CAT_RESEARCH),
+    ("zotero.org", CAT_RESEARCH),
     // 影音
     ("youtube.com", CAT_MEDIA),
     ("youtu.be", CAT_MEDIA),
@@ -279,6 +407,8 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("xiaohongshu.com", CAT_SOCIAL),
     ("x.com", CAT_SOCIAL),
     ("twitter.com", CAT_SOCIAL),
+    ("t.co", CAT_SOCIAL),
+    ("t.me", CAT_SOCIAL),
     ("reddit.com", CAT_SOCIAL),
     ("discord.com", CAT_SOCIAL),
     ("discord.gg", CAT_SOCIAL),
@@ -300,9 +430,27 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("deepl.com", CAT_TOOLS),
     ("fanyi.baidu.com", CAT_TOOLS),
     ("dict.youdao.com", CAT_TOOLS),
+    ("immersivetranslate.com", CAT_TOOLS),
     ("1password.com", CAT_TOOLS),
     ("bitwarden.com", CAT_TOOLS),
     ("speedtest.net", CAT_TOOLS),
+    ("speedtest.cn", CAT_TOOLS),
+    ("quark.cn", CAT_TOOLS),
+    ("123pan.com", CAT_TOOLS),
+    ("115.com", CAT_TOOLS),
+    ("lanzoui.com", CAT_TOOLS),
+    ("huorong.cn", CAT_TOOLS),
+    ("wepe.com.cn", CAT_TOOLS),
+    ("ipaddress.my", CAT_TOOLS),
+    ("internetdownloadmanager.com", CAT_TOOLS),
+    ("neatdownloadmanager.com", CAT_TOOLS),
+    ("ghxi.com", CAT_TOOLS),
+    ("aida64.com", CAT_TOOLS),
+    ("techpowerup.com", CAT_TOOLS),
+    ("versus.com", CAT_TOOLS),
+    ("chiphell.com", CAT_TOOLS),
+    ("kms.cx", CAT_TOOLS),
+    ("massgrave.dev", CAT_TOOLS),
     ("taobao.com", CAT_TOOLS),
     ("jd.com", CAT_TOOLS),
     ("amazon.com", CAT_TOOLS),
@@ -311,31 +459,71 @@ const ROOT_DOMAIN_RULES: &[(&str, &str)] = &[
     ("map.baidu.com", CAT_TOOLS),
 ];
 
-/// 按内置规则匹配网站域名，返回预设分类名；未命中则返回 None
-pub fn match_builtin_domain(domain: &str) -> Option<&'static str> {
+/// 按内置规则及域名启发式匹配网站域名，返回候选预设分类名（按优先级排序）
+pub fn match_builtin_domain_candidates(domain: &str) -> &'static [&'static str] {
     let trimmed = domain.trim();
     if trimmed.is_empty() || is_loopback_site_domain(trimmed) {
-        return None;
+        return &[];
     }
 
     let host = host_without_port(trimmed).to_ascii_lowercase();
     if host.is_empty() {
-        return None;
+        return &[];
     }
 
     for (pattern, category) in SPECIFIC_DOMAIN_RULES {
         if domain_matches(&host, pattern) {
-            return Some(category);
+            return category_to_candidates(category);
         }
     }
 
     for (pattern, category) in ROOT_DOMAIN_RULES {
         if domain_matches(&host, pattern) {
-            return Some(category);
+            return category_to_candidates(category);
         }
     }
 
-    None
+    // 教育/科研后缀启发式（*.edu / *.edu.cn / *.ac.cn / *.ac.uk 等）
+    if host.ends_with(".edu")
+        || host.ends_with(".edu.cn")
+        || host.ends_with(".ac.cn")
+        || host.ends_with(".ac.uk")
+        || host.ends_with(".edu.hk")
+        || host.ends_with(".edu.tw")
+        || host.ends_with(".edu.au")
+        || host.ends_with(".edu.sg")
+        || host.contains(".digitalcommons.")
+    {
+        return CAND_RESEARCH;
+    }
+
+    // 学术 / 文献类二级特征域名段
+    if host
+        .split('.')
+        .any(|seg| matches!(seg, "scholar" | "arxiv" | "research" | "journal" | "journals" | "proceedings" | "z-lib" | "z-library"))
+    {
+        return CAND_RESEARCH;
+    }
+
+    // 开发者 / AI 站点特征
+    if host
+        .split('.')
+        .any(|seg| matches!(seg, "git" | "gitlab" | "gitea" | "docs" | "devtools" | "jupyter"))
+        && (host.ends_with(".dev") || host.ends_with(".io"))
+    {
+        return CAND_DEV;
+    }
+
+    if host.ends_with(".ai") {
+        return CAND_AI;
+    }
+
+    &[]
+}
+
+/// 按内置规则匹配网站域名，返回首选预设分类名；未命中则返回 None
+pub fn match_builtin_domain(domain: &str) -> Option<&'static str> {
+    match_builtin_domain_candidates(domain).first().copied()
 }
 
 /// 常见桌面应用精确进程名映射（小写且已剥离 .exe / .app 后缀）
@@ -356,6 +544,11 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("jan", CAT_AI),
     ("poe", CAT_AI),
     ("doubao", CAT_AI),
+    ("qianwen", CAT_AI),
+    ("qoder", CAT_AI),
+    ("qoder launcher", CAT_AI),
+    ("qoder cn launcher", CAT_AI),
+    ("percho", CAT_AI),
     // 开发工具
     ("code", CAT_DEV),
     ("code - insiders", CAT_DEV),
@@ -409,6 +602,12 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("wireshark", CAT_DEV),
     ("fiddler", CAT_DEV),
     ("charles", CAT_DEV),
+    ("rgui", CAT_DEV),
+    ("rstudio", CAT_DEV),
+    ("javaw", CAT_DEV),
+    ("wish", CAT_DEV),
+    ("cc-switch", CAT_DEV),
+    ("pulse_shell", CAT_DEV),
     // 办公协作
     ("winword", CAT_OFFICE),
     ("excel", CAT_OFFICE),
@@ -422,6 +621,7 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("et", CAT_OFFICE),
     ("wpp", CAT_OFFICE),
     ("wpsoffice", CAT_OFFICE),
+    ("wpscloudsvr", CAT_OFFICE),
     ("feishu", CAT_OFFICE),
     ("lark", CAT_OFFICE),
     ("dingtalk", CAT_OFFICE),
@@ -444,6 +644,9 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("acrobat", CAT_OFFICE),
     ("acrord32", CAT_OFFICE),
     ("foxitpdfreader", CAT_OFFICE),
+    ("lumenpdf", CAT_OFFICE),
+    ("retainpdf", CAT_OFFICE),
+    ("deckcraft", CAT_OFFICE),
     // 社交沟通
     ("wechat", CAT_SOCIAL),
     ("weixin", CAT_SOCIAL),
@@ -485,14 +688,15 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("axure", CAT_DESIGN),
     ("snipaste", CAT_DESIGN),
     ("pixpin", CAT_DESIGN),
-    // 学习阅读
+    // 学习阅读 & 科研
     ("anki", CAT_STUDY),
-    ("zotero", CAT_STUDY),
+    ("zotero", CAT_RESEARCH),
+    ("stats", CAT_RESEARCH),
     ("calibre", CAT_STUDY),
     ("kindle", CAT_STUDY),
     ("sumatrapdf", CAT_STUDY),
-    ("cajviewer", CAT_STUDY),
-    ("mendeley", CAT_STUDY),
+    ("cajviewer", CAT_RESEARCH),
+    ("mendeley", CAT_RESEARCH),
     ("marginnote", CAT_STUDY),
     ("eudic", CAT_STUDY),
     ("youdaodict", CAT_STUDY),
@@ -517,6 +721,7 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("qqlive", CAT_MEDIA),
     ("youku", CAT_MEDIA),
     ("bilibili", CAT_MEDIA),
+    ("splayer", CAT_MEDIA),
     // 娱乐游戏
     ("steam", CAT_ENTERTAINMENT),
     ("steamwebhelper", CAT_ENTERTAINMENT),
@@ -534,9 +739,10 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("minecraft", CAT_ENTERTAINMENT),
     ("hmcl", CAT_ENTERTAINMENT),
     ("pcl2", CAT_ENTERTAINMENT),
-    // 常用工具 / 浏览器
+    // 常用工具 / 浏览器 / 系统组件
     ("chrome", CAT_TOOLS),
     ("msedge", CAT_TOOLS),
+    ("msedgewebview2", CAT_TOOLS),
     ("firefox", CAT_TOOLS),
     ("brave", CAT_TOOLS),
     ("arc", CAT_TOOLS),
@@ -559,6 +765,9 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("aliyundrive", CAT_TOOLS),
     ("qbittorrent", CAT_TOOLS),
     ("motrix", CAT_TOOLS),
+    ("idman", CAT_TOOLS),
+    ("idm1", CAT_TOOLS),
+    ("neatdm", CAT_TOOLS),
     ("7zfm", CAT_TOOLS),
     ("winrar", CAT_TOOLS),
     ("bandizip", CAT_TOOLS),
@@ -570,6 +779,19 @@ const APP_PROCESS_RULES: &[(&str, &str)] = &[
     ("calculatorapp", CAT_TOOLS),
     ("taskmgr", CAT_TOOLS),
     ("systemsettings", CAT_TOOLS),
+    ("systemsettingsadminflows", CAT_TOOLS),
+    ("pickerhost", CAT_TOOLS),
+    ("voiceaccess", CAT_TOOLS),
+    ("easeofaccessdialog", CAT_TOOLS),
+    ("sechealthui", CAT_TOOLS),
+    ("rundll32", CAT_TOOLS),
+    ("wscript", CAT_TOOLS),
+    ("gpu-z", CAT_TOOLS),
+    ("aida64", CAT_TOOLS),
+    ("diskinfo64s", CAT_TOOLS),
+    ("diskinfo64", CAT_TOOLS),
+    ("diskinfo32", CAT_TOOLS),
+    ("taskbarpopup", CAT_TOOLS),
 ];
 
 /// Windows 底层系统宿主进程（不应当作为常用工具被频繁归纳，保持未分类或由用户处理）
@@ -608,59 +830,184 @@ fn normalize_process_name(name: &str) -> String {
         .to_string()
 }
 
-/// 按内置规则匹配应用元数据，返回预设分类名；未命中则返回 None
+fn looks_like_installer(proc_lower: &str, desc_lower: &str, path_lower: &str) -> bool {
+    proc_lower.contains("setup")
+        || proc_lower.contains("installer")
+        || proc_lower.contains("uninstall")
+        || proc_lower.starts_with("uninst")
+        || proc_lower.starts_with("unst")
+        || proc_lower == "update"
+        || proc_lower == "updater"
+        || proc_lower == "au_"
+        || proc_lower == "un"
+        || proc_lower == "un_a"
+        || proc_lower == "wixstdba"
+        || desc_lower.contains("setup")
+        || desc_lower.contains("installer")
+        || desc_lower.contains("uninstaller")
+        || desc_lower.contains("卸载")
+        || desc_lower.contains("安装包")
+        || path_lower.contains("/squirreltemp/")
+        || path_lower.contains("/~nsu")
+        || (path_lower.contains("/appdata/local/temp/is-") && path_lower.ends_with(".tmp"))
+}
+
+/// 按内置规则及元数据启发式匹配应用，返回候选预设分类名（按优先级排序）
+pub fn match_builtin_app_candidates(
+    name: &str,
+    description: Option<&str>,
+    file: Option<&str>,
+    publisher: Option<&str>,
+) -> &'static [&'static str] {
+    let proc_lower = normalize_process_name(name);
+    if proc_lower.is_empty() || is_os_background_host(&proc_lower) {
+        return &[];
+    }
+
+    let desc_lower = description.unwrap_or("").trim().to_ascii_lowercase();
+    let pub_lower = publisher.unwrap_or("").trim().to_ascii_lowercase();
+    let path_lower = file.unwrap_or("").trim().replace('\\', "/").to_ascii_lowercase();
+
+    // 时见主程序自身保持不强行归纳，仅其安装包归入工具
+    if proc_lower.starts_with("shijian") {
+        return if looks_like_installer(&proc_lower, &desc_lower, &path_lower) {
+            CAND_TOOLS
+        } else {
+            &[]
+        };
+    }
+
+    for (rule_proc, category) in APP_PROCESS_RULES {
+        if proc_lower == *rule_proc {
+            return category_to_candidates(category);
+        }
+    }
+
+    // 科研 / 学术工具与统计软件
+    if proc_lower.contains("spss")
+        || proc_lower.contains("spps")
+        || proc_lower.contains("open.science")
+        || desc_lower.contains("spss")
+        || desc_lower.contains("zotero")
+        || path_lower.contains("/zotero/")
+        || path_lower.contains("/spss/")
+    {
+        return CAND_RESEARCH;
+    }
+
+    if proc_lower.contains("rstudio")
+        || desc_lower.contains("rstudio")
+        || desc_lower.contains("r for windows")
+    {
+        return CAND_RESEARCH_DEV;
+    }
+
+    // AI / Coding Agent 客户端与安装器
+    if proc_lower.contains("qoder")
+        || proc_lower.contains("doubao")
+        || proc_lower.contains("qianwen")
+        || proc_lower.contains("percho")
+        || desc_lower.contains("chatgpt")
+        || desc_lower.contains("claude")
+        || desc_lower.contains("copilot")
+        || desc_lower.contains("coding agent")
+        || desc_lower.contains("doubao")
+        || desc_lower.contains("qianwen")
+    {
+        return CAND_AI;
+    }
+
+    // 办公协作 / PDF / 云盘同步
+    if proc_lower.contains("wps")
+        || proc_lower.contains("nutstore")
+        || proc_lower.contains("lumenpdf")
+        || proc_lower.contains("retainpdf")
+        || proc_lower.contains("deckcraft")
+        || desc_lower.contains("wps")
+        || desc_lower.contains("nutstore")
+        || desc_lower.contains("presentations")
+        || desc_lower.contains("pdf 阅读")
+        || path_lower.contains("/wps office/")
+    {
+        return CAND_OFFICE;
+    }
+
+    // 开发工具链
+    if desc_lower.contains("visual studio code")
+        || desc_lower.contains("jetbrains")
+        || pub_lower.contains("jetbrains")
+        || path_lower.contains("/jetbrains/")
+        || path_lower.contains("/microsoft vs code/")
+        || path_lower.contains("/git/")
+    {
+        return CAND_DEV;
+    }
+
+    // 游戏平台
+    if desc_lower.contains("wegame")
+        || path_lower.contains("/steam/steamapps/")
+        || path_lower.contains("/epic games/")
+        || path_lower.contains("/riot games/")
+        || path_lower.contains("/mihoyo/")
+        || path_lower.contains("/hoyoverse/")
+    {
+        return CAND_ENTERTAINMENT;
+    }
+
+    // 影音媒体（含播放器安装包）
+    if proc_lower.contains("potplayer")
+        || proc_lower.contains("splayer")
+        || proc_lower.contains("cloudmusic")
+        || desc_lower.contains("potplayer")
+        || desc_lower.contains("music player")
+    {
+        return CAND_MEDIA;
+    }
+
+    // 设计创作
+    if pub_lower.contains("adobe") || desc_lower.contains("adobe ") {
+        return CAND_DESIGN;
+    }
+
+    // 安全 / 代理 / 下载器 / 硬件检测 / 运行库与安装卸载工具
+    if proc_lower.contains("clash")
+        || proc_lower.contains("kaspersky")
+        || proc_lower.contains("vc_redist")
+        || proc_lower.contains("neatdm")
+        || proc_lower.contains("metasequoia")
+        || desc_lower.contains("download manager")
+        || desc_lower.contains("clash verge")
+        || desc_lower.contains("crystaldiskinfo")
+        || desc_lower.contains("aida64")
+        || desc_lower.contains("webview2")
+        || desc_lower.contains("卡巴斯基")
+        || path_lower.contains("/图吧工具箱")
+        || looks_like_installer(&proc_lower, &desc_lower, &path_lower)
+    {
+        return CAND_TOOLS;
+    }
+
+    // 其他交互式 Windows 系统工具（System32 / SysWOW64 / WindowsApps\Microsoft.*）
+    if path_lower.contains("/windows/system32/")
+        || path_lower.contains("/windows/syswow64/")
+        || path_lower.contains("/windowsapps/microsoft.")
+    {
+        return CAND_TOOLS;
+    }
+
+    &[]
+}
+
+/// 按内置规则匹配应用元数据，返回首选预设分类名；未命中则返回 None
 pub fn match_builtin_app(
     name: &str,
     description: Option<&str>,
     file: Option<&str>,
     publisher: Option<&str>,
 ) -> Option<&'static str> {
-    let proc_lower = normalize_process_name(name);
-    if proc_lower.is_empty()
-        || proc_lower.starts_with("shijian")
-        || is_os_background_host(&proc_lower)
-    {
-        return None;
-    }
-
-    for (rule_proc, category) in APP_PROCESS_RULES {
-        if proc_lower == *rule_proc {
-            return Some(category);
-        }
-    }
-
-    // 结合描述 / 发布者 / 安装路径关键字做次级匹配
-    let desc_lower = description.unwrap_or("").trim().to_ascii_lowercase();
-    let pub_lower = publisher.unwrap_or("").trim().to_ascii_lowercase();
-    let path_lower = file.unwrap_or("").trim().replace('\\', "/").to_ascii_lowercase();
-
-    if desc_lower.contains("visual studio code")
-        || desc_lower.contains("jetbrains")
-        || pub_lower.contains("jetbrains")
-        || path_lower.contains("/jetbrains/")
-        || path_lower.contains("/microsoft vs code/")
-    {
-        return Some(CAT_DEV);
-    }
-
-    if path_lower.contains("/steam/steamapps/")
-        || path_lower.contains("/epic games/")
-        || path_lower.contains("/riot games/")
-        || path_lower.contains("/mihoyo/")
-        || path_lower.contains("/hoyoverse/")
-    {
-        return Some(CAT_ENTERTAINMENT);
-    }
-
-    if pub_lower.contains("adobe") || desc_lower.contains("adobe ") {
-        return Some(CAT_DESIGN);
-    }
-
-    if desc_lower.contains("chatgpt") || desc_lower.contains("claude") || desc_lower.contains("copilot") {
-        return Some(CAT_AI);
-    }
-
-    None
+    match_builtin_app_candidates(name, description, file, publisher)
+        .first()
+        .copied()
 }
 
 #[cfg(test)]
@@ -671,14 +1018,26 @@ mod tests {
     fn matches_common_websites_and_subdomains() {
         assert_eq!(match_builtin_domain("github.com"), Some(CAT_DEV));
         assert_eq!(match_builtin_domain("gist.github.com"), Some(CAT_DEV));
+        assert_eq!(match_builtin_domain("treapgogo.github.io"), Some(CAT_DEV));
         assert_eq!(match_builtin_domain("bilibili.com"), Some(CAT_ENTERTAINMENT));
         assert_eq!(match_builtin_domain("www.bilibili.com"), Some(CAT_ENTERTAINMENT));
         assert_eq!(match_builtin_domain("b23.tv"), Some(CAT_ENTERTAINMENT));
         assert_eq!(match_builtin_domain("chatgpt.com"), Some(CAT_AI));
         assert_eq!(match_builtin_domain("chat.deepseek.com"), Some(CAT_AI));
+        assert_eq!(match_builtin_domain("exa.ai"), Some(CAT_AI));
+        assert_eq!(match_builtin_domain("chat.qwen.ai"), Some(CAT_AI));
         assert_eq!(match_builtin_domain("docs.qq.com"), Some(CAT_OFFICE));
+        assert_eq!(match_builtin_domain("www.notion.com"), Some(CAT_OFFICE));
         assert_eq!(match_builtin_domain("music.163.com"), Some(CAT_MEDIA));
         assert_eq!(match_builtin_domain("Figma.com:443"), Some(CAT_DESIGN));
+        assert_eq!(match_builtin_domain("yjszs.dhu.edu.cn"), Some(CAT_RESEARCH));
+        assert_eq!(
+            match_builtin_domain_candidates("www.scopus.com"),
+            &[CAT_RESEARCH, CAT_STUDY]
+        );
+        assert_eq!(match_builtin_domain("v8.chaoxing.com"), Some(CAT_STUDY));
+        assert_eq!(match_builtin_domain("app.immersivetranslate.com"), Some(CAT_TOOLS));
+        assert_eq!(match_builtin_domain("t.me"), Some(CAT_SOCIAL));
         assert_eq!(match_builtin_domain("localhost:3000"), None);
         assert_eq!(match_builtin_domain("unmatched.example.invalid"), None);
     }
@@ -692,6 +1051,34 @@ mod tests {
         assert_eq!(match_builtin_app("cloudmusic", None, None, None), Some(CAT_MEDIA));
         assert_eq!(match_builtin_app("explorer.exe", None, None, None), Some(CAT_TOOLS));
         assert_eq!(match_builtin_app("ShiJian.Client", None, None, None), None);
+        assert_eq!(
+            match_builtin_app("ShiJian-2.1-Setup", None, Some("D:\\Downloads\\ShiJian-2.1-Setup.exe"), None),
+            Some(CAT_TOOLS)
+        );
+        assert_eq!(
+            match_builtin_app("Qoder CN Launcher", None, None, None),
+            Some(CAT_AI)
+        );
+        assert_eq!(
+            match_builtin_app("Percho", Some("Desktop GUI for the Pi coding agent"), None, None),
+            Some(CAT_AI)
+        );
+        assert_eq!(
+            match_builtin_app("stats", Some("IBM SPSS Statistics 26.0"), Some("D:\\Program Files\\SPSS\\stats.exe"), None),
+            Some(CAT_RESEARCH)
+        );
+        assert_eq!(
+            match_builtin_app_candidates("RStudio-2026.10.0-233", Some("RStudio"), None, None),
+            &[CAT_RESEARCH, CAT_DEV, CAT_STUDY]
+        );
+        assert_eq!(
+            match_builtin_app("wpscloudsvr", Some("WPS服务程序"), None, None),
+            Some(CAT_OFFICE)
+        );
+        assert_eq!(
+            match_builtin_app("PotPlayerSetup64_155", Some("PotPlayer Setup File"), None, None),
+            Some(CAT_MEDIA)
+        );
         assert_eq!(
             match_builtin_app(
                 "SomeGame",

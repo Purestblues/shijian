@@ -298,7 +298,10 @@ public class CategoryPageViewModel : CategoryPageModel
         try
         {
             var count = await _categoryService.ApplyAutoClassifyAsync();
-            _toastService.Success(string.Format(ResourceStrings.AutoClassifySuccess, count));
+            if (count > 0)
+                _toastService.Success(string.Format(ResourceStrings.AutoClassifySuccess, count));
+            else
+                _toastService.Info(ResourceStrings.AutoClassifyNoMatch);
             _entitiesLoaded = false;
             _categoryStatsDirty = true;
             await LoadDataCoreAsync(default);

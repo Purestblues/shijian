@@ -196,6 +196,7 @@ public static class ResourceStrings
     public static string DirectoryMatch => GetStringValue("DirectoryMatch");
     public static string ApplyDirectoryMatchSuccess => GetStringValue("ApplyDirectoryMatchSuccess");
     public static string AutoClassifySuccess => GetStringValue("AutoClassifySuccess");
+    public static string AutoClassifyNoMatch => GetStringValue("AutoClassifyNoMatch");
 
     // URL 匹配相关
     public static string UrlMatch => GetStringValue("UrlMatch");

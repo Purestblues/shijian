@@ -29,7 +29,7 @@
     </Application.Resources>
 
     <Application.Styles>
-        <Style Selector="Window, ContextMenu, ToolTip, Menu">
+        <Style Selector="Window, ContextMenu, FlyoutPresenter, ToolTip, Menu">
             <Setter Property="FontFamily"
                     Value="Inter, Segoe UI Variable Text, Segoe UI, HarmonyOS Sans SC, MiSans, PingFang SC, Microsoft YaHei UI, sans-serif" />
         </Style>

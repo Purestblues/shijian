@@ -184,6 +184,7 @@
     <system:String x:Key="AutoClassify">智能归类</system:String>
     <system:String x:Key="AutoClassifyTip">使用内置规则与目录/网址规则为未分类的应用和网站自动分类</system:String>
     <system:String x:Key="AutoClassifySuccess">已完成智能归类，共更新 {0} 项</system:String>
+    <system:String x:Key="AutoClassifyNoMatch">未发现可自动归类的未分类项</system:String>
     <system:String x:Key="UrlMatch">通配符匹配</system:String>
     <system:String x:Key="AddUrlPattern">添加通配符</system:String>
     <system:String x:Key="UrlPatternPlaceholder">支持通配符(* ?)或正则表达式，如 *.bilibili.com 或 ^(www|m)\.google\.com$</system:String>

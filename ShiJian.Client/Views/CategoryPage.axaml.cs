@@ -28,7 +28,7 @@ public partial class CategoryPage : TPage
     private ObservableCollection<string>? _observedEditDirectories;
     private ObservableCollection<string>? _observedEditUrlPatterns;
     private CategoryPageViewModel _model;
-    private Flyout? _activeTagFlyout;
+    private ContextMenu? _activeTagMenu;
 
     public CategoryPage()
     {
@@ -105,8 +105,8 @@ public partial class CategoryPage : TPage
         base.OnUnloaded(e);
         if (_model != null)
             _model.EntityScrollResetRequested -= OnEntityScrollResetRequested;
-        _activeTagFlyout?.Hide();
-        _activeTagFlyout = null;
+        _activeTagMenu?.Close();
+        _activeTagMenu = null;
         _editIsDirectoryMatchSubscription.Dispose();
         _editDirectoriesSubscription.Dispose();
         _editIsUrlMatchSubscription.Dispose();
@@ -202,30 +202,54 @@ public partial class CategoryPage : TPage
         if (_model == null || sender is not Button btn || btn.Tag is not CategoryEntityRow row)
             return;
 
-        if (!this.TryFindResource("TagPickerFlyout", out var res) || res is not Flyout flyout)
-            return;
-
         _model.PrepareTagPicker(row);
-        if (flyout.Content is Control content)
-            content.DataContext = _model;
 
-        _activeTagFlyout = flyout;
-        flyout.ShowAt(btn);
-    }
+        _activeTagMenu?.Close();
+        var menu = new ContextMenu
+        {
+            Placement = PlacementMode.BottomEdgeAlignedRight,
+            MaxHeight = 520
+        };
 
-    private void OnTagOptionClicked(object? sender, RoutedEventArgs e)
-    {
-        // 先提取 Tag 并触发异步更新，再关闭 Flyout，避免关闭 Popup 后视觉树卸载导致命令或上下文丢失
-        var option = (sender as Button)?.Tag as CategoryTagOption;
-        _activeTagFlyout?.Hide();
-        if (_model != null && option != null)
-            _ = _model.AssignEntityCategoryAsync(option);
-    }
+        CategoryTagOption? systemOption = null;
+        foreach (var option in _model.TagPickerOptions)
+        {
+            if (option.IsSystem)
+            {
+                systemOption ??= option;
+                continue;
+            }
 
-    private void OnTagNewCategoryClicked(object? sender, RoutedEventArgs e)
-    {
-        _activeTagFlyout?.Hide();
-        if (_model != null && _model.EditCommand.CanExecute(null))
-            _model.EditCommand.Execute(null);
+            var item = new MenuItem
+            {
+                ToggleType = MenuItemToggleType.Radio,
+                Header = option.Name,
+                IsChecked = option.IsSelected
+            };
+            var captured = option;
+            item.Click += (_, _) => _ = _model.AssignEntityCategoryAsync(captured);
+            menu.Items.Add(item);
+        }
+
+        if (systemOption != null && !row.IsUncategorized)
+        {
+            menu.Items.Add(new Separator());
+            var uncategorizedItem = new MenuItem { Header = systemOption.Name };
+            var captured = systemOption;
+            uncategorizedItem.Click += (_, _) => _ = _model.AssignEntityCategoryAsync(captured);
+            menu.Items.Add(uncategorizedItem);
+        }
+
+        menu.Items.Add(new Separator());
+        var newCategoryItem = new MenuItem { Header = ResourceStrings.NewCategory };
+        newCategoryItem.Click += (_, _) =>
+        {
+            if (_model != null && _model.EditCommand.CanExecute(null))
+                _model.EditCommand.Execute(null);
+        };
+        menu.Items.Add(newCategoryItem);
+
+        _activeTagMenu = menu;
+        menu.Open(btn);
     }
 }
