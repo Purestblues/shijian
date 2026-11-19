@@ -41,8 +41,8 @@
                 <Border>
                     <Grid Margin="2">
                         <Border x:Name="Bg" Background="Transparent"
-                                Width="40" Height="40"
-                                CornerRadius="20">
+                                Width="36" Height="36"
+                                CornerRadius="{StaticResource RadiusMedium}">
                             <Border.Transitions>
                                 <Transitions>
                                     <BrushTransition Property="Background" Duration="0:0:0.15" />

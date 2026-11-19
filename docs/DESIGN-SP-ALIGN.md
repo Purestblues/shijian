@@ -125,8 +125,8 @@
 
 | 阶段 | 状态 | 说明 |
 | --- | --- | --- |
-| A · token 层 | ✅ 暗色 + 浅色都完成 | 表面阶梯 / 文字四档 / 发丝线 / 卡片 / Elevation / 字号标尺；新增 `Themes/Base/UiKit.axaml` 全局语汇；`fork.8` 新增第二强调色 `Accent2Color`(#FF4081) → `ChartCompareBrush`，并补齐 `SelectRingBrush` / `WebBadge*` / `ScrimBrush` 三套字典 |
-| B · 组件视觉 | 🚧 卡片 + 榜单行已改 | `.card`/`.statCard`/`.listRow` 落地；榜单行改扁平行（26px 裸图标 / 3px 进度条 / 行底发丝线）；`fork.8` 清掉 25 处组件硬编码色（删除按钮/状态点/Toast/徽章/遮罩/阴影改成 token），图表卡经排查已是 8px + 发丝边 + 零阴影，无需再改 |
-| C · 动效 v2 | ✅ 完成 | `MotionTokens`（4 档时长 + 3 条曲线）、`PageMotion`（180ms 淡入 + 45ms 延迟 + 8px 上移）、`SlideMotion`（逐帧插值）、`ExpandMotion`（高度展开/收起）、`Expander` 收起动画、XAML 里 12 个文件的过渡时长归一到 token |
-| 遗留（下一批） | — | 列表行进出 stagger、N7 分类页信息密度（见 PLAN 三·五）、`RadiusMedium=RadiusLarge=16` 语义重复、图表按分类取色阶 |
+| A · token 层 | ✅ 暗色 + 浅色 + Azure 完成 | 表面阶梯 / 文字四档 / 发丝线 / 卡片 / Elevation / 字号标尺；`Themes/Tokens/` 已拆分为 6 个 token 文件（`Color`、`Radius`、`Space`、`Type`、`Motion`、`Elevation`）并补齐 `RadiusXLarge=16`、三套主题 `Elevation1-3` 与 `ThemeRamp50..900Brush` |
+| B · 组件视觉 | ✅ 已完成 | `.card`/`.statCard`/`.listRow` 落地；图表按分类 50–900 色阶着色、热力图 5 档阶梯与月历日历纯色透明度编码完成；设置页图标+文字标签栏与 `Surface2/Surface3` 嵌套子卡、分类应用/网站列表单卡 48px 扁平分割行与删除交互、WebUI 浅色 Nord token 与文案对齐完成 |
+| C · 动效 v2 | ✅ 遗留项已完成 | `MotionTokens`、`PageMotion`、`SlideMotion`、`ExpandMotion` 与 `ListRowMotion`（列表行 stagger 进场 + 移除高度折叠）均已落地 |
+| 遗留（已完成） | ✅ 2026-11-19 收口 | 列表行进出 stagger、`CategoryAppListPage`/`CategoryWebSiteListPage` 扁平清单与移除动效、`Themes/Tokens/` 拆分、`RadiusXLarge=16` 语义去重、图表 50–900 色阶已全部实现并通过 211 项单测与 `/gui-verify` 双主题验收（交互与微动效重构见 `PLAN-INTERACTION-MOTION.md`） |
 阶段 C 里「8px 位移」需自写插值（`Motion/SlideAnimator`），其余（淡入/height/展开）可直接用 Avalonia 原生动画。

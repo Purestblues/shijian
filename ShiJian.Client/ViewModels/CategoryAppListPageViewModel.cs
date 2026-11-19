@@ -86,15 +86,18 @@ public class CategoryAppListPageViewModel : CategoryAppListPageModel
 
     private async Task OnDel(object obj)
     {
-        if (SelectedItem == null) return;
+        if (IsSystemCategory) return;
 
-        var list = Data.ToList();
-        list.Remove(SelectedItem);
+        var target = obj as AppModel ?? SelectedItem;
+        if (target == null) return;
 
-        await _appUpdateService.ClearCategoryAsync(SelectedItem.ID);
+        var list = Data.Where(m => m.ID != target.ID).ToList();
+        await _appUpdateService.ClearCategoryAsync(target.ID);
 
         Data = list;
-        MainPageOriginalData = list;
+        MainPageOriginalData = MainPageOriginalData.Where(m => m.ID != target.ID).ToList();
+        if (ReferenceEquals(SelectedItem, target) || SelectedItem?.ID == target.ID)
+            SelectedItem = null;
     }
 
     private void OnChooseClose(object obj)

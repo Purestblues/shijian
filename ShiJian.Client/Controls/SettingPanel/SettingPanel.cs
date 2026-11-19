@@ -295,7 +295,7 @@ public class SettingPanel : TemplatedControl
     {
         if (configList == null || configList.Count == 0) return;
         var itemContainer = new StackPanel();
-        itemContainer.Spacing = 4;
+        itemContainer.Spacing = 8;
 
         var sortList = configList.OrderBy(m => m.Attribute.Index).ToList();
         var itemCornerRadius =
@@ -336,10 +336,10 @@ public class SettingPanel : TemplatedControl
         var border = new Border();
         border.Background = Background;
         border.CornerRadius =
-            ((CornerRadius?)Application.Current?.FindResource("RadiusLarge")) ?? new CornerRadius(12);
+            ((CornerRadius?)Application.Current?.FindResource("RadiusMedium")) ?? new CornerRadius(8);
         border.BorderBrush = BorderBrush;
         border.BorderThickness = new Thickness(1);
-        border.Padding = new Thickness(6);
+        border.Padding = new Thickness(12);
         border.Child = item;
 
         container.Children.Add(border);

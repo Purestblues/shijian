@@ -4,17 +4,20 @@
                     xmlns:controls="using:ShiJian.Client.Controls.Charts">
 
     <ControlTheme x:Key="{x:Type controls:ChartsItemTypeMonth}" TargetType="controls:ChartsItemTypeMonth">
-        <Setter Property="Width" Value="24" />
-        <Setter Property="Height" Value="24" />
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
         <Setter Property="Margin" Value="2" />
         <Style Selector="^">
             <Style Selector="^[IsLoading=True]">
                 <Setter Property="Template">
                     <ControlTemplate>
                         <base:Placeholder CornerRadius="{StaticResource RadiusSmall}"
-                                          Width="24" Height="24" />
+                                          Width="28" Height="28" />
                     </ControlTemplate>
                 </Setter>
+            </Style>
+            <Style Selector="^:pointerover /template/ Border#Border">
+                <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
             </Style>
             <Style Selector="^[IsSelected=True] /template/ Border#Border">
                 <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
@@ -25,20 +28,28 @@
             <ControlTemplate>
                 <Border ToolTip.Tip="{TemplateBinding ToolTip}"
                         x:Name="Border"
-                        Width="24"
-                        Height="24"
+                        Width="28"
+                        Height="28"
                         ClipToBounds="True"
                         CornerRadius="{StaticResource RadiusSmall}"
                         Background="{DynamicResource Surface3Brush}"
-                        BorderBrush="Transparent"
+                        BorderBrush="{DynamicResource DividerSubtleBrush}"
                         BorderThickness="1">
-                    <Rectangle x:Name="ValueBlockObj"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               RadiusX="4"
-                               RadiusY="4"
-                               Opacity="0.86"
-                               Fill="{DynamicResource ThemeBrush}" />
+                    <Grid>
+                        <Border x:Name="ValueBlockObj"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch"
+                                CornerRadius="5"
+                                Opacity="0"
+                                Background="{DynamicResource ThemeBrush}" />
+                        <TextBlock x:Name="DayText"
+                                   FontSize="11.5"
+                                   FontWeight="Medium"
+                                   FontFeatures="tnum"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SubTextBrush}" />
+                    </Grid>
                 </Border>
             </ControlTemplate>
         </Setter>

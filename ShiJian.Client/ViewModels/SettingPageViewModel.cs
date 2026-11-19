@@ -576,6 +576,14 @@ public class SettingPageViewModel : SettingPageModel
             ResourceStrings.SettingTabData,
             ResourceStrings.SettingTabAbout
         ];
+        TabbarIcons =
+        [
+            IconTypes.Settings,
+            IconTypes.SetlockScreen,
+            IconTypes.BulletedList,
+            IconTypes.Folder,
+            IconTypes.Info
+        ];
         Version = AppVersionHelper.GetDisplayVersion();
         DelDataStartMonthDate = DateTime.Now;
         DelDataEndMonthDate = DateTime.Now;

@@ -385,7 +385,7 @@ public class ColumnChartCanvas : Control
 
         var columnNames = firstData.ColumnNames;
         var subTextBrush = TryGetBrush("SubTextBrush") ?? new SolidColorBrush(Color.Parse("#6E7A8A"));
-        var refLineBrush = TryGetBrush("ChartRefLineBrush") ?? subTextBrush;
+        var refLineBrush = TryGetBrush("ChartRefLineBrush") ?? TryGetBrush("DividerStrongBrush") ?? subTextBrush;
         var themeColorStr = Application.Current?.FindResource("ThemeColor")?.ToString() ?? StateData.ThemeColor;
         var themeColor = Color.Parse(themeColorStr);
         var themeBrush = TryGetBrush("ThemeBrush") ?? new SolidColorBrush(themeColor);
@@ -469,7 +469,7 @@ public class ColumnChartCanvas : Control
 
         // 绘制柱子
         var hoverBarRects = new List<Rect>();
-        var barRadius = !_owner.IsStack ? 4 : 2;
+        var barRadius = !_owner.IsStack ? 4.0 : 2.5;
 
         for (var i = 0; i < columns; i++)
         {
@@ -483,16 +483,18 @@ public class ColumnChartCanvas : Control
                 if (value > 0)
                 {
                     var rectHeight = value / maxValue * chartHeight;
+                    var drawHeight = _owner.IsStack && rectHeight > 3 ? rectHeight - 1.5 : rectHeight;
                     var rectX = _plotLeft + i * _columnWidth + margin;
-                    var rectY = height - currentBottom - rectHeight;
+                    var rectY = height - currentBottom - drawHeight;
+                    var segRadius = _owner.IsStack ? Math.Min(barRadius, drawHeight / 2) : barRadius;
 
                     var color = Color.Parse(colColorStr);
                     var brush = new SolidColorBrush(color)
                     {
                         Opacity = hasSelection && i != selectedIndex ? UnselectedColumnOpacity : 1
                     };
-                    var barRect = new Rect(rectX, rectY, colValueRectWidth, rectHeight);
-                    context.DrawRectangle(brush, null, barRect, barRadius, barRadius);
+                    var barRect = new Rect(rectX, rectY, colValueRectWidth, drawHeight);
+                    context.DrawRectangle(brush, null, barRect, segRadius, segRadius);
 
                     if (i == hoverIndex)
                         hoverBarRects.Add(barRect);

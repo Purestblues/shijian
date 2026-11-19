@@ -1,0 +1,9 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=System.Runtime">
+    <!-- 动效时长标尺 (对齐 MotionTokens: 90 / 150 / 225 / 260ms) -->
+    <sys:TimeSpan x:Key="MotionXs">0:0:0.09</sys:TimeSpan>
+    <sys:TimeSpan x:Key="MotionS">0:0:0.15</sys:TimeSpan>
+    <sys:TimeSpan x:Key="MotionM">0:0:0.225</sys:TimeSpan>
+    <sys:TimeSpan x:Key="MotionL">0:0:0.26</sys:TimeSpan>
+</ResourceDictionary>

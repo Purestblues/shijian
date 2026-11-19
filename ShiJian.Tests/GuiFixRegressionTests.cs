@@ -15,6 +15,7 @@ using ShiJian.Client.Controls.Charts;
 using ShiJian.Client.Controls.Charts.Model;
 using ShiJian.Client.Controls.Select;
 using ShiJian.Client.Controls.Timeline;
+using ShiJian.Client.Events;
 using ShiJian.Client.Librarys;
 using ShiJian.Client.Librarys.Api;
 using ShiJian.Client.Librarys.Image;
@@ -850,6 +851,116 @@ public class GuiFixRegressionTests
             null,
             null);
         Assert.Equal("  www.bilibili.com", withSecondary.FormattedSecondaryText);
+    }
+
+    [Fact]
+    public void CategoryAppListPageViewModel_DelCommand_RemovesPassedAppEvenWhenSelectedItemIsNull()
+    {
+        var clearedAppIds = new List<int>();
+        var appUpdate = StubProxy<IAppUpdateService>.Create(new()
+        {
+            [nameof(IAppUpdateService.ClearCategoryAsync)] = args =>
+            {
+                clearedAppIds.Add((int)args[0]!);
+                return Task.CompletedTask;
+            }
+        });
+        var eventService = new AppEventService();
+        var navData = StubProxy<INavigationDataService>.Create(new());
+        var navService = StubProxy<INavigationService>.Create(new());
+        var appData = StubProxy<IAppData>.Create(new());
+        var appMerge = StubProxy<IAppMergeService>.Create(new());
+
+        var vm = new CategoryAppListPageViewModel(appData, navData, navService, appUpdate, eventService, appMerge);
+        try
+        {
+            var app1 = new AppModel { ID = 101, Name = "Code", Description = "VS Code" };
+            var app2 = new AppModel { ID = 102, Name = "Rider", Description = "JetBrains Rider" };
+            vm.Category = new ShiJian.Client.Models.Category.CategoryModel
+            {
+                Data = new CategoryModel { ID = 5, Name = "开发", IsSystem = false }
+            };
+            vm.Data = [app1, app2];
+            vm.MainPageOriginalData = [app1, app2];
+            vm.SelectedItem = null;
+
+            vm.DelCommand.Execute(app1);
+
+            Assert.Equal([101], clearedAppIds);
+            Assert.Single(vm.Data);
+            Assert.Equal(102, vm.Data[0].ID);
+
+            // 系统分类不允许移除
+            vm.Category = new ShiJian.Client.Models.Category.CategoryModel
+            {
+                Data = new CategoryModel { ID = 0, Name = "未分类", IsSystem = true }
+            };
+            vm.DelCommand.Execute(app2);
+            Assert.Single(vm.Data);
+            Assert.Equal([101], clearedAppIds);
+        }
+        finally
+        {
+            vm.Dispose();
+        }
+    }
+
+    [Fact]
+    public void CategoryWebSiteListPageViewModel_DelCommand_RemovesPassedSiteEvenWhenSelectedItemIsNull()
+    {
+        var updatedArgs = new List<(int[] Ids, int CategoryId)>();
+        var sysCat = new CategoryModel { ID = 0, Name = "未分类", IsSystem = true };
+        var site1 = new WebSiteModel { ID = 201, Title = "GitHub", Domain = "github.com", CategoryID = 5 };
+        var site2 = new WebSiteModel { ID = 202, Title = "MDN", Domain = "developer.mozilla.org", CategoryID = 5 };
+        var remaining = new List<WebSiteModel> { site1, site2 };
+
+        var webData = StubProxy<IWebData>.Create(new()
+        {
+            [nameof(IWebData.UpdateWebSitesCategoryAsync)] = args =>
+            {
+                var ids = (int[])args[0]!;
+                var catId = (int)args[1]!;
+                updatedArgs.Add((ids, catId));
+                remaining.RemoveAll(s => ids.Contains(s.ID));
+                return Task.CompletedTask;
+            },
+            [nameof(IWebData.GetWebSitesAsync)] = _ =>
+                Task.FromResult<IReadOnlyCollection<WebSiteModel>>(remaining.ToList())
+        });
+        var categoryService = StubProxy<ICategorys>.Create(new()
+        {
+            [nameof(ICategorys.GetCategoriesAsync)] = _ => Task.FromResult(new List<CategoryModel> { sysCat })
+        });
+        var navData = StubProxy<INavigationDataService>.Create(new()
+        {
+            [$"get_{nameof(INavigationDataService.Data)}"] = _ => new CategoryModel { ID = 5, Name = "开发", IsSystem = false }
+        });
+
+        var vm = new CategoryWebSiteListPageViewModel(
+            navData,
+            StubProxy<INavigationService>.Create(new()),
+            StubProxy<IToastService>.Create(new()),
+            categoryService,
+            webData,
+            new AppEventService());
+
+        try
+        {
+            vm.CategoryWebSiteList = [site1, site2];
+            vm.SelectedItem = null;
+
+            vm.DelCommand.Execute(site1);
+
+            Assert.Single(updatedArgs);
+            Assert.Equal([201], updatedArgs[0].Ids);
+            Assert.Equal(0, updatedArgs[0].CategoryId);
+            Assert.Single(vm.CategoryWebSiteList);
+            Assert.Equal(202, vm.CategoryWebSiteList[0].ID);
+        }
+        finally
+        {
+            vm.Dispose();
+        }
     }
 
     private sealed class RelayActionCommand(Action execute) : System.Windows.Input.ICommand

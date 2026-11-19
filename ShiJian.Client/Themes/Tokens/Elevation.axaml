@@ -1,0 +1,29 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:servicers="using:ShiJian.Client.Servicers">
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Default">
+            <!-- 深色海拔（不透明度翻倍） -->
+            <BoxShadows x:Key="ElevationCard">0 1 2 0 #14000000</BoxShadows>
+            <BoxShadows x:Key="Elevation1">0 2 6 0 #1A000000, 0 1 2 0 #10000000</BoxShadows>
+            <BoxShadows x:Key="Elevation2">0 6 16 -2 #2C000000, 0 2 6 -1 #18000000</BoxShadows>
+            <BoxShadows x:Key="Elevation3">0 16 36 -4 #4D000000, 0 4 12 -2 #28000000</BoxShadows>
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="Light">
+            <!-- 克制浅色海拔 -->
+            <BoxShadows x:Key="ElevationCard">0 1 2 0 #06000000</BoxShadows>
+            <BoxShadows x:Key="Elevation1">0 2 6 0 #0D000000, 0 1 2 0 #08000000</BoxShadows>
+            <BoxShadows x:Key="Elevation2">0 6 16 -2 #16000000, 0 2 6 -1 #0C000000</BoxShadows>
+            <BoxShadows x:Key="Elevation3">0 16 36 -4 #26000000, 0 4 12 -2 #14000000</BoxShadows>
+        </ResourceDictionary>
+
+        <ResourceDictionary x:Key="{x:Static servicers:ThemeServicer.Azure}">
+            <!-- 蔚蓝模式克制阴影海拔 -->
+            <BoxShadows x:Key="ElevationCard">0 1 2 0 #06000000</BoxShadows>
+            <BoxShadows x:Key="Elevation1">0 2 6 0 #0D000000, 0 1 2 0 #08000000</BoxShadows>
+            <BoxShadows x:Key="Elevation2">0 6 16 -2 #16000000, 0 2 6 -1 #0C000000</BoxShadows>
+            <BoxShadows x:Key="Elevation3">0 16 36 -4 #26000000, 0 4 12 -2 #14000000</BoxShadows>
+        </ResourceDictionary>
+    </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

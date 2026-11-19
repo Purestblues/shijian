@@ -6,6 +6,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Styling;
+using ShiJian.Client.Librarys;
 using ShiJian.Client.Models;
 
 namespace ShiJian.Client.Controls.Charts;
@@ -327,8 +329,8 @@ public class HeatGrid : Control
         var x = offsetX + column * (cellWidth + Gap);
         var y = offsetY + row * (cellHeight + Gap);
 
-        // 悬停框：亮一圈比整格变色更好认，也不会盖掉深浅信息
-        var pen = new Pen(TextBrush ?? Brushes.Gray, 1.5);
+        // 悬停框：主题色描边突出当前格，同时不盖住色阶
+        var pen = new Pen(ResolveBrush("ThemeBrush") ?? TextBrush ?? Brushes.Gray, 1.5);
         context.DrawRectangle(null, pen, new RoundedRect(new Rect(x, y, cellWidth, cellHeight), 3));
 
         if (string.IsNullOrEmpty(cell.Tip)) return;
@@ -356,7 +358,7 @@ public class HeatGrid : Control
         context.DrawText(text, new Point((width - text.Width) / 2, (height - text.Height) / 2));
     }
 
-    /// <summary>越深越亮：开方一下，低值之间才分得开（线性映射前几小时全是黑的）</summary>
+    /// <summary>按 5 档色阶映射热度，兼顾浅色与深色背景的区分度</summary>
     private IBrush CreateBrush(double value)
     {
         var accent = AccentBrush is ISolidColorBrush solid ? solid.Color : ((ISolidColorBrush)FallbackAccent).Color;
@@ -366,8 +368,10 @@ public class HeatGrid : Control
                    ?? new SolidColorBrush(Color.FromArgb(20, accent.R, accent.G, accent.B));
 
         var level = Math.Clamp(value / MaxValue, 0, 1);
-        var alpha = (byte)Math.Clamp(48 + Math.Sqrt(level) * 200, 0, 255);
-        return new SolidColorBrush(Color.FromArgb(alpha, accent.R, accent.G, accent.B));
+        var isDark = Application.Current is { } app
+            ? app.ActualThemeVariant == ThemeVariant.Dark
+            : ChartColorHelper.RelativeLuminance(ChartColorHelper.BackgroundColor) < 0.5;
+        return new SolidColorBrush(ChartColorHelper.GetHeatColor(accent, level, isDark));
     }
 
     private static IBrush? ResolveBrush(string resourceKey)

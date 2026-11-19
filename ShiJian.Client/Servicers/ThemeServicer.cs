@@ -142,7 +142,10 @@ public class ThemeServicer : IThemeServicer
 
         resources["ThemeColor"] = accentColor;
         resources["ThemeBrush"] = accentBrush;
+        resources["ThemeAccentBrush"] = accentBrush;
         resources["ThemeTintBrush"] = tintBrush;
+        foreach (var (stop, shadeColor) in ChartColorHelper.BuildRamp(accentColor))
+            resources[$"ThemeRamp{stop}Brush"] = new SolidColorBrush(shadeColor);
         resources["SelectRingBrush"] = new SolidColorBrush(
             Color.FromArgb(0x26, accentColor.R, accentColor.G, accentColor.B));
 

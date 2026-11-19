@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -130,6 +131,65 @@ public static class ChartColorHelper
             return color ?? string.Empty;
 
         return $"#{alpha:X2}{parsed.R:X2}{parsed.G:X2}{parsed.B:X2}";
+    }
+
+    private static readonly int[] RampStops = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+
+    /// <summary>生成 50–900 十档色阶（500 为基准色）</summary>
+    public static IReadOnlyDictionary<int, Color> BuildRamp(Color baseColor)
+    {
+        var white = Color.FromRgb(255, 255, 255);
+        var deep = Color.FromRgb(17, 21, 28); // #11151C
+        return new Dictionary<int, Color>(10)
+        {
+            [50] = Blend(baseColor, white, 0.90),
+            [100] = Blend(baseColor, white, 0.78),
+            [200] = Blend(baseColor, white, 0.60),
+            [300] = Blend(baseColor, white, 0.40),
+            [400] = Blend(baseColor, white, 0.20),
+            [500] = baseColor,
+            [600] = Blend(baseColor, deep, 0.14),
+            [700] = Blend(baseColor, deep, 0.28),
+            [800] = Blend(baseColor, deep, 0.44),
+            [900] = Blend(baseColor, deep, 0.62)
+        };
+    }
+
+    /// <summary>按对比度解析分类基准色后，提取指定色阶档位（50–900）</summary>
+    public static Color GetShadeFor(string? color, int shade, bool isSystem, Color background)
+    {
+        var resolvedHex = ResolveFor(color, isSystem, background);
+        var resolved = ParseOr(resolvedHex, FallbackColor);
+        var ramp = BuildRamp(resolved);
+
+        var nearestStop = 500;
+        var minDist = int.MaxValue;
+        foreach (var stop in RampStops)
+        {
+            var dist = Math.Abs(stop - shade);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                nearestStop = stop;
+            }
+        }
+
+        return ramp[nearestStop];
+    }
+
+    /// <summary>将归一化热度（0..1] 映射到 5 档色阶（浅色由浅入深，深色由深到亮）</summary>
+    public static Color GetHeatColor(Color baseColor, double normalizedLevel, bool isDark)
+    {
+        var level = Math.Clamp(normalizedLevel, 0, 1);
+        var ramp = BuildRamp(baseColor);
+        ReadOnlySpan<int> stops = isDark
+            ? [800, 700, 500, 400, 300]
+            : [100, 200, 400, 600, 800];
+
+        var eased = Math.Sqrt(level);
+        var idx = Math.Clamp((int)Math.Floor(eased * stops.Length), 0, stops.Length - 1);
+        if (level >= 0.999) idx = stops.Length - 1;
+        return ramp[stops[idx]];
     }
 
     private static Color EnsureContrast(Color color, Color background)

@@ -4,10 +4,10 @@
 
 :root {
   /* 画布分层：窗口 → 画布 → 卡片 */
-  --desk: #ECEFF4;
-  --canvas: #F5F7FA;
+  --desk: #E5E9F0;
+  --canvas: #ECEFF4;
   --card: #FFFFFF;
-  --card-inset: #E5E9F0;
+  --card-inset: #F2F4F8;
   --hover: #E1E7EF;
 
   /* 线只做分隔，不参与分层 */
@@ -20,9 +20,9 @@
   --text-3: #677389;
   --text-4: #8F9BB0;
 
-  /* 强调：Nord10 极光青蓝 */
-  --accent: #5E81AC;
-  --accent-hover: #4F729E;
+  /* 强调：矢车菊蓝 Cornflower Frost (与桌面客户端同源) */
+  --accent: #527CE6;
+  --accent-hover: #426BD6;
   --accent-fg: #FFFFFF;
   --accent-quiet: #E7EFF8;
   --accent-2: #81A1C1;
@@ -48,8 +48,19 @@
   /* 圆角阶梯：4 / 6 / 8 / 12 (与桌面端 Token 对齐) */
   --r-control: 6px;
   --r-tile: 8px;
-  --r-card: 12px;
+  --r-card: 8px;
   --r-canvas: 12px;
+
+  /* 桌面客户端设计系统标准别名 */
+  --bg: var(--canvas);
+  --surface-1: var(--desk);
+  --surface-2: var(--card);
+  --surface-3: var(--card-inset);
+  --brand: var(--accent);
+  --border: var(--line);
+  --r-sm: var(--r-control);
+  --r-md: var(--r-tile);
+  --r-lg: var(--r-canvas);
 
   /* 紧致中性冷灰阴影 + 1px 结构描边 */
   --sh-1: 0 1px 2px rgb(46 52 64 / 6%);
@@ -516,7 +527,7 @@ select {
   content: ''; position: absolute; top: 2px; left: 2px;
   width: 13px; height: 13px; border-radius: 50%; background: #fff;
   box-shadow: 0 1px 2px rgb(0 0 0 / 18%);
-  transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .switch input:checked + .track { background: var(--accent); }
 .switch input:checked + .track::after { transform: translateX(14px); }
@@ -579,7 +590,7 @@ select {
 .bar-row .bar-track { height: 5px; border-radius: 3px; background: var(--card-inset); overflow: hidden; }
 .bar-row .bar-fill {
   display: block; height: 100%; border-radius: 3px;
-  background: var(--accent); transition: width 0.4s ease;
+  background: var(--accent); transition: width 0.225s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .bar-row .bar-val { color: var(--text-3); font-variant-numeric: tabular-nums; text-align: right; }
 

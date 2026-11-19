@@ -1,0 +1,10 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- 几何圆角标尺 (N14 + DESIGN-SP-ALIGN: 4 / 6 / 8 / 12 / 16 / pill) -->
+    <CornerRadius x:Key="RadiusXs">4</CornerRadius>
+    <CornerRadius x:Key="RadiusSmall">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMedium">8</CornerRadius>
+    <CornerRadius x:Key="RadiusLarge">12</CornerRadius>
+    <CornerRadius x:Key="RadiusXLarge">16</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">999</CornerRadius>
+</ResourceDictionary>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Avalonia;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -78,6 +79,7 @@ public class StackedBarChart : Control
 
     private readonly Dictionary<string, IBrush> _brushCache = new(StringComparer.OrdinalIgnoreCase);
     private IBrush? _fallbackBrush;
+    private readonly Easing _enterEasing = MotionTokens.Enter();
 
 
     public StackedBarChart()
@@ -282,7 +284,9 @@ public class StackedBarChart : Control
         // 对比柱：画在当前柱后面、并且略宽一圈，只看轮廓就能读出高低差
         if (hasCompare)
         {
-            var ghostBrush = CompareBrush ?? new SolidColorBrush(Color.FromArgb(46, 128, 128, 128));
+            var ghostBrush = CompareBrush
+                             ?? ResolveBrush("DividerSubtleBrush", 0.55)
+                             ?? new SolidColorBrush(Color.FromArgb(46, 128, 128, 128));
             var ghostWidth = Math.Min(barWidth + 8, slot - 2);
             for (var i = 0; i < columnCount; i++)
             {
@@ -388,13 +392,25 @@ public class StackedBarChart : Control
         if (totals[_hoverIndex] <= 0 || TextBrush is not { } brush) return;
 
         var top = baseline - totals[_hoverIndex] / maxTotal * plotHeight * Math.Clamp(Progress, 0, 1);
-        var text = MakeText(FormatDuration(totals[_hoverIndex]), 11, brush);
+        var textBrush = ResolveBrush("DefaultTextBrush") ?? brush;
+        var text = MakeText(FormatDuration(totals[_hoverIndex]), 11, textBrush);
 
-        var x = slot * _hoverIndex + slot / 2 - text.Width / 2;
-        x = Math.Clamp(x, 0, Math.Max(0, width - text.Width));
-        var y = Math.Max(0, top - text.Height - 4);
+        const double padX = 6;
+        const double padY = 3;
+        var pillWidth = text.Width + padX * 2;
+        var pillHeight = text.Height + padY * 2;
 
-        context.DrawText(text, new Point(x, y));
+        var px = slot * _hoverIndex + slot / 2 - pillWidth / 2;
+        px = Math.Clamp(px, 0, Math.Max(0, width - pillWidth));
+        var py = Math.Max(0, top - pillHeight - 4);
+
+        var pillBg = ResolveBrush("Surface4Brush")
+                     ?? ResolveBrush("PopupBackgroundBrush")
+                     ?? new SolidColorBrush(Color.FromArgb(240, 46, 52, 64));
+        var pillBorder = ResolveBrush("PopupBorderBrush");
+        var pillRect = new RoundedRect(new Rect(px, py, pillWidth, pillHeight), 6);
+        context.DrawRectangle(pillBg, pillBorder != null ? new Pen(pillBorder, 1) : null, pillRect);
+        context.DrawText(text, new Point(px + padX, py + padY));
     }
 
     private void DrawEmpty(DrawingContext context, double width, double height)
@@ -462,13 +478,12 @@ public class StackedBarChart : Control
 
     private void OnAnimTick(object? sender, EventArgs e)
     {
-        const double durationMs = 260;
+        var durationMs = MotionTokens.M.TotalMilliseconds;
 
         var elapsed = (DateTime.UtcNow - _animStart).TotalMilliseconds;
         var t = Math.Clamp(elapsed / durationMs, 0, 1);
 
-        // ease-out cubic：起步快、收尾稳
-        Progress = 1 - Math.Pow(1 - t, 3);
+        Progress = _enterEasing.Ease(t);
 
         if (t >= 1)
         {
@@ -479,6 +494,27 @@ public class StackedBarChart : Control
     }
 
     #endregion
+
+    private static IBrush? ResolveBrush(string resourceKey, double opacity = 1.0)
+    {
+        if (Application.Current is { } app &&
+            app.CheckAccess() &&
+            app.TryGetResource(resourceKey, app.ActualThemeVariant, out var resource) &&
+            resource is IBrush brush)
+        {
+            if (opacity >= 0.999) return brush;
+            if (brush is ISolidColorBrush solid)
+            {
+                return new SolidColorBrush(Color.FromArgb(
+                    (byte)Math.Clamp((int)Math.Round(solid.Color.A * opacity), 0, 255),
+                    solid.Color.R,
+                    solid.Color.G,
+                    solid.Color.B));
+            }
+        }
+
+        return null;
+    }
 
     private IBrush GetBrush(string? color)
     {

@@ -72,148 +72,100 @@
 
                 <StackPanel>
                             <!-- 统计卡片 -->
-                            <Grid HorizontalAlignment="Stretch" Margin="0,5,0,15">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                            <Grid HorizontalAlignment="Stretch" Margin="0,5,0,15" ColumnDefinitions="*,10,*,10,*">
 
-                                <Border Margin="0,5,0,0" Background="{DynamicResource CardBgBrush}"
-                                        Padding="10" CornerRadius="8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Border Width="34" Height="34"
-                                                CornerRadius="{StaticResource RadiusSmall}"
-                                                Background="{DynamicResource ThemeTintBrush}">
-                                            <base:Icon IconType="ScreenTime" Foreground="{DynamicResource ThemeBrush}" />
-                                        </Border>
-                                        <Grid Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="auto" />
-                                                <RowDefinition Height="auto" />
-                                            </Grid.RowDefinitions>
-                                            <TextBlock FontFeatures="tnum">
-                                                <Run Text="{Binding TotalHours}" FontSize="20"
-                                                     Foreground="{DynamicResource DefaultTextBrush}" />
-                                                <Run Text="{DynamicResource Hour}" FontSize="12"
-                                                     Foreground="{DynamicResource SubTextBrush}" />
-                                            </TextBlock>
-                                            <TextBlock Grid.Row="1" Margin="0,3,0,0"
-                                                       Text="{DynamicResource Total}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Foreground="{DynamicResource SubTextBrush}" />
-                                        </Grid>
-                                        <Border Grid.Column="2" VerticalAlignment="Bottom">
-                                            <StackPanel Orientation="Horizontal">
-                                                <base:View Condition="=1" Value="{Binding DiffTotalTimeType}">
-                                                    <base:Icon VerticalAlignment="Center" IconType="ArrowUp8" FontSize="10" />
-                                                </base:View>
-                                                <base:View Condition="=0" Value="{Binding DiffTotalTimeType}">
-                                                    <base:Icon VerticalAlignment="Center" IconType="SubtractBold" FontSize="10" />
-                                                </base:View>
-                                                <base:View Condition="=-1" Value="{Binding DiffTotalTimeType}">
-                                                    <base:Icon VerticalAlignment="Center" IconType="ArrowDown8" FontSize="10" />
-                                                </base:View>
-                                                <TextBlock Text="{Binding DiffTotalTimeValue}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
+                                <!-- 总时长 -->
+                                <Border Grid.Column="0" Classes="statCard">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <base:Icon IconType="ScreenTime" FontSize="12"
+                                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Classes="cardCaption" Text="{DynamicResource Total}"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock Classes="statValue" Margin="0,6,0,0">
+                                            <Run Text="{Binding TotalHours}" />
+                                            <Run Text="{DynamicResource Hour}" FontSize="12" FontWeight="Normal"
+                                                 Foreground="{DynamicResource SubTextBrush}" />
+                                        </TextBlock>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                                            <base:View Condition="=1" Value="{Binding DiffTotalTimeType}">
+                                                <base:Icon VerticalAlignment="Center" IconType="ArrowUp8" FontSize="10"
+                                                           Foreground="{DynamicResource ThemeBrush}" />
+                                            </base:View>
+                                            <base:View Condition="=0" Value="{Binding DiffTotalTimeType}">
+                                                <base:Icon VerticalAlignment="Center" IconType="SubtractBold" FontSize="10"
+                                                           Foreground="{DynamicResource SubTextBrush}" />
+                                            </base:View>
+                                            <base:View Condition="=-1" Value="{Binding DiffTotalTimeType}">
+                                                <base:Icon VerticalAlignment="Center" IconType="ArrowDown8" FontSize="10"
+                                                           Foreground="{DynamicResource SubTextBrush}" />
+                                            </base:View>
+                                            <TextBlock Classes="cardCaption num" Text="{Binding DiffTotalTimeValue}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </StackPanel>
                                 </Border>
 
-                                <Border Grid.Column="1" Margin="12,5,0,0"
-                                        Background="{DynamicResource CardBgBrush}"
-                                        Padding="10" CornerRadius="8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Border Width="34" Height="34"
-                                                CornerRadius="{StaticResource RadiusSmall}"
-                                                Background="{DynamicResource ThemeTintBrush}">
-                                            <base:Icon IconType="Apps" Foreground="{DynamicResource ThemeBrush}" />
-                                        </Border>
-                                        <Grid Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="auto" />
-                                                <RowDefinition Height="auto" />
-                                            </Grid.RowDefinitions>
-                                            <TextBlock FontFeatures="tnum">
-                                                <Run Text="{Binding AppCount}" FontSize="20"
-                                                     Foreground="{DynamicResource DefaultTextBrush}" />
-                                                <Run Text="个" FontSize="12"
-                                                     Foreground="{DynamicResource SubTextBrush}" />
-                                            </TextBlock>
-                                            <TextBlock Grid.Row="1" Margin="0,3,0,0"
-                                                       Text="{DynamicResource InsightEntities}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Foreground="{DynamicResource SubTextBrush}" />
-                                        </Grid>
-                                        <Border Grid.Column="2" VerticalAlignment="Bottom">
-                                            <StackPanel Orientation="Horizontal">
-                                                <base:View Condition="=1" Value="{Binding DiffAppCountType}">
-                                                    <base:Icon VerticalAlignment="Center" IconType="ArrowUp8" FontSize="10" />
-                                                </base:View>
-                                                <base:View Condition="=0" Value="{Binding DiffAppCountType}">
-                                                    <base:Icon VerticalAlignment="Center" IconType="SubtractBold" FontSize="10" />
-                                                </base:View>
-                                                <base:View Condition="=-1" Value="{Binding DiffAppCountType}">
-                                                    <base:Icon VerticalAlignment="Center" IconType="ArrowDown8" FontSize="10" />
-                                                </base:View>
-                                                <TextBlock Text="{Binding DiffAppCountValue}" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Border>
-                                    </Grid>
+                                <!-- 应用/实体数 -->
+                                <Border Grid.Column="2" Classes="statCard">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <base:Icon IconType="Apps" FontSize="12"
+                                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Classes="cardCaption" Text="{DynamicResource InsightEntities}"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock Classes="statValue" Margin="0,6,0,0">
+                                            <Run Text="{Binding AppCount}" />
+                                            <Run Text="个" FontSize="12" FontWeight="Normal"
+                                                 Foreground="{DynamicResource SubTextBrush}" />
+                                        </TextBlock>
+                                        <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                                            <base:View Condition="=1" Value="{Binding DiffAppCountType}">
+                                                <base:Icon VerticalAlignment="Center" IconType="ArrowUp8" FontSize="10"
+                                                           Foreground="{DynamicResource ThemeBrush}" />
+                                            </base:View>
+                                            <base:View Condition="=0" Value="{Binding DiffAppCountType}">
+                                                <base:Icon VerticalAlignment="Center" IconType="SubtractBold" FontSize="10"
+                                                           Foreground="{DynamicResource SubTextBrush}" />
+                                            </base:View>
+                                            <base:View Condition="=-1" Value="{Binding DiffAppCountType}">
+                                                <base:Icon VerticalAlignment="Center" IconType="ArrowDown8" FontSize="10"
+                                                           Foreground="{DynamicResource SubTextBrush}" />
+                                            </base:View>
+                                            <TextBlock Classes="cardCaption num" Text="{Binding DiffAppCountValue}" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </StackPanel>
                                 </Border>
 
-                                <Border Grid.Column="2" Margin="12,5,0,0" Background="{DynamicResource CardBgBrush}"
-                                        Padding="10" CornerRadius="8"
-                                        ToolTip.Tip="{Binding Top1App.Description}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Border Width="34" Height="34"
-                                                CornerRadius="{StaticResource RadiusSmall}"
-                                                Background="{DynamicResource ThemeTintBrush}">
-                                            <base:Icon IconType="StockUp" Foreground="{DynamicResource ThemeBrush}" />
-                                        </Border>
-                                        <Grid Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                            <Grid.RowDefinitions>
-                                                <RowDefinition Height="auto" />
-                                                <RowDefinition Height="auto" />
-                                            </Grid.RowDefinitions>
-                                            <TextBlock FontFeatures="tnum">
-                                                <Run Text="{Binding TopHours}" FontSize="20"
-                                                     Foreground="{DynamicResource DefaultTextBrush}" />
-                                                <Run Text="{DynamicResource Hour}" FontSize="12"
-                                                     Foreground="{DynamicResource SubTextBrush}" />
-                                            </TextBlock>
-                                            <TextBlock Grid.Row="1" Margin="0,3,0,0"
-                                                       Text="{DynamicResource LongestUsageTime}"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       Foreground="{DynamicResource SubTextBrush}" />
-                                        </Grid>
-                                        <Border Grid.Column="2">
-                                            <Border CornerRadius="6" VerticalAlignment="Bottom">
-                                                <base:View Value="{Binding Top1App}" Condition="not null">
-                                                    <base:Img URL="{Binding Top1App.IconFile}"
-                                                              DecodeWidth="16"
-                                                              VerticalAlignment="Center"
-                                                              HorizontalAlignment="Center"
-                                                              Width="16" Height="16" />
-                                                </base:View>
-                                            </Border>
-                                        </Border>
-                                    </Grid>
+                                <!-- 最长使用 -->
+                                <Border Grid.Column="4" Classes="statCard"
+                                        ToolTip.Tip="{Binding Top1App.Description}">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" Spacing="5">
+                                            <base:Icon IconType="StockUp" FontSize="12"
+                                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                                            <TextBlock Classes="cardCaption" Text="{DynamicResource LongestUsageTime}"
+                                                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <TextBlock Classes="statValue" Margin="0,6,0,0">
+                                            <Run Text="{Binding TopHours}" />
+                                            <Run Text="{DynamicResource Hour}" FontSize="12" FontWeight="Normal"
+                                                 Foreground="{DynamicResource SubTextBrush}" />
+                                        </TextBlock>
+                                        <base:View Value="{Binding Top1App}" Condition="not null" Margin="0,4,0,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <base:Img URL="{Binding Top1App.IconFile}"
+                                                          DecodeWidth="16"
+                                                          VerticalAlignment="Center"
+                                                          Width="16" Height="16" />
+                                                <TextBlock Classes="cardCaption"
+                                                           Text="{Binding Top1App.Description}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </base:View>
+                                    </StackPanel>
                                 </Border>
                             </Grid>
 

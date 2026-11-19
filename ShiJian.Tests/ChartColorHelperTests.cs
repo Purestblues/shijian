@@ -6,8 +6,8 @@ namespace ShiJian.Tests;
 
 public class ChartColorHelperTests
 {
-    private static readonly Color LightBackground = Color.Parse("#EDEDF0");
-    private static readonly Color DarkBackground = Color.Parse("#131315");
+    private static readonly Color LightBackground = Color.Parse("#ECEFF4");
+    private static readonly Color DarkBackground = Color.Parse("#181A20");
 
     [Fact]
     public void RelativeLuminance_MatchesKnownValues()
@@ -100,5 +100,60 @@ public class ChartColorHelperTests
     {
         Assert.Equal(string.Empty, ChartColorHelper.WithAlpha(null, 0x10));
         Assert.Equal("oops", ChartColorHelper.WithAlpha("oops", 0x10));
+    }
+
+    [Fact]
+    public void BuildRamp_Produces10StopsWithMonotonicLuminance()
+    {
+        var baseColor = Color.Parse("#527CE6");
+        var ramp = ChartColorHelper.BuildRamp(baseColor);
+
+        int[] expectedStops = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
+        Assert.Equal(expectedStops.Length, ramp.Count);
+        foreach (var stop in expectedStops)
+            Assert.True(ramp.ContainsKey(stop));
+
+        Assert.Equal(baseColor, ramp[500]);
+
+        for (var i = 1; i < expectedStops.Length; i++)
+        {
+            var prevLum = ChartColorHelper.RelativeLuminance(ramp[expectedStops[i - 1]]);
+            var currLum = ChartColorHelper.RelativeLuminance(ramp[expectedStops[i]]);
+            Assert.True(prevLum > currLum,
+                $"Stop {expectedStops[i - 1]} luminance ({prevLum:F4}) should exceed stop {expectedStops[i]} ({currLum:F4})");
+        }
+    }
+
+    [Fact]
+    public void GetShadeFor_ReturnsNearestRampStop()
+    {
+        var baseColor = Color.Parse("#1B3A8C");
+        var expectedRamp = ChartColorHelper.BuildRamp(baseColor);
+
+        Assert.Equal(expectedRamp[200], ChartColorHelper.GetShadeFor("#1B3A8C", 210, false, LightBackground));
+        Assert.Equal(expectedRamp[800], ChartColorHelper.GetShadeFor("#1B3A8C", 800, false, LightBackground));
+    }
+
+    [Fact]
+    public void GetHeatColor_LightDarkensAndDarkBrightensMonotonically()
+    {
+        var accent = Color.Parse("#527CE6");
+        double[] levels = [0.05, 0.25, 0.55, 0.85, 1.0];
+
+        var lightLums = levels
+            .Select(l => ChartColorHelper.RelativeLuminance(ChartColorHelper.GetHeatColor(accent, l, isDark: false)))
+            .ToArray();
+        var darkLums = levels
+            .Select(l => ChartColorHelper.RelativeLuminance(ChartColorHelper.GetHeatColor(accent, l, isDark: true)))
+            .ToArray();
+
+        for (var i = 1; i < levels.Length; i++)
+        {
+            Assert.True(lightLums[i] <= lightLums[i - 1] + 1e-6);
+            Assert.True(darkLums[i] >= darkLums[i - 1] - 1e-6);
+        }
+
+        Assert.True(lightLums[0] > lightLums[^1]);
+        Assert.True(darkLums[^1] > darkLums[0]);
     }
 }

@@ -83,7 +83,7 @@ const zh = {
 const en: Record<keyof typeof zh, string> = {
   'app.title.list': 'Plugins · ShiJian',
   'app.title.config': '{name} Config · ShiJian',
-  'app.title.detail': '{name} · 时见',
+  'app.title.detail': '{name} · ShiJian',
 
   'topbar.home': 'Back to plugin list',
   'topbar.conn': 'Local service {host}',

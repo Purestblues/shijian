@@ -104,114 +104,101 @@
 
         <StackPanel Spacing="16">
 
-            <!-- 周期概览 -->
-            <Border Background="{DynamicResource CardBgBrush}"
-                    BorderBrush="{DynamicResource CardBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="{StaticResource RadiusMedium}">
-                <StackPanel>
-                    <Grid Margin="20,16,20,12" ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0"
-                                   Text="{DynamicResource CategoryOverview}"
-                                   FontSize="14" FontWeight="SemiBold"
-                                   VerticalAlignment="Center" />
-                    </Grid>
+            <!-- 周期概览（统一 .statCard 四卡布局） -->
+            <Grid ColumnDefinitions="*,12,*,12,*,12,*">
 
-                    <Border Height="1" Background="{DynamicResource DividerSubtleBrush}" />
-
-                    <Grid Margin="20,18,20,20"
-                          ColumnDefinitions="*,1,*,1,*,1,*">
-
-                        <!-- 总使用时长 -->
-                        <StackPanel Grid.Column="0" Spacing="5" Margin="0,0,18,0">
-                            <TextBlock Text="{DynamicResource CategoryTotalUsage}"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource SubTextBrush}" />
-                            <TextBlock FontSize="22" FontWeight="SemiBold" FontFeatures="tnum"
-                                       Foreground="{DynamicResource DefaultTextBrush}"
-                                       Text="{Binding TotalText}" />
-                            <!-- 环比色丸：主题色淡底，箭头区分涨/跌/平 -->
-                            <Border Classes="diff-pill"
-                                    IsVisible="{Binding IsDiffVisible}"
-                                    Background="{DynamicResource ThemeTintBrush}">
-                                <StackPanel Orientation="Horizontal" Spacing="3"
-                                            VerticalAlignment="Center">
-                                    <base:Icon IconType="ArrowUp8" FontSize="10"
-                                               Foreground="{DynamicResource SuccessBrush}"
-                                               IsVisible="{Binding DiffUp}" />
-                                    <base:Icon IconType="ArrowDown8" FontSize="10"
-                                               Foreground="{DynamicResource DangerBrush}"
-                                               IsVisible="{Binding DiffDown}" />
-                                    <base:Icon IconType="SubtractBold" FontSize="10"
-                                               Foreground="{DynamicResource SubTextBrush}"
-                                               IsVisible="{Binding DiffFlat}" />
-                                    <TextBlock FontSize="11"
-                                               Foreground="{DynamicResource SubTextBrush}"
-                                               VerticalAlignment="Center">
-                                        <Run Text="{Binding VsLabel}" />
-                                        <Run Text=" " />
-                                        <Run Text="{Binding DiffText}" />
-                                    </TextBlock>
-                                </StackPanel>
-                            </Border>
-                            <!-- 无环比时占位 -->
-                            <Border Classes="diff-pill" Height="15"
-                                    IsVisible="{Binding !IsDiffVisible}" />
+                <!-- 总使用时长 -->
+                <Border Grid.Column="0" Classes="statCard">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <base:Icon IconType="Stopwatch" FontSize="12"
+                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Classes="cardCaption" Text="{DynamicResource CategoryTotalUsage}"
+                                       VerticalAlignment="Center" />
                         </StackPanel>
-
-                        <Border Grid.Column="1" Background="{DynamicResource DividerSubtleBrush}" />
-
-                        <!-- 活跃天数 -->
-                        <StackPanel Grid.Column="2" Spacing="5" Margin="18,0">
-                            <TextBlock Text="{DynamicResource CategoryActiveDays}"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource SubTextBrush}" />
-                            <StackPanel Orientation="Horizontal" Spacing="3"
-                                        VerticalAlignment="Bottom">
-                                <TextBlock FontSize="22" FontWeight="SemiBold" FontFeatures="tnum"
-                                           Foreground="{DynamicResource DefaultTextBrush}"
-                                           Text="{Binding ActiveDays}" />
-                                <TextBlock FontSize="11" Margin="0,0,0,4"
+                        <TextBlock Classes="statValue" Margin="0,6,0,0"
+                                   Text="{Binding TotalText}" />
+                        <Border Classes="diff-pill" Margin="0,4,0,0"
+                                IsVisible="{Binding IsDiffVisible}"
+                                Background="{DynamicResource ThemeTintBrush}">
+                            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+                                <base:Icon IconType="ArrowUp8" FontSize="10"
+                                           Foreground="{DynamicResource SuccessBrush}"
+                                           IsVisible="{Binding DiffUp}" />
+                                <base:Icon IconType="ArrowDown8" FontSize="10"
+                                           Foreground="{DynamicResource DangerBrush}"
+                                           IsVisible="{Binding DiffDown}" />
+                                <base:Icon IconType="SubtractBold" FontSize="10"
                                            Foreground="{DynamicResource SubTextBrush}"
-                                           Text="{DynamicResource CategoryActiveDaysUnit}" />
+                                           IsVisible="{Binding DiffFlat}" />
+                                <TextBlock FontSize="11" FontFeatures="tnum"
+                                           Foreground="{DynamicResource SubTextBrush}"
+                                           VerticalAlignment="Center">
+                                    <Run Text="{Binding VsLabel}" />
+                                    <Run Text=" " />
+                                    <Run Text="{Binding DiffText}" />
+                                </TextBlock>
                             </StackPanel>
-                            <TextBlock FontSize="11" Height="15"
-                                       Foreground="{DynamicResource SubTextBrush}"
-                                       Text="{Binding RangeLabel}" />
+                        </Border>
+                        <Border Classes="diff-pill" Height="15" Margin="0,4,0,0"
+                                IsVisible="{Binding !IsDiffVisible}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 活跃天数 -->
+                <Border Grid.Column="2" Classes="statCard">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <base:Icon IconType="Calendar" FontSize="12"
+                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Classes="cardCaption" Text="{DynamicResource CategoryActiveDays}"
+                                       VerticalAlignment="Center" />
                         </StackPanel>
-
-                        <Border Grid.Column="3" Background="{DynamicResource DividerSubtleBrush}" />
-
-                        <!-- 日均使用 -->
-                        <StackPanel Grid.Column="4" Spacing="5" Margin="18,0">
-                            <TextBlock Text="{DynamicResource CategoryAverageDaily}"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource SubTextBrush}" />
-                            <TextBlock FontSize="22" FontWeight="SemiBold" FontFeatures="tnum"
-                                       Foreground="{DynamicResource DefaultTextBrush}"
-                                       Text="{Binding AverageDailyText}" />
-                            <TextBlock FontSize="11" Height="15"
+                        <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,6,0,0"
+                                    VerticalAlignment="Bottom">
+                            <TextBlock Classes="statValue" Text="{Binding ActiveDays}" />
+                            <TextBlock FontSize="11" Margin="0,0,0,4"
                                        Foreground="{DynamicResource SubTextBrush}"
-                                       Text=" " />
+                                       Text="{DynamicResource CategoryActiveDaysUnit}" />
                         </StackPanel>
+                        <TextBlock Classes="cardCaption" Margin="0,4,0,0" Height="15"
+                                   Text="{Binding RangeLabel}" />
+                    </StackPanel>
+                </Border>
 
-                        <Border Grid.Column="5" Background="{DynamicResource DividerSubtleBrush}" />
-
-                        <!-- 单日峰值 -->
-                        <StackPanel Grid.Column="6" Spacing="5" Margin="18,0,0,0">
-                            <TextBlock Text="{DynamicResource CategoryPeakDay}"
-                                       FontSize="11"
-                                       Foreground="{DynamicResource SubTextBrush}" />
-                            <TextBlock FontSize="22" FontWeight="SemiBold" FontFeatures="tnum"
-                                       Foreground="{DynamicResource DefaultTextBrush}"
-                                       Text="{Binding PeakText}" />
-                            <TextBlock FontSize="11" Height="15"
-                                       Foreground="{DynamicResource SubTextBrush}"
-                                       Text="{Binding PeakMetaText}" />
+                <!-- 日均使用 -->
+                <Border Grid.Column="4" Classes="statCard">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <base:Icon IconType="DateTimeMirrored" FontSize="12"
+                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Classes="cardCaption" Text="{DynamicResource CategoryAverageDaily}"
+                                       VerticalAlignment="Center" />
                         </StackPanel>
-                    </Grid>
-                </StackPanel>
-            </Border>
+                        <TextBlock Classes="statValue" Margin="0,6,0,0"
+                                   Text="{Binding AverageDailyText}" />
+                        <TextBlock Classes="cardCaption" Margin="0,4,0,0" Height="15"
+                                   Text=" " />
+                    </StackPanel>
+                </Border>
+
+                <!-- 单日峰值 -->
+                <Border Grid.Column="6" Classes="statCard">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="5">
+                            <base:Icon IconType="StockUp" FontSize="12"
+                                       Foreground="{DynamicResource SubTextBrush}" VerticalAlignment="Center" />
+                            <TextBlock Classes="cardCaption" Text="{DynamicResource CategoryPeakDay}"
+                                       VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock Classes="statValue" Margin="0,6,0,0"
+                                   Text="{Binding PeakText}" />
+                        <TextBlock Classes="cardCaption num" Margin="0,4,0,0" Height="15"
+                                   Text="{Binding PeakMetaText}" />
+                    </StackPanel>
+                </Border>
+
+            </Grid>
 
             <!-- 使用趋势 -->
             <Border Background="{DynamicResource CardBgBrush}"

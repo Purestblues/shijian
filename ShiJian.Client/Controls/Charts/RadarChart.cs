@@ -4,6 +4,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using ShiJian.Client.Librarys;
 using Colors = ShiJian.Client.Base.Color.Colors;
 
 namespace ShiJian.Client.Controls.Charts;
@@ -162,8 +163,9 @@ public class RadarChart : Control
 
     private void DrawGrid(DrawingContext context, Point center, double radius)
     {
-        var gridBrush = ResolveBrush("DividerDefaultBrush", "#D8DEE9");
-        var pen = new Pen(gridBrush, 0.9);
+        var subtleBrush = ResolveBrush("DividerSubtleBrush", "#D8DEE9");
+        var strongBrush = ResolveBrush("DividerStrongBrush", "#C2CAD8");
+        var pen = new Pen(subtleBrush, 1.0);
 
         // 绘制同心多边形
         for (var i = 1; i <= 3; i++)
@@ -172,7 +174,7 @@ public class RadarChart : Control
             context.DrawGeometry(null, pen, new PolylineGeometry(points, true));
         }
 
-        var axisPen = new Pen(gridBrush, 0.6);
+        var axisPen = new Pen(strongBrush, 0.8);
 
         // 绘制轴线
         for (var i = 0; i < Values.Count; i++)
@@ -201,19 +203,22 @@ public class RadarChart : Control
         }
 
         var accent = ResolveAccentColor();
+        var ramp = ChartColorHelper.BuildRamp(accent);
         // 绘制填充区域
         context.DrawGeometry(
-            new SolidColorBrush(accent, 0.24),
-            new Pen(new SolidColorBrush(accent), 2),
+            new SolidColorBrush(ramp[400], 0.20),
+            new Pen(new SolidColorBrush(ramp[500]), 1.8),
             new PolylineGeometry(points, true));
     }
 
     private void DrawCenterAndVertexPoints(DrawingContext context, Point center, double radius)
     {
         var accent = ResolveAccentColor();
-        var centerBrush = new SolidColorBrush(accent);
+        var ramp = ChartColorHelper.BuildRamp(accent);
+        var centerBrush = new SolidColorBrush(ramp[500]);
         var centerFill = ResolveBrush("Surface1Brush", "#ECEFF4");
-        var borderBrush = new Pen(ResolveBrush("DividerDefaultBrush", "#D8DEE9"), 1);
+        var borderBrush = new Pen(ResolveBrush("DividerSubtleBrush", "#D8DEE9"), 1);
+        var vertexOutline = new Pen(ResolveBrush("Surface2Brush", "#FFFFFF"), 1.5);
 
         context.DrawEllipse(
             centerFill,
@@ -224,7 +229,6 @@ public class RadarChart : Control
         );
 
         // 绘制顶点圆形
-        var points = new List<Point>();
         for (var i = 0; i < Values.Count; i++)
         {
             var value = Values[i] / MaxValue;
@@ -236,8 +240,7 @@ public class RadarChart : Control
                 center.X + r * Math.Cos(angle),
                 center.Y + r * Math.Sin(angle));
 
-            points.Add(point);
-            context.DrawEllipse(centerBrush, null, point, 3, 3);
+            context.DrawEllipse(centerBrush, vertexOutline, point, 3.5, 3.5);
         }
     }
 

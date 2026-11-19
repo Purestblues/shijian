@@ -9,7 +9,7 @@
         <Setter Property="SpliteLineBrush" Value="{DynamicResource DividerSubtleBrush}" />
         <Setter Property="Template">
             <ControlTemplate>
-                <Border CornerRadius="{StaticResource RadiusLarge}" x:Name="Border">
+                <Border CornerRadius="{StaticResource RadiusMedium}" x:Name="Border">
                     <StackPanel x:Name="Container" />
                 </Border>
             </ControlTemplate>

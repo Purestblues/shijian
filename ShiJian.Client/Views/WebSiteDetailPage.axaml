@@ -201,23 +201,15 @@
                                 <Setter Property="Background" Value="Transparent" />
                                 <Setter Property="Template">
                                     <ControlTemplate>
-                                        <Grid>
-                                            <Border x:Name="Border"
-                                                    Background="Transparent"
-                                                    Padding="12,9,12,9"
-                                                    CornerRadius="{StaticResource RadiusSmall}">
-                                                <ContentPresenter x:Name="PART_ContentPresenter"
-                                                    Background="Transparent"
-                                                    ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                    Content="{TemplateBinding Content}" />
-                                            </Border>
-                                            <Border x:Name="Accent"
-                                                    HorizontalAlignment="Left"
-                                                    Width="3" Height="20"
-                                                    CornerRadius="0,2,2,0"
-                                                    Background="{DynamicResource ListItemAccentBrush}"
-                                                    IsVisible="False" />
-                                        </Grid>
+                                        <Border x:Name="Border"
+                                                Background="Transparent"
+                                                Padding="12,9,12,9"
+                                                CornerRadius="{StaticResource RadiusSmall}">
+                                            <ContentPresenter x:Name="PART_ContentPresenter"
+                                                Background="Transparent"
+                                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                Content="{TemplateBinding Content}" />
+                                        </Border>
                                     </ControlTemplate>
                                 </Setter>
 
@@ -251,9 +243,6 @@
                                 <Style Selector="^:selected /template/ Border#Border">
                                     <Setter Property="Background"
                                             Value="{DynamicResource ListItemSelectedBrush}" />
-                                </Style>
-                                <Style Selector="^:selected /template/ Border#Accent">
-                                    <Setter Property="IsVisible" Value="True" />
                                 </Style>
 
                                 <Style Selector="^:selected:pointerover /template/ Border#Border">

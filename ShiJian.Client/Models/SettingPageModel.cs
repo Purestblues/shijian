@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using ShiJian.Client.Controls.Base;
 using ShiJian.Client.Controls.Select;
 using ShiJian.Client.PageState;
 using ShiJian.Client.Shared.Models.Data;
@@ -17,6 +18,7 @@ public partial class SettingPageModel : ModelBase
     private DateTime _exportDataEndMonthDate;
     private DateTime _exportDataStartMonthDate;
     private ObservableCollection<string> _tabbarData = [];
+    private ObservableCollection<IconTypes> _tabbarIcons = [];
     private ObservableCollection<AppMergeGroupRow> _mergeGroups = [];
     private bool _hasMergeGroups;
     private bool _mergeEditorVisible;
@@ -59,6 +61,16 @@ public partial class SettingPageModel : ModelBase
         set
         {
             _tabbarData = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public ObservableCollection<IconTypes> TabbarIcons
+    {
+        get => _tabbarIcons;
+        set
+        {
+            _tabbarIcons = value;
             OnPropertyChanged();
         }
     }

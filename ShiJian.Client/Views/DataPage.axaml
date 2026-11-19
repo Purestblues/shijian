@@ -49,7 +49,7 @@
             <Setter Property="Background" Value="{DynamicResource CardBgBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="{StaticResource RadiusLarge}" />
+            <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
         </Style>
 
         <Style Selector="TextBlock.statValue">

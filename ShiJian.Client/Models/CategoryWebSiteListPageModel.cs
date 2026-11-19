@@ -67,6 +67,8 @@ public class CategoryWebSiteListPageModel : ModelBase
         }
     }
 
+    public bool IsSystemCategory => _category?.IsSystem ?? false;
+
     public CategoryModel? Category
     {
         get => _category;
@@ -74,6 +76,7 @@ public class CategoryWebSiteListPageModel : ModelBase
         {
             _category = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(IsSystemCategory));
         }
     }
 

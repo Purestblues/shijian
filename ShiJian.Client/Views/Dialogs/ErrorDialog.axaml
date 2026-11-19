@@ -2,47 +2,84 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" Height="340"
-        Width="420" CanResize="False"
+        xmlns:base="using:ShiJian.Client.Controls.Base"
+        xmlns:Btn="using:ShiJian.Client.Controls.Button"
+        mc:Ignorable="d"
+        Width="420" Height="280"
+        CanResize="False"
         WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource Surface0Brush}"
         x:Class="ShiJian.Client.Views.Dialogs.ErrorDialog"
         Title="ErrorDialog">
     <Grid Margin="16">
-        <StackPanel>
-            <Image x:Name="IconGray" Width="120"
-                   HorizontalAlignment="Center" VerticalAlignment="Top" Source="/Resources/Icons/ghost_gray (320).ico">
-                <Image.RenderTransform>
-                    <TranslateTransform Y="0" />
-                </Image.RenderTransform>
-            </Image>
-            <Border Background="{DynamicResource PopupBackgroundBrush}"
-                    BorderBrush="{DynamicResource PopupBorderBrush}" BorderThickness="1"
-                    CornerRadius="{StaticResource RadiusLarge}" Padding="16" Margin="0,-46,0,16"
-                    BoxShadow="{DynamicResource Elevation3}">
+        <Border Background="{DynamicResource PopupBackgroundBrush}"
+                BorderBrush="{DynamicResource PopupBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource RadiusLarge}"
+                BoxShadow="{DynamicResource Elevation3}"
+                Padding="20">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="14">
+                <!-- 头部图标 + 标题 -->
+                <Grid Grid.Row="0" ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Border Grid.Column="0"
+                            Width="36" Height="36"
+                            CornerRadius="{StaticResource RadiusMedium}"
+                            Background="{DynamicResource DangerTintBrush}">
+                        <base:Icon IconType="IncidentTriangle"
+                                   FontSize="16"
+                                   Foreground="{DynamicResource DangerBrush}"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{DynamicResource UnexpectedError}"
+                                   FontSize="15"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource DefaultTextBrush}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Grid>
 
-                <StackPanel x:Name="Content">
-                    <TextBlock Foreground="{DynamicResource SubTextBrush}" Text="{DynamicResource UnexpectedError}" FontSize="14"
-                               FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,0" />
-                    <TextBlock Foreground="{DynamicResource SubTextBrush}" TextWrapping="WrapWithOverflow" FontSize="14"
-                               HorizontalAlignment="Center" Margin="0,10,0,0">
-                        <Run Text="{DynamicResource SincerelyCrash}" />
-                        <HyperlinkButton ToolTip.Tip="{DynamicResource LocateFileExplorer}" Click="LogHyperlinkClick"
-                                         Foreground="{DynamicResource ThemeBrush}" Content="{DynamicResource Log}" />
-                        <Run Text="{DynamicResource PleaseSubmit}" />
-                    </TextBlock>
-                    <TextBlock Foreground="{DynamicResource SubTextBrush}" Text="{DynamicResource HowSubmitLog}" FontSize="14" FontWeight="Bold"
-                               HorizontalAlignment="Left" Margin="0,10,0,0" />
-
-                    <TextBlock Foreground="{DynamicResource SubTextBrush}" TextWrapping="WrapWithOverflow" FontSize="14"
-                               HorizontalAlignment="Left" Margin="0,5,0,0">
-                        <Run Text="{DynamicResource ViaThe}" />
-                        <HyperlinkButton Foreground="{DynamicResource ThemeBrush}" ToolTip.Tip="{DynamicResource OpenInBrowser}"
-                                         Click="IssuesHyperlinkClick">
-                            Github Issues
-                        </HyperlinkButton>
-                    </TextBlock>
+                <!-- 错误说明与日志/提交指引 -->
+                <StackPanel Grid.Row="1" Spacing="10" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource Surface3Brush}"
+                            BorderBrush="{DynamicResource DividerSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="{StaticResource RadiusMedium}"
+                            Padding="12,10">
+                        <TextBlock Foreground="{DynamicResource SubTextBrush}"
+                                   TextWrapping="Wrap"
+                                   FontSize="13"
+                                   LineHeight="20">
+                            <Run Text="{DynamicResource SincerelyCrash}" />
+                            <Run Text=" " />
+                            <Run Text="{DynamicResource Log}" Foreground="{DynamicResource DefaultTextBrush}" FontWeight="Medium" />
+                            <Run Text=" " />
+                            <Run Text="{DynamicResource PleaseSubmit}" />
+                        </TextBlock>
+                    </Border>
+                    <TextBlock Foreground="{DynamicResource SubTextBrush}"
+                               Text="{DynamicResource HowSubmitLog}"
+                               FontSize="12"
+                               TextWrapping="Wrap" />
                 </StackPanel>
-            </Border>
-        </StackPanel>
+
+                <!-- 底部操作栏 -->
+                <StackPanel Grid.Row="2"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="8">
+                    <Btn:Button Icon="Folder"
+                                Content="{DynamicResource Log}"
+                                ToolTip.Tip="{DynamicResource LocateFileExplorer}"
+                                Click="LogHyperlinkClick" />
+                    <Btn:Button Classes="primary"
+                                Icon="Share"
+                                Content="GitHub Issues"
+                                ToolTip.Tip="{DynamicResource OpenInBrowser}"
+                                Click="IssuesHyperlinkClick" />
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

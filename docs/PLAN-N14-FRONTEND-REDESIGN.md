@@ -354,14 +354,15 @@ flowchart TD
 
 ### 验收清单（Verification Checklist）
 1. **自动化测试验收**：
-   - 运行 `dotnet test ShiJian.Tests/ShiJian.Tests.csproj -c Release --nologo`，确保全部单元测试（含 `ChartColorHelper`、图表布局与设置模型测试）100% 通过。
+   - 运行 `dotnet test ShiJian.Tests/ShiJian.Tests.csproj -c Release --nologo`，确保全部单元测试（含 `ChartColorHelper`、`ThemeTokens`、`ListRowMotion`、`Tabbar` 与列表/设置页回归测试）100% 通过。
+   - 运行 `shijian-webui` 的 `npm run check`（0 errors）与 `npm run build`（exit 0）。
 2. **实机 GUI 视觉走查（`/gui-verify`）**：
    - 编译并启动 `ShiJian.Client`，通过 `gui_controller` 依次切换 **浅色（Nord Snow Storm）** 与 **深色（Nord Polar Night）** 模式，逐一截图验证：
-     - [ ] 左侧导航栏是否为平铺无毛玻璃样式，选中胶囊色是否柔和素雅，点击无弹跳放大；
-     - [ ] 概览页、统计页、数据页、分类汇总页的 `.statCard` 样式是否 100% 统一；
-     - [ ] 概览页“更多”卡片是否已改为紧凑水平卡；
-     - [ ] 统计页月历图是否已消除模糊滤镜、雷达图在深色模式下网格是否柔和清晰、柱状图 Tooltip 是否精致无毛刺；
-     - [ ] 设置页是否呈现为顶部 `2px` 下划线图标标签栏 + 居中白底大卡 + `#F2F4F8` 内嵌子卡 + 带 `✓` 的 Material Switch；
-     - [ ] 触发分类编辑弹窗、选择应用弹窗、合并组弹窗与 `Ctrl+K` 搜索浮层，验证是否全部居中、`12px` 圆角、无彩色发光阴影。
+     - [x] 左侧导航栏是否为平铺无毛玻璃样式，选中胶囊色是否柔和素雅，点击无弹跳放大；
+     - [x] 概览页、统计页、数据页、分类汇总页的 `.statCard` 样式是否 100% 统一；
+     - [x] 概览页“更多”卡片是否已改为紧凑水平卡；
+     - [x] 统计页月历图是否已消除模糊滤镜、雷达图在深色模式下网格是否柔和清晰、柱状图 Tooltip 是否精致无毛刺；
+     - [x] 设置页是否呈现为顶部 `2px` 下划线图标标签栏 + 居中白底大卡 + `#F2F4F8` 内嵌子卡 + 带 `✓` 的 Material Switch；
+     - [x] 触发创建分类弹窗、选择应用弹窗与 `Ctrl+K` 搜索浮层，验证居中、`12px` 圆角、无彩色发光阴影（同步完成 `CategoryAppListPage` / `CategoryWebSiteListPage` 单 `.card` 扁平分割行与 `DetailPage` 月度热力日历实机截图验收）。
 3. **Git 提交规范**：
    - 全部验证通过后，按语义化 Commit 提交并推送至 `origin main`（严格遵守不擅自打 Tag / 发 Release 的约束）。

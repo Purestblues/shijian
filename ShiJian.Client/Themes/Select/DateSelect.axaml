@@ -21,8 +21,9 @@
 
            <Border
                Margin="0,0,0,0"
-               Width="35"
-               Height="35"
+               Width="32"
+               Height="32"
+               Classes.selected="{Binding IsSelected}"
                CornerRadius="{StaticResource RadiusSmall}">
 
                <Border.Styles>
@@ -32,6 +33,19 @@
 
                    <Style Selector="Border:pointerover">
                        <Setter Property="Background" Value="{DynamicResource ThemeTintBrush}"/>
+                   </Style>
+
+                   <Style Selector="Border.selected">
+                       <Setter Property="Background" Value="{DynamicResource ThemeBrush}"/>
+                   </Style>
+
+                   <Style Selector="Border.selected:pointerover">
+                       <Setter Property="Background" Value="{DynamicResource ThemeBrush}"/>
+                   </Style>
+
+                   <Style Selector="Border.selected TextBlock">
+                       <Setter Property="Foreground" Value="{DynamicResource OnBrandBrush}"/>
+                       <Setter Property="FontWeight" Value="SemiBold"/>
                    </Style>
 
                    <Style Selector="Border:disabled TextBlock">
@@ -48,13 +62,6 @@
                           Text="{Binding Day,
                       Converter={StaticResource DateFormatConverter},
                       ConverterParameter={x:Static controls:DateSelectType.Date}}" />
-
-               <Ellipse Width="4" Height="4"
-                        Fill="{DynamicResource ThemeBrush}"
-                        HorizontalAlignment="Center"
-                        VerticalAlignment="Bottom"
-                        Margin="0,0,0,3"
-                        IsVisible="{Binding IsSelected}" />
            </Grid>
 
                <Interaction.Behaviors>
@@ -78,6 +85,7 @@
 
           <Border Width="45"
                   CornerRadius="{StaticResource RadiusMedium}"
+                  Classes.selected="{Binding IsSelected}"
                   Height="45">
               <Border.Styles>
                   <Style Selector="Border">
@@ -86,6 +94,19 @@
 
                   <Style Selector="Border:pointerover">
                       <Setter Property="Background" Value="{DynamicResource ThemeTintBrush}"/>
+                  </Style>
+
+                  <Style Selector="Border.selected">
+                      <Setter Property="Background" Value="{DynamicResource ThemeBrush}"/>
+                  </Style>
+
+                  <Style Selector="Border.selected:pointerover">
+                      <Setter Property="Background" Value="{DynamicResource ThemeBrush}"/>
+                  </Style>
+
+                  <Style Selector="Border.selected TextBlock">
+                      <Setter Property="Foreground" Value="{DynamicResource OnBrandBrush}"/>
+                      <Setter Property="FontWeight" Value="SemiBold"/>
                   </Style>
 
                   <Style Selector="Border:disabled TextBlock">
@@ -112,13 +133,6 @@
                               Text="{Binding Day,
                         Converter={StaticResource DateFormatConverter},
                         ConverterParameter={x:Static controls:DateSelectType.Month}}" />
-
-                   <Ellipse Width="4" Height="4"
-                            Fill="{DynamicResource ThemeBrush}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Bottom"
-                            Margin="0,0,0,3"
-                            IsVisible="{Binding IsSelected}" />
                </Grid>
 
                <Interaction.Behaviors>
@@ -142,6 +156,7 @@
             Height="55">
             <Border Width="45"
                     CornerRadius="{StaticResource RadiusMedium}"
+                    Classes.selected="{Binding IsSelected}"
                     Height="45">
                 <Border.Styles>
                     <Style Selector="Border">
@@ -150,6 +165,19 @@
 
                     <Style Selector="Border:pointerover">
                         <Setter Property="Background" Value="{DynamicResource ThemeTintBrush}"/>
+                    </Style>
+
+                    <Style Selector="Border.selected">
+                        <Setter Property="Background" Value="{DynamicResource ThemeBrush}"/>
+                    </Style>
+
+                    <Style Selector="Border.selected:pointerover">
+                        <Setter Property="Background" Value="{DynamicResource ThemeBrush}"/>
+                    </Style>
+
+                    <Style Selector="Border.selected TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource OnBrandBrush}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
                     </Style>
                 </Border.Styles>
 
@@ -161,13 +189,6 @@
                                Text="{Binding Day,
                        Converter={StaticResource DateFormatConverter},
                        ConverterParameter={x:Static controls:DateSelectType.Year}}" />
-
-                    <Ellipse Width="4" Height="4"
-                             Fill="{DynamicResource ThemeBrush}"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Bottom"
-                             Margin="0,0,0,3"
-                             IsVisible="{Binding IsSelected}" />
                 </Grid>
 
                 <Interaction.Behaviors>
@@ -331,7 +352,7 @@
                             </Interaction.Behaviors>
                             <Border
                                 x:Name="SelectContainer"
-                                CornerRadius="{StaticResource RadiusMedium}"
+                                CornerRadius="{StaticResource RadiusLarge}"
                                 BorderBrush="{DynamicResource PopupBorderBrush}"
                                 BorderThickness="1"
                                 BoxShadow="{DynamicResource Elevation2}"

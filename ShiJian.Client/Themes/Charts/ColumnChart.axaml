@@ -45,84 +45,66 @@
                                 BorderThickness="1"
                                 CornerRadius="{StaticResource RadiusMedium}"
                                 BoxShadow="{DynamicResource Elevation2}"
-                                Padding="10"
+                                Padding="12,10"
                                 Margin="10">
-                                <Grid>
-                                    <Path Width="15" Height="15"
-                                          Data="M 0 0 L 7.5 7.5 L 15 0"
-                                          Fill="{DynamicResource PopupBackgroundBrush}"
-                                          Stroke="{DynamicResource PopupBackgroundBrush}"
-                                          StrokeThickness="1"
-                                          VerticalAlignment="Bottom"
-                                          HorizontalAlignment="Center"
-                                          Margin="0,0,0,-22" />
-
-                                    <ListBox ItemsSource="{TemplateBinding ColumnValuesInfoList}"
-                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                                        <ListBox.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <VirtualizingStackPanel />
-                                            </ItemsPanelTemplate>
-                                        </ListBox.ItemsPanel>
-                                        <ListBox.Styles>
-                                            <Style Selector="ListBox">
-                                                <Setter Property="Template">
-                                                    <ControlTemplate>
-                                                        <Border>
-                                                            <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter>
-                                            </Style>
-                                            <Style Selector="ListBoxItem">
-                                                <Setter Property="Template">
-                                                    <ControlTemplate>
-                                                        <Border BorderBrush="Transparent" BorderThickness="2"
-                                                                x:Name="Border" Margin="0" CornerRadius="10">
-                                                            <ContentPresenter
-                                                                ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                                Content="{TemplateBinding Content}" />
-                                                        </Border>
-                                                    </ControlTemplate>
-                                                </Setter>
-                                            </Style>
-                                        </ListBox.Styles>
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate x:DataType="models:ChartColumnInfoModel">
-                                                <StackPanel>
-                                                    <Grid>
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="auto" />
-                                                            <ColumnDefinition Width="auto" />
-                                                            <ColumnDefinition Width="auto" />
-                                                        </Grid.ColumnDefinitions>
-                                                        <base:View Condition="not null" Value="{Binding Color}">
-                                                            <Border Margin="0,0,5,0" Width="10"
-                                                                    CornerRadius="4" Height="10"
-                                                                    Background="{Binding Color,Converter={StaticResource HextoColorConverter}}" />
-                                                        </base:View>
-                                                        <Border Grid.Column="1" Margin="0,0,0,0">
-                                                            <TextBlock
-                                                                Foreground="{DynamicResource DefaultTextBrush}"
-                                                                VerticalAlignment="Center"
-                                                                Text="{Binding Name}" FontSize="12" />
-                                                        </Border>
-                                                        <Border Grid.Column="2">
-                                                            <TextBlock FontSize="12" Margin="5,0,0,0"
-                                                                       Foreground="{DynamicResource SubTextBrush}"
-                                                                       VerticalAlignment="Center"
-                                                                       Text="{Binding Text}" />
-                                                        </Border>
-                                                    </Grid>
-                                                </StackPanel>
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
-                                </Grid>
+                                <ListBox ItemsSource="{TemplateBinding ColumnValuesInfoList}"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.Styles>
+                                        <Style Selector="ListBox">
+                                            <Setter Property="Template">
+                                                <ControlTemplate>
+                                                    <Border>
+                                                        <ItemsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" />
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter>
+                                        </Style>
+                                        <Style Selector="ListBoxItem">
+                                            <Setter Property="Template">
+                                                <ControlTemplate>
+                                                    <Border BorderBrush="Transparent" BorderThickness="0"
+                                                            x:Name="Border" Margin="0,2">
+                                                        <ContentPresenter
+                                                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                            Content="{TemplateBinding Content}" />
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.Styles>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="models:ChartColumnInfoModel">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <base:View Grid.Column="0" Condition="not null" Value="{Binding Color}">
+                                                    <Border Margin="0,0,8,0" Width="8"
+                                                            CornerRadius="2" Height="8"
+                                                            VerticalAlignment="Center"
+                                                            Background="{Binding Color,Converter={StaticResource HextoColorConverter}}" />
+                                                </base:View>
+                                                <TextBlock Grid.Column="1"
+                                                           Foreground="{DynamicResource DefaultTextBrush}"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Name}" FontSize="12" />
+                                                <TextBlock Grid.Column="2" FontSize="12" Margin="12,0,0,0"
+                                                           FontWeight="SemiBold"
+                                                           FontFeatures="tnum"
+                                                           HorizontalAlignment="Right"
+                                                           Foreground="{DynamicResource DefaultTextBrush}"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding Text}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
                             </Border>
                         </Popup>
 
-                        <Border x:Name="ChartBorder" BorderThickness="1,0,0,1" BorderBrush="{DynamicResource ChartColBorderBrush}">
+                        <Border x:Name="ChartBorder" BorderThickness="0,0,0,1" BorderBrush="{DynamicResource ChartColBorderBrush}">
                             <controls:ColumnChartCanvas x:Name="TypeColumnCanvas" />
                         </Border>
                         <base:EmptyData x:Name="EmptyDataView" IsVisible="False"

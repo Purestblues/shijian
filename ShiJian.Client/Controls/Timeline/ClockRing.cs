@@ -309,8 +309,11 @@ public class ClockRing : Control, ICustomHitTest
     private void DrawTicks(DrawingContext context, Point center, double radius, double thickness)
     {
         var outer = radius + thickness / 2;
-        var tickBrush = MutedTextBrush ?? new SolidColorBrush(Color.FromArgb(120, 128, 128, 128));
-        var pen = new Pen(tickBrush, 1);
+        var fallbackBrush = MutedTextBrush ?? new SolidColorBrush(Color.FromArgb(120, 128, 128, 128));
+        var majorBrush = ResolveResourceBrush("SubTextBrush") ?? fallbackBrush;
+        var minorBrush = ResolveResourceBrush("DividerStrongBrush") ?? fallbackBrush;
+        var majorPen = new Pen(majorBrush, 1);
+        var minorPen = new Pen(minorBrush, 1);
 
         switch (TickMode)
         {
@@ -318,7 +321,7 @@ public class ClockRing : Control, ICustomHitTest
                 for (var hour = 0; hour < 24; hour++)
                 {
                     var major = hour % 3 == 0;
-                    DrawTickLine(context, pen, center, outer + 2, outer + (major ? 7 : 4), hour / 24d);
+                    DrawTickLine(context, major ? majorPen : minorPen, center, outer + 2, outer + (major ? 7 : 4), hour / 24d);
                     if (!major) continue;
 
                     DrawLabel(context, center, outer + 13, hour / 24d, $"{hour:00}");
@@ -336,9 +339,10 @@ public class ClockRing : Control, ICustomHitTest
                 for (var i = 0; i < days; i++)
                 {
                     var fraction = (double)i / days;
-                    DrawTickLine(context, pen, center, outer + 2, outer + 5, fraction);
+                    var isLabelTick = i % labelStep == 0;
+                    DrawTickLine(context, isLabelTick ? majorPen : minorPen, center, outer + 2, outer + 5, fraction);
 
-                    if (i % labelStep != 0) continue;
+                    if (!isLabelTick) continue;
                     DrawLabel(context, center, outer + 13, fraction, RangeStart.AddDays(i).ToString("M/d"));
                 }
 
@@ -349,13 +353,26 @@ public class ClockRing : Control, ICustomHitTest
                 for (var month = 0; month < 12; month++)
                 {
                     var fraction = month / 12d;
-                    DrawTickLine(context, pen, center, outer + 2, outer + 6, fraction);
+                    DrawTickLine(context, majorPen, center, outer + 2, outer + 6, fraction);
                     DrawLabel(context, center, outer + 13, fraction,
                         RangeStart.AddMonths(month).ToString("MMM", CultureInfo.CurrentCulture));
                 }
 
                 break;
         }
+    }
+
+    private static IBrush? ResolveResourceBrush(string resourceKey)
+    {
+        if (Application.Current is { } app &&
+            app.CheckAccess() &&
+            app.TryGetResource(resourceKey, app.ActualThemeVariant, out var resource) &&
+            resource is IBrush brush)
+        {
+            return brush;
+        }
+
+        return null;
     }
 
     private static void DrawTickLine(DrawingContext context, IPen pen, Point center,

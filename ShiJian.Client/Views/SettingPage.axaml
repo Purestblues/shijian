@@ -20,7 +20,9 @@
         <StackPanel Grid.Row="0" MaxWidth="820">
             <TextBlock Text="{DynamicResource Settings}" FontSize="18" Margin="0,8,0,16" />
             <Tabbar:Tabbar x:Name="Tabbar"
-                HorizontalAlignment="Stretch" Data="{Binding TabbarData}"
+                HorizontalAlignment="Stretch"
+                Data="{Binding TabbarData}"
+                Icons="{Binding TabbarIcons}"
                 ItemSpacing="20"
                 SelectedIndex="{Binding TabbarSelectedIndex,Mode=TwoWay}" />
         </StackPanel>
@@ -66,47 +68,46 @@
                     <SettingPanel:SettingPanel Data="{Binding BehaviorSettings,Mode=TwoWay}" />
 
                     <!-- 全局快捷键 -->
-                    <Border Background="{DynamicResource CardBgBrush}"
-                            CornerRadius="{StaticResource RadiusLarge}"
+                    <Border Background="{DynamicResource Surface2Brush}"
+                            CornerRadius="{StaticResource RadiusMedium}"
                             BorderBrush="{DynamicResource CardBorderBrush}"
-                            BorderThickness="1">
-                        <StackPanel>
+                            BorderThickness="1"
+                            Padding="12">
+                        <StackPanel Spacing="8">
                             <StackPanel.Styles>
                                 <Style Selector="Border.shortcut-row">
                                     <Setter Property="Margin" Value="0" />
-                                    <Setter Property="Padding" Value="15,14" />
+                                    <Setter Property="Padding" Value="14,12" />
+                                    <Setter Property="Background" Value="{DynamicResource Surface3Brush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource DividerSubtleBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+                                </Style>
+                                <Style Selector="Border.shortcut-row:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
                                 </Style>
                                 <Style Selector="Grid.shortcut-row-grid">
                                     <Setter Property="Margin" Value="0" />
                                 </Style>
-                                <Style Selector="Border.shortcut-divider">
-                                    <Setter Property="Height" Value="1" />
-                                    <Setter Property="Margin" Value="0" />
-                                    <Setter Property="Background" Value="{DynamicResource DividerSubtleBrush}" />
-                                </Style>
                                 <Style Selector="TextBlock.shortcut-title">
                                     <Setter Property="FontSize" Value="14" />
+                                    <Setter Property="FontWeight" Value="Medium" />
                                     <Setter Property="Foreground" Value="{DynamicResource StandardTextBrush}" />
                                 </Style>
                                 <Style Selector="TextBlock.shortcut-desc">
                                     <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}" />
                                     <Setter Property="FontSize" Value="12" />
-                                    <Setter Property="Margin" Value="0,4,0,0" />
+                                    <Setter Property="Margin" Value="0,3,0,0" />
                                 </Style>
                             </StackPanel.Styles>
 
                             <!-- 行 1：刷新 -->
-                            <Border Classes="shortcut-row" CornerRadius="12,12,0,0">
-                                <Border.Styles>
-                                    <Style Selector="Border.shortcut-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
+                            <Border Classes="shortcut-row">
                                 <Grid Classes="shortcut-row-grid" ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0"
                                                 Margin="0,0,16,0"
                                                 VerticalAlignment="Center"
-                                                Spacing="3">
+                                                Spacing="2">
                                         <TextBlock Classes="shortcut-title" Text="{DynamicResource RefreshShortcut}" />
                                         <TextBlock Classes="shortcut-desc" Text="{DynamicResource RefreshShortcutDesc}" />
                                     </StackPanel>
@@ -118,20 +119,13 @@
                                 </Grid>
                             </Border>
 
-                            <Border Classes="shortcut-divider" />
-
                             <!-- 行 2：搜索 -->
                             <Border Classes="shortcut-row">
-                                <Border.Styles>
-                                    <Style Selector="Border.shortcut-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
                                 <Grid Classes="shortcut-row-grid" ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0"
                                                 Margin="0,0,16,0"
                                                 VerticalAlignment="Center"
-                                                Spacing="3">
+                                                Spacing="2">
                                         <TextBlock Classes="shortcut-title" Text="{DynamicResource SearchShortcut}" />
                                         <TextBlock Classes="shortcut-desc" Text="{DynamicResource SearchShortcutDesc}" />
                                     </StackPanel>
@@ -143,20 +137,13 @@
                                 </Grid>
                             </Border>
 
-                            <Border Classes="shortcut-divider" />
-
                             <!-- 行 3：返回上一页 -->
-                            <Border Classes="shortcut-row" CornerRadius="0,0,12,12">
-                                <Border.Styles>
-                                    <Style Selector="Border.shortcut-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
+                            <Border Classes="shortcut-row">
                                 <Grid Classes="shortcut-row-grid" ColumnDefinitions="*,Auto">
                                     <StackPanel Grid.Column="0"
                                                 Margin="0,0,16,0"
                                                 VerticalAlignment="Center"
-                                                Spacing="3">
+                                                Spacing="2">
                                         <TextBlock Classes="shortcut-title" Text="{DynamicResource NavigateBackShortcut}" />
                                         <TextBlock Classes="shortcut-desc" Text="{DynamicResource NavigateBackShortcutDesc}" />
                                     </StackPanel>
@@ -173,44 +160,43 @@
 
                 <!-- Tab 3：数据 -->
                 <StackPanel x:Name="TabPanelData" IsVisible="{Binding IsTab3Selected}" Spacing="16">
-                    <Border Background="{DynamicResource CardBgBrush}"
-                            CornerRadius="{StaticResource RadiusLarge}"
+                    <Border Background="{DynamicResource Surface2Brush}"
+                            CornerRadius="{StaticResource RadiusMedium}"
                             BorderBrush="{DynamicResource CardBorderBrush}"
-                            BorderThickness="1">
-                        <StackPanel>
+                            BorderThickness="1"
+                            Padding="12">
+                        <StackPanel Spacing="8">
                             <StackPanel.Styles>
                                 <Style Selector="Border.data-row">
                                     <Setter Property="Margin" Value="0" />
-                                    <Setter Property="Padding" Value="15,14" />
+                                    <Setter Property="Padding" Value="14,12" />
+                                    <Setter Property="Background" Value="{DynamicResource Surface3Brush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource DividerSubtleBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+                                </Style>
+                                <Style Selector="Border.data-row:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
                                 </Style>
                                 <Style Selector="Grid.data-row-grid">
                                     <Setter Property="Margin" Value="0" />
                                 </Style>
-                                <Style Selector="Border.data-divider">
-                                    <Setter Property="Height" Value="1" />
-                                    <Setter Property="Margin" Value="0" />
-                                    <Setter Property="Background" Value="{DynamicResource DividerSubtleBrush}" />
-                                </Style>
                                 <Style Selector="TextBlock.data-title">
                                     <Setter Property="FontSize" Value="14" />
+                                    <Setter Property="FontWeight" Value="Medium" />
                                     <Setter Property="Foreground" Value="{DynamicResource StandardTextBrush}" />
                                 </Style>
                                 <Style Selector="TextBlock.data-desc">
                                     <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}" />
                                     <Setter Property="FontSize" Value="12" />
-                                    <Setter Property="Margin" Value="0,4,0,0" />
+                                    <Setter Property="Margin" Value="0,3,0,0" />
                                 </Style>
                             </StackPanel.Styles>
 
                             <!-- N15a：历史记录默认永久保留 -->
-                            <Border Classes="data-row" CornerRadius="12,12,0,0">
-                                <Border.Styles>
-                                    <Style Selector="Border.data-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
+                            <Border Classes="data-row">
                                 <Grid Classes="data-row-grid" ColumnDefinitions="*,Auto" ColumnSpacing="20">
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                                         <TextBlock Classes="data-title" Text="{DynamicResource DataRetentionPermanentTitle}" />
                                         <TextBlock Classes="data-desc" Text="{DynamicResource DataRetentionPermanentDesc}" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -226,17 +212,10 @@
                                 </Grid>
                             </Border>
 
-                            <Border Classes="data-divider" />
-
                             <!-- 导出完整备份 (.shijian-backup) -->
                             <Border Classes="data-row">
-                                <Border.Styles>
-                                    <Style Selector="Border.data-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
                                 <Grid Classes="data-row-grid" ColumnDefinitions="*,Auto" ColumnSpacing="20">
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                                         <TextBlock Classes="data-title" Text="{DynamicResource ExportData}" />
                                         <TextBlock Classes="data-desc" Text="{DynamicResource ExportTo}" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -246,17 +225,10 @@
                                 </Grid>
                             </Border>
 
-                            <Border Classes="data-divider" />
-
                             <!-- 导入备份 (.shijian-backup) -->
                             <Border Classes="data-row">
-                                <Border.Styles>
-                                    <Style Selector="Border.data-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
                                 <Grid Classes="data-row-grid" ColumnDefinitions="*,Auto" ColumnSpacing="20">
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                                         <TextBlock Classes="data-title" Text="{DynamicResource ImportBackup}" />
                                         <TextBlock Classes="data-desc" Text="{DynamicResource ImportBackupDesc}" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -266,17 +238,10 @@
                                 </Grid>
                             </Border>
 
-                            <Border Classes="data-divider" />
-
                             <!-- 可选表格导出 (CSV) -->
                             <Border Classes="data-row">
-                                <Border.Styles>
-                                    <Style Selector="Border.data-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
                                 <Grid Classes="data-row-grid" ColumnDefinitions="*,Auto" ColumnSpacing="20">
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                                         <TextBlock Classes="data-title" Text="{DynamicResource ExportCsv}" />
                                         <TextBlock Classes="data-desc" Text="{DynamicResource ExportCsvDesc}" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -295,17 +260,10 @@
                                 </Grid>
                             </Border>
 
-                            <Border Classes="data-divider" />
-
                             <!-- 删除数据 -->
-                            <Border Classes="data-row" CornerRadius="0,0,12,12">
-                                <Border.Styles>
-                                    <Style Selector="Border.data-row:pointerover">
-                                        <Setter Property="Background" Value="{DynamicResource SettingPanelHoverBrush}" />
-                                    </Style>
-                                </Border.Styles>
+                            <Border Classes="data-row">
                                 <Grid Classes="data-row-grid" ColumnDefinitions="*,Auto" ColumnSpacing="20">
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="3">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
                                         <TextBlock Classes="data-title" Text="{DynamicResource DeleteData}" Foreground="{DynamicResource DangerBrush}" />
                                         <TextBlock Classes="data-desc" Text="{DynamicResource DeletedAndUnrecoverable}" />
                                     </StackPanel>
@@ -506,23 +464,34 @@
 
                 <!-- Tab 4：关于 -->
                 <StackPanel x:Name="TabPanelAbout" IsVisible="{Binding IsTab4Selected}">
-                    <Border Background="{DynamicResource CardBgBrush}"
-                            CornerRadius="{StaticResource RadiusLarge}"
+                    <Border Background="{DynamicResource Surface2Brush}"
+                            CornerRadius="{StaticResource RadiusMedium}"
                             BorderBrush="{DynamicResource CardBorderBrush}"
-                            BorderThickness="1">
-                        <StackPanel>
+                            BorderThickness="1"
+                            Padding="12">
+                        <StackPanel Spacing="8">
+                            <StackPanel.Styles>
+                                <Style Selector="Border.about-row">
+                                    <Setter Property="Padding" Value="14,12" />
+                                    <Setter Property="Background" Value="{DynamicResource Surface3Brush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource DividerSubtleBrush}" />
+                                    <Setter Property="BorderThickness" Value="1" />
+                                    <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+                                </Style>
+                            </StackPanel.Styles>
+
                             <!-- 应用信息 -->
-                            <Border Padding="15,14" CornerRadius="12,12,0,0">
+                            <Border Classes="about-row">
                                 <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
                                     <Image Width="32" Source="/Resources/Icons/shijian.ico"
                                            VerticalAlignment="Center" />
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
-                                        <TextBlock Text="时见" FontSize="14"
+                                        <TextBlock Text="时见" FontSize="14" FontWeight="Medium"
                                                    Foreground="{DynamicResource StandardTextBrush}" />
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <TextBlock Text="{DynamicResource Version}" FontSize="12"
                                                        Foreground="{DynamicResource SubTextBrush}" />
-                                            <TextBlock Text="{Binding Version}" FontSize="12" />
+                                            <TextBlock Text="{Binding Version}" FontSize="12" FontFeatures="tnum" />
                                         </StackPanel>
                                     </StackPanel>
                                     <Btn:Button Grid.Column="2"
@@ -533,23 +502,17 @@
                                 </Grid>
                             </Border>
 
-                            <Border Height="1"
-                                    Background="{DynamicResource DividerSubtleBrush}" />
-
                             <!-- 浏览器统计插件 -->
-                            <Border Padding="15,14">
+                            <Border Classes="about-row">
                                 <HyperlinkButton Command="{Binding OpenURL}"
                                                  CommandParameter="https://github.com/Purestblues/shijian/tree/main/shijian-browser-extension"
                                                  Content="{DynamicResource PlugIn}" />
                             </Border>
 
-                            <Border Height="1"
-                                    Background="{DynamicResource DividerSubtleBrush}" />
-
                             <!-- 开源 -->
-                            <Border Padding="15,14">
+                            <Border Classes="about-row">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Text="{DynamicResource OpenSource}" FontSize="14"
+                                    <TextBlock Text="{DynamicResource OpenSource}" FontSize="14" FontWeight="Medium"
                                                Foreground="{DynamicResource StandardTextBrush}" />
                                     <HyperlinkButton Command="{Binding OpenURL}"
                                                      CommandParameter="https://github.com/Purestblues/shijian"
@@ -559,13 +522,10 @@
                                 </StackPanel>
                             </Border>
 
-                            <Border Height="1"
-                                    Background="{DynamicResource DividerSubtleBrush}" />
-
                             <!-- 讨论 -->
-                            <Border Padding="15,14" CornerRadius="0,0,12,12">
+                            <Border Classes="about-row">
                                 <StackPanel Spacing="3">
-                                    <TextBlock Text="{DynamicResource Discuss}" FontSize="14"
+                                    <TextBlock Text="{DynamicResource Discuss}" FontSize="14" FontWeight="Medium"
                                                Foreground="{DynamicResource StandardTextBrush}" />
                                     <HyperlinkButton Command="{Binding OpenURL}"
                                                      CommandParameter="https://github.com/Purestblues/shijian/issues"

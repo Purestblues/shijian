@@ -39,7 +39,7 @@
                         <TextBlock Name="floatingWatermark"
                                    DockPanel.Dock="Top"
                                    FontSize="{DynamicResource FontSizeSmall}"
-                                   Foreground="{DynamicResource ThemeAccentBrush}"
+                                   Foreground="{DynamicResource ThemeBrush}"
                                    Text="{TemplateBinding Watermark}">
                             <TextBlock.IsVisible>
                                 <MultiBinding Converter="{x:Static BoolConverters.And}">
@@ -141,16 +141,6 @@
                                         Margin="8">
                                         <Grid>
                                             <TextBlock x:Name="Placeholder" />
-                                            <Path
-                                                Width="12"
-                                                Height="12"
-                                                Data="M 0 12 L 6 6 L 12 12"
-                                                Fill="{DynamicResource DangerBrush}"
-                                                Stroke="{DynamicResource DangerBrush}"
-                                                StrokeThickness="1"
-                                                VerticalAlignment="Top"
-                                                HorizontalAlignment="Left"
-                                                Margin="0,-20,0,0" />
                                             <TextBlock Foreground="{DynamicResource OnBrandBrush}"
                                                        FontSize="12"
                                                        Text="{TemplateBinding Error}" />
@@ -168,10 +158,12 @@
 
         <Style Selector="^:pointerover /template/ Border#BoxBorder">
             <Setter Property="Background" Value="{DynamicResource InputBoxHoverBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SubTextBrush}" />
         </Style>
         <Style Selector="^:focus /template/ Border#BoxBorder">
             <Setter Property="BorderBrush" Value="{DynamicResource ThemeBrush}" />
             <Setter Property="Background" Value="{DynamicResource InputBoxFocusedBgBrush}" />
+            <Setter Property="BoxShadow" Value="0 0 0 2 #26527CE6" />
         </Style>
 
         <Style Selector="^[Icon=None] /template/ base|Icon#Icon">
@@ -183,7 +175,7 @@
         </Style>
 
         <Style Selector="^:error /template/ Border#BoxBorder">
-            <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
         </Style>
 
         <Style Selector="^ /template/ DockPanel">

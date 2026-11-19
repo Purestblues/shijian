@@ -190,23 +190,27 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
 
     private async Task OnDelAsync(object obj)
     {
-        if (SelectedItem != null)
-        {
-            var categories = await _categoryService.GetCategoriesAsync();
-            var systemCategory = categories.FirstOrDefault(c => c.IsSystem);
-            var categoryId = systemCategory?.ID ?? 0;
+        if (Category?.IsSystem == true) return;
 
-            await _webDataService.UpdateWebSitesCategoryAsync(new[] { SelectedItem.ID }, categoryId);
-            
-            var removedSite = SelectedItem with { CategoryID = categoryId, Category = ToWebSiteCategoryModel(systemCategory) };
-            _appEventService.PublishWebSiteChanged(removedSite, AppChangeType.WebSiteCategory);
-            
-            _originalWebSiteList.RemoveAll(m => m.ID == SelectedItem.ID);
-            CategoryWebSiteList.Remove(SelectedItem);
-            if (CategoryWebSiteList.Count == 0) CategoryWebSiteList = new ObservableCollection<WebSiteModel>();
+        var target = obj as WebSiteModel ?? SelectedItem;
+        if (target == null) return;
 
-            await ExecuteAsync(LoadDataCoreAsync);
-        }
+        var categories = await _categoryService.GetCategoriesAsync();
+        var systemCategory = categories.FirstOrDefault(c => c.IsSystem);
+        var categoryId = systemCategory?.ID ?? 0;
+
+        await _webDataService.UpdateWebSitesCategoryAsync(new[] { target.ID }, categoryId);
+
+        var removedSite = target with { CategoryID = categoryId, Category = ToWebSiteCategoryModel(systemCategory) };
+        _appEventService.PublishWebSiteChanged(removedSite, AppChangeType.WebSiteCategory);
+
+        _originalWebSiteList.RemoveAll(m => m.ID == target.ID);
+        CategoryWebSiteList.Remove(target);
+        if (CategoryWebSiteList.Count == 0) CategoryWebSiteList = new ObservableCollection<WebSiteModel>();
+        if (ReferenceEquals(SelectedItem, target) || SelectedItem?.ID == target.ID)
+            SelectedItem = null;
+
+        await ExecuteAsync(LoadDataCoreAsync);
     }
 
     private void OnChooseClose(object obj)

@@ -2,8 +2,8 @@ using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using ShiJian.Client.Controls.Charts.Model;
 
 namespace ShiJian.Client.Controls.Charts;
@@ -54,7 +54,8 @@ public class ChartsItemTypeMonth : TemplatedControl
     //private Image IconObj;
     private bool isRendering;
 
-    private Rectangle ValueBlockObj;
+    private Border? ValueBlockObj;
+    private TextBlock? DayText;
 
     public ChartsItemTypeMonth()
     {
@@ -111,7 +112,8 @@ public class ChartsItemTypeMonth : TemplatedControl
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         base.OnApplyTemplate(e);
-        ValueBlockObj = e.NameScope.Get<Rectangle>("ValueBlockObj");
+        ValueBlockObj = e.NameScope.Find<Border>("ValueBlockObj");
+        DayText = e.NameScope.Find<TextBlock>("DayText");
         if (!IsAddEvent)
         {
             IsAddEvent = true;
@@ -126,18 +128,37 @@ public class ChartsItemTypeMonth : TemplatedControl
 
     private void Render()
     {
-        if (isRendering || Data == null) return;
+        if (isRendering || Data == null || ValueBlockObj == null || DayText == null) return;
 
         isRendering = true;
-        //Loaded += (s, e) =>
-        //{
-        //    ValueBlockObj.Width = ValueBlockObj.Height = (Data.Value / MaxValue) * ActualWidth;
-        //};
 
-        var size = MaxValue > 0 && Data.Value > 0
-            ? Math.Clamp(Data.Value / MaxValue * Bounds.Width, 6, Bounds.Width)
+        DayText.Text = Data.DateTime.Day > 0 ? Data.DateTime.Day.ToString() : string.Empty;
+
+        var ratio = MaxValue > 0 && Data.Value > 0
+            ? Math.Clamp(Data.Value / MaxValue, 0, 1)
             : 0;
-        ValueBlockObj.Width = ValueBlockObj.Height = size;
+
+        if (ratio > 0)
+        {
+            ValueBlockObj.Opacity = 0.15 + Math.Sqrt(ratio) * 0.70;
+            if (ratio > 0.55)
+            {
+                var onBrand = ResolveBrush("OnBrandBrush");
+                if (onBrand != null) DayText.Foreground = onBrand;
+            }
+            else
+            {
+                var subText = ResolveBrush("SubTextBrush");
+                if (subText != null) DayText.Foreground = subText;
+            }
+        }
+        else
+        {
+            ValueBlockObj.Opacity = 0;
+            var subText = ResolveBrush("SubTextBrush");
+            if (subText != null) DayText.Foreground = subText;
+        }
+
         ToolTip = Data.DateTime.ToString("yyyy年MM月dd日") + " " + (string.IsNullOrEmpty(Data.Tag) ? "无数据" : Data.Tag);
 
         if (Data.DateTime.Date == DateTime.Now.Date)
@@ -145,26 +166,18 @@ public class ChartsItemTypeMonth : TemplatedControl
             IsSelected = true;
             ToolTip = "[今日] " + ToolTip;
         }
-        //ValueTextObj.Text = Data.DateTime.Day.ToString();
-        //NameTextObj.Text = Data.Name;
-        //NameTextObj.SizeChanged += (e, c) =>
-        //{
-        //    //  处理文字过长显示
-        //    if (NameTextObj.ActualWidth > 121 && NameTextObj.FontSize > 8)
-        //    {
-        //        NameTextObj.FontSize = NameTextObj.FontSize - 1;
-        //    }
-        //};
-        //ValueTextObj.Text = Data.Tag;
-        //IconObj.Source = Imager.Load(Data.Icon);
+    }
 
-        //ValueTextObj.SizeChanged += (e, c) =>
-        //{
-        //    //if (MaxValue <= 0)
-        //    //{
-        //    //    return;
-        //    //}
-        //    ValueBlockObj.Width = ValueBlockObj.Height = (Data.Value / MaxValue) * ActualWidth;
-        //};
+    private static IBrush? ResolveBrush(string resourceKey)
+    {
+        if (Application.Current is { } app &&
+            app.CheckAccess() &&
+            app.TryGetResource(resourceKey, app.ActualThemeVariant, out var resource) &&
+            resource is IBrush brush)
+        {
+            return brush;
+        }
+
+        return null;
     }
 }

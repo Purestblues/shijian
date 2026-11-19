@@ -14,6 +14,7 @@ using Avalonia.Threading;
 using ShiJian.Client.Controls.Base;
 using ShiJian.Client.Controls.Charts.Model;
 using ShiJian.Client.Controls.Input;
+using ShiJian.Client.Librarys;
 using ShiJian.Client.Servicers;
 
 namespace ShiJian.Client.Controls.Charts;
@@ -338,9 +339,14 @@ public class ListChart : TemplatedControl
         if (_countText != null) _countText.Text = source.Count.ToString();
 
         if (string.IsNullOrEmpty(_searchText))
+        {
             _listView.ItemsSource = Data;
+            _ = ListRowMotion.PlayStaggerInAsync(_listView);
+        }
         else
+        {
             ApplySearch(_searchText);
+        }
     }
 
     private void UpdateScrollability()

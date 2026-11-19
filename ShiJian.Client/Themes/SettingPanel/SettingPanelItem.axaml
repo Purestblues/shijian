@@ -24,6 +24,8 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Border Background="{TemplateBinding Background}" Padding="14,12"
+                        BorderBrush="{DynamicResource DividerSubtleBrush}"
+                        BorderThickness="1"
                         x:Name="Border" Classes="setting-panel-item"
                         CornerRadius="{TemplateBinding CornerRadius}">
 
