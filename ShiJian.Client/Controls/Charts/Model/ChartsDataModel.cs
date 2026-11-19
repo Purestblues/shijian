@@ -104,4 +104,16 @@ public class ChartsDataModel : UINotifyPropertyChanged
     /// 最大值
     /// </summary>
     public double MaxValue { get; set; }
+
+    /// <summary>当前周期相对占比（0..1）</summary>
+    public double Ratio { get; set; }
+
+    /// <summary>上一周期对比占比（0..1）</summary>
+    public double CompareRatio { get; set; }
+
+    /// <summary>上一周期对比条颜色（低透明度强调色）</summary>
+    public string? CompareColor { get; set; }
+
+    /// <summary>上一周期格式化时长文本</summary>
+    public string? CompareTag { get; set; }
 }

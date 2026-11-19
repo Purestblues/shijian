@@ -198,6 +198,32 @@ public class N16ToN21Tests
         Assert.Equal(1800d, maxVal);
     }
 
+    [Fact]
+    public void N19_IndexPage_BuildCategoryShareSeries_ComputesDualBarRatiosAndCompareColor()
+    {
+        var current = new List<ChartsDataModel>
+        {
+            new() { Name = "娱乐", Value = 600, Tag = "10m", Color = "#4D968E" },
+            new() { Name = "工具", Value = 1200, Tag = "20m", Color = "#527CE6" }
+        };
+        var prev = new List<ChartsDataModel>
+        {
+            new() { Name = "工具", Value = 2400, Tag = "40m", Color = "#527CE6" },
+            new() { Name = "娱乐", Value = 300, Tag = "5m", Color = "#4D968E" }
+        };
+
+        var result = IndexPageViewModel.BuildCategoryShareSeries(current, prev);
+
+        Assert.Equal(["工具", "娱乐"], result.Select(x => x.Name));
+        Assert.Equal(0.5, result[0].Ratio, 3);
+        Assert.Equal(1.0, result[0].CompareRatio, 3);
+        Assert.StartsWith("#4D", result[0].CompareColor, StringComparison.OrdinalIgnoreCase);
+
+        Assert.Equal(0.25, result[1].Ratio, 3);
+        Assert.Equal(0.125, result[1].CompareRatio, 3);
+        Assert.StartsWith("#4D", result[1].CompareColor, StringComparison.OrdinalIgnoreCase);
+    }
+
     [AvaloniaFact]
     public void N19_RadarChart_RendersWithComparePolygonInHeadlessWindow()
     {

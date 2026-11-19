@@ -42,6 +42,7 @@ public partial class IndexPageViewModel : IndexPageModel
 
     // 图表原始数据缓存（换主题时本地重建，不重复请求）
     private EntityHoursModel? _entityHours;
+    private EntityHoursModel? _prevEntityHours;
     private double[] _compareTotalsAll = [];
     private IReadOnlyList<CategoryModel>? _columnCategories;
     private DateTime _activeStart = DateTime.Now.Date;
@@ -497,6 +498,7 @@ public partial class IndexPageViewModel : IndexPageModel
 
         // 缓存原始矩阵，换主题时本地重建即可
         _entityHours = hours;
+        _prevEntityHours = prevHours;
         _columnCategories = await categoriesTask;
         _compareTotalsAll = ChartDataMapper.SumAllBuckets(prevHours, labels.Length);
 
@@ -507,11 +509,72 @@ public partial class IndexPageViewModel : IndexPageModel
     private static ChartsDataModel ToChartRow(EntityModel entity) =>
         ChartDataMapper.MapFromEntity(entity, includeBadges: true);
 
+    internal static List<ChartsDataModel> BuildCategoryShareSeries(
+        IReadOnlyList<ChartsDataModel> currentSeries,
+        IReadOnlyList<ChartsDataModel>? prevSeries)
+    {
+        if (currentSeries.Count == 0) return [];
+
+        var prevLookup = new Dictionary<string, double>(StringComparer.Ordinal);
+        if (prevSeries != null)
+        {
+            foreach (var item in prevSeries)
+            {
+                if (string.IsNullOrEmpty(item.Name) || item.Value <= 0) continue;
+                prevLookup[item.Name] = prevLookup.TryGetValue(item.Name, out var existing)
+                    ? existing + item.Value
+                    : item.Value;
+            }
+        }
+
+        var ordered = currentSeries.OrderByDescending(m => m.Value).ToList();
+        double maxScale = 0;
+        foreach (var item in ordered)
+        {
+            if (item.Value > maxScale) maxScale = item.Value;
+            if (!string.IsNullOrEmpty(item.Name) &&
+                prevLookup.TryGetValue(item.Name, out var prevVal) &&
+                prevVal > maxScale)
+            {
+                maxScale = prevVal;
+            }
+        }
+
+        return ordered
+            .Select(m =>
+            {
+                var prevVal = !string.IsNullOrEmpty(m.Name) && prevLookup.TryGetValue(m.Name, out var found)
+                    ? found
+                    : 0d;
+                var prevTag = prevVal > 0 ? Time.ToString((int)prevVal) : "0s";
+                return new ChartsDataModel
+                {
+                    Name = m.Name,
+                    Icon = m.Icon,
+                    Color = m.Color,
+                    Value = m.Value,
+                    Tag = m.Tag,
+                    Ratio = maxScale > 0 ? Math.Clamp(m.Value / maxScale, 0, 1) : 0,
+                    CompareRatio = maxScale > 0 && prevVal > 0 ? Math.Clamp(prevVal / maxScale, 0, 1) : 0,
+                    CompareColor = ChartColorHelper.WithAlpha(m.Color, 0x4D),
+                    CompareTag = prevTag,
+                    PopupText = $"{m.Name}  {m.Tag} / {prevTag}"
+                };
+            })
+            .ToList();
+    }
+
     private void ApplyChartSeries()
     {
+        var visualMap = ChartDataMapper.ToVisualMap(_columnCategories, ResourceStrings.Uncategorized);
         var series = ChartDataMapper.BuildUnifiedCategorySeries(
             _entityHours,
-            ChartDataMapper.ToVisualMap(_columnCategories, ResourceStrings.Uncategorized),
+            visualMap,
+            ResourceStrings.Uncategorized);
+
+        var prevSeries = ChartDataMapper.BuildUnifiedCategorySeries(
+            _prevEntityHours,
+            visualMap,
             ResourceStrings.Uncategorized);
 
         HourSeries = series;
@@ -519,17 +582,7 @@ public partial class IndexPageViewModel : IndexPageModel
         CompareValues = _compareTotalsAll;
         HourTotalText = Time.ToString((int)series.Sum(m => m.Value));
 
-        CategorySeries = series
-            .OrderByDescending(m => m.Value)
-            .Select(m => new ChartsDataModel
-            {
-                Name = m.Name,
-                Icon = m.Icon,
-                Color = m.Color,
-                Value = m.Value,
-                Tag = m.Tag
-            })
-            .ToList();
+        CategorySeries = BuildCategoryShareSeries(series, prevSeries);
 
         CategoryTotalText = Time.ToString((int)CategorySeries.Sum(m => m.Value));
         ChartDonutCaption = ResourceStrings.Total;
@@ -644,6 +697,7 @@ public partial class IndexPageViewModel : IndexPageModel
     {
         ChartColorHelper.ThemeChanged -= OnThemeChanged;
         _entityHours = null;
+        _prevEntityHours = null;
         _compareTotalsAll = [];
         CompareValues = [];
         WeekData = [];
