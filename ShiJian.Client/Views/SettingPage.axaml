@@ -32,19 +32,19 @@
                       VerticalScrollBarVisibility="Auto">
             <StackPanel MaxWidth="820" Margin="0,20,0,24">
                 <!-- Tab 0：常规 -->
-                <StackPanel x:Name="TabPanelGeneral" IsVisible="{Binding IsTab0Selected}">
+                <StackPanel x:Name="TabPanelGeneral">
                     <SettingPanel:SettingPanel Data="{Binding GeneralSettings,Mode=TwoWay}"
                                                IncludeGroups="基础|Basics|概览页|Overview" />
                 </StackPanel>
 
                 <!-- Tab 1：外观 -->
-                <StackPanel x:Name="TabPanelAppearance" IsVisible="{Binding IsTab1Selected}">
+                <StackPanel x:Name="TabPanelAppearance" IsVisible="False">
                     <SettingPanel:SettingPanel Data="{Binding GeneralSettings,Mode=TwoWay}"
                                                IncludeGroups="外观|Appearance" />
                 </StackPanel>
 
                 <!-- Tab 2：统计与规则 -->
-                <StackPanel x:Name="TabPanelTracking" IsVisible="{Binding IsTab2Selected}" Spacing="16">
+                <StackPanel x:Name="TabPanelTracking" IsVisible="False" Spacing="16">
                     <SettingPanel:SettingPanel Data="{Binding GeneralSettings,Mode=TwoWay}"
                                                IncludeGroups="采集与统计|Tracking" />
 
@@ -82,6 +82,11 @@
                                     <Setter Property="BorderBrush" Value="{DynamicResource DividerSubtleBrush}" />
                                     <Setter Property="BorderThickness" Value="1" />
                                     <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        </Transitions>
+                                    </Setter>
                                 </Style>
                                 <Style Selector="Border.shortcut-row:pointerover">
                                     <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
@@ -159,7 +164,7 @@
                 </StackPanel>
 
                 <!-- Tab 3：数据 -->
-                <StackPanel x:Name="TabPanelData" IsVisible="{Binding IsTab3Selected}" Spacing="16">
+                <StackPanel x:Name="TabPanelData" IsVisible="False" Spacing="16">
                     <Border Background="{DynamicResource Surface2Brush}"
                             CornerRadius="{StaticResource RadiusMedium}"
                             BorderBrush="{DynamicResource CardBorderBrush}"
@@ -174,6 +179,11 @@
                                     <Setter Property="BorderBrush" Value="{DynamicResource DividerSubtleBrush}" />
                                     <Setter Property="BorderThickness" Value="1" />
                                     <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        </Transitions>
+                                    </Setter>
                                 </Style>
                                 <Style Selector="Border.data-row:pointerover">
                                     <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
@@ -463,7 +473,7 @@
                 </StackPanel>
 
                 <!-- Tab 4：关于 -->
-                <StackPanel x:Name="TabPanelAbout" IsVisible="{Binding IsTab4Selected}">
+                <StackPanel x:Name="TabPanelAbout" IsVisible="False">
                     <Border Background="{DynamicResource Surface2Brush}"
                             CornerRadius="{StaticResource RadiusMedium}"
                             BorderBrush="{DynamicResource CardBorderBrush}"
@@ -477,6 +487,14 @@
                                     <Setter Property="BorderBrush" Value="{DynamicResource DividerSubtleBrush}" />
                                     <Setter Property="BorderThickness" Value="1" />
                                     <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+                                    <Setter Property="Transitions">
+                                        <Transitions>
+                                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        </Transitions>
+                                    </Setter>
+                                </Style>
+                                <Style Selector="Border.about-row:pointerover">
+                                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
                                 </Style>
                             </StackPanel.Styles>
 

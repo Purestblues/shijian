@@ -94,7 +94,8 @@
                                                                         <Transitions>
                                                                             <TransformOperationsTransition
                                                                                 Property="RenderTransform"
-                                                                                Duration="0.35" />
+                                                                                Duration="0:0:0.15"
+                                                                        Easing="0.40,0,0.20,1" />
                                                                         </Transitions>
                                                                     </ContentPresenter.Transitions>
                                                                 </ContentPresenter>

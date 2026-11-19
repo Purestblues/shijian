@@ -52,14 +52,7 @@ public class Expander : Avalonia.Controls.Expander
         if (change.Property == IsExpandedProperty)
         {
             ApplyExpanded(IsExpanded);
-            ApplyChevron(IsExpanded);
         }
-    }
-
-    /// <summary>箭头指示方向：展开朝下、收起朝右。Avalonia 12 无法对 RenderTransform 做动画，直接落值</summary>
-    private void ApplyChevron(bool expanded)
-    {
-        if (Chevron_?.RenderTransform is RotateTransform rotate) rotate.Angle = expanded ? 0 : -90;
     }
 
     /// <summary>
@@ -119,7 +112,10 @@ public class Expander : Avalonia.Controls.Expander
         ContentBorder_ = e.NameScope.Find<Border>("Content");
         ContentStackPanel_ = e.NameScope.Find<StackPanel>("ContentStackPanel");
 
-        if (HeaderBorder_ != null) HeaderBorder_.PointerPressed += OnHeaderPointerPressed;
-        ApplyChevron(IsExpanded);
+        if (HeaderBorder_ != null)
+        {
+            HeaderBorder_.PointerPressed += OnHeaderPointerPressed;
+            PressedState.Attach(HeaderBorder_);
+        }
     }
 }

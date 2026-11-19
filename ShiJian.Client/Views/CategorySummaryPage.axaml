@@ -23,14 +23,21 @@
             <Setter Property="Margin" Value="0,0,8,8" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="MinHeight" Value="30" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.cat-chip /template/ ContentPresenter">
             <Setter Property="CornerRadius" Value="999" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15" />
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                 </Transitions>
             </Setter>
         </Style>
@@ -38,7 +45,7 @@
             <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Foreground" Duration="0:0:0.15" />
+                    <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                 </Transitions>
             </Setter>
         </Style>
@@ -47,6 +54,9 @@
         </Style>
         <Style Selector="Button.cat-chip:pointerover TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource DefaultTextBrush}" />
+        </Style>
+        <Style Selector="Button.cat-chip:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.96)" />
         </Style>
         <Style Selector="Button.cat-chip.active /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource ThemeBrush}" />

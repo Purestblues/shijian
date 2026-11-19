@@ -34,7 +34,7 @@
                 <Style Selector="^ /template/ TextBlock#NameTextObj">
                     <Setter Property="Transitions">
                         <Transitions>
-                            <BrushTransition Property="Foreground" Duration="0:0:0.15" />
+                            <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                         </Transitions>
                     </Setter>
                 </Style>
@@ -47,10 +47,22 @@
                 <Style Selector="^ /template/ Border#IconBorder">
                     <Setter Property="Transitions">
                         <Transitions>
-                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
-                            <BrushTransition Property="Background" Duration="0:0:0.15" />
+                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                         </Transitions>
                     </Setter>
+                </Style>
+
+                <Style Selector="^ /template/ Border#RowBorder">
+                    <Setter Property="Transitions">
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        </Transitions>
+                    </Setter>
+                </Style>
+
+                <Style Selector="^:pointerover /template/ Border#RowBorder">
+                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
                 </Style>
 
                 <Style Selector="^:pointerover /template/ Border#IconBorder">
@@ -63,7 +75,7 @@
 
             <ControlTemplate>
                 <!-- 扁平行：底部 1px 极淡发丝线，无圆角无阴影（相邻行由 BorderThickness 共享一条线） -->
-                <Border BorderBrush="{DynamicResource DividerSubtleBrush}" BorderThickness="0,0,0,1"
+                <Border x:Name="RowBorder" BorderBrush="{DynamicResource DividerSubtleBrush}" BorderThickness="0,0,0,1"
                         Padding="8,8" Background="{TemplateBinding Background}">
                 <Grid>
                     <Grid x:Name="Normal">

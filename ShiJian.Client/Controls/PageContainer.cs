@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
@@ -59,6 +61,9 @@ public class PageContainer : TemplatedControl
     private bool IsBack;
     private ScrollViewer ScrollViewer;
     private string? PendingUri;
+    private CancellationTokenSource? _navigationCts;
+    private int _navigationVersion;
+    private bool _isExiting;
 
     public PageContainer()
     {
@@ -73,7 +78,6 @@ public class PageContainer : TemplatedControl
         get => GetValue(IndexUriListProperty);
         set => SetValue(IndexUriListProperty, value);
     }
-
 
     public ICommand BackCommand
     {
@@ -98,7 +102,6 @@ public class PageContainer : TemplatedControl
         get => GetValue(UriProperty);
         set => SetValue(UriProperty, value);
     }
-
 
     public PageContainer Instance
     {
@@ -131,6 +134,7 @@ public class PageContainer : TemplatedControl
 
     private void PageContainer_Unloaded(object? sender, RoutedEventArgs e)
     {
+        CancelPendingNavigation();
         Loaded -= PageContainer_Loaded;
         Unloaded -= PageContainer_Unloaded;
     }
@@ -146,7 +150,6 @@ public class PageContainer : TemplatedControl
         }
     }
 
-
     private void OnBackCommand(object obj)
     {
         Back();
@@ -161,14 +164,7 @@ public class PageContainer : TemplatedControl
             var uri = Historys[Index];
 
             var preIndex = Index + 1;
-
-            //  dispose the page being navigated away from
             var pageUri = Historys[preIndex];
-            if (Content is UserControl oldPage && oldPage.DataContext is IDisposable disposable)
-            {
-                disposable.Dispose();
-                oldPage.DataContext = null;
-            }
 
             ScrollPositions.Remove(pageUri);
             NavigationDatas.Remove(pageUri);
@@ -219,113 +215,229 @@ public class PageContainer : TemplatedControl
         control.LoadPage();
     }
 
-
-    private PageModel GetPage()
+    private PageModel GetPage(string targetUri)
     {
         UserControl? page = null;
-        if (PageTypeMap.TryGetValue(Uri, out var pageType))
+        if (PageTypeMap.TryGetValue(targetUri, out var pageType))
             page = ServiceLocator.GetRequiredService(pageType) as UserControl;
         return new PageModel
         {
             Instance = page,
-            ScrollValue = ScrollPositions.TryGetValue(Uri, out var scroll) ? scroll : 0
+            ScrollValue = ScrollPositions.TryGetValue(targetUri, out var scroll) ? scroll : 0
         };
     }
 
-
     private void LoadPage()
     {
+        var isBack = IsBack;
+        IsBack = false;
+
         try
         {
             // 模板未就绪时挂起
             if (ContentPresenter == null || ScrollViewer == null)
             {
                 PendingUri = Uri;
+                IsBack = isBack;
                 return;
             }
 
-            if (Content is UserControl oldPage && oldPage.DataContext is ModelBase oldVm)
+            var targetUri = Uri;
+            if (targetUri == string.Empty) return;
+
+            var isTopLevel = IndexUriList != null && IndexUriList.Contains(targetUri);
+            var direction = isBack
+                ? PageTransitionDirection.Back
+                : isTopLevel
+                    ? PageTransitionDirection.Replace
+                    : PageTransitionDirection.Forward;
+
+            if (isTopLevel)
             {
-                oldVm.OnNavigatedFrom();
-                if (oldVm is IDisposable disposable)
-                    disposable.Dispose();
-                oldPage.DataContext = null;
+                Historys.Clear();
+                Index = 0;
+                OldIndex = 0;
+                Historys.Add(targetUri);
+                if (!isBack) ClearCache();
+            }
+            else
+            {
+                // 处理历史记录
+                if (OldIndex == Index)
+                {
+                    // 新开页面时保存导航数据
+                    var navService = ServiceLocator.GetService<INavigationDataService>() as MainWindowModel;
+                    if (navService?.Data != null)
+                        NavigationDatas[targetUri] = navService.Data;
+
+                    Historys.Add(targetUri);
+                    Index++;
+                }
+
+                OldIndex = Index;
             }
 
-            if (Uri != string.Empty)
+            var wasExiting = _isExiting;
+            var (version, cts) = BeginNavigation();
+
+            var leavingPage = Content as UserControl;
+            var canAnimateExit = Motion.IsEnabled
+                                 && !wasExiting
+                                 && leavingPage != null
+                                 && TopLevel.GetTopLevel(this) != null
+                                 && TopLevel.GetTopLevel(leavingPage) != null;
+
+            if (canAnimateExit)
             {
-                if (IndexUriList != null && IndexUriList.Contains(Uri))
-                {
-                    Historys.Clear();
-                    Index = 0;
-                    OldIndex = 0;
-                    Historys.Add(Uri);
-                    if (!IsBack) ClearCache();
-                }
-                else
-                {
-                    //处理历史记录
-                    if (OldIndex == Index)
-                    {
-                        //新开页面时保存导航数据
-                        var navService = ServiceLocator.GetService<INavigationDataService>() as MainWindowModel;
-                        if (navService?.Data != null)
-                            NavigationDatas[Uri] = navService.Data;
-
-                        Historys.Add(Uri);
-                        Index++;
-                    }
-
-                    OldIndex = Index;
-                }
-
-                var page = GetPage();
-
-                if (page?.Instance != null)
-                {
-                    // 安全序列：先分离旧内容逻辑树，再附加新内容，避免 Avalonia 12 逻辑树竞态
-                    ContentPresenter.Content = null;
-                    ContentPresenter.Content = page.Instance;
-
-                    // 同步 Content 属性供外部 Binding 观察（不再驱动模板）
-                    SetValue(ContentProperty, page.Instance);
-
-                    // 统一进场动效：所有页面的淡入都在这里做，页面自己不要再写一套。
-                    // 动效关闭时 PlayEnterAsync 会同步置为终态，不会拖慢换页。
-                    _ = PageMotion.PlayEnterAsync(page.Instance);
-
-                    //  滚动条位置处理
-                    if (IsBack)
-                        ScrollViewer.Offset = new Vector(0, page.ScrollValue);
-                    else
-                        ScrollViewer?.ScrollToHome();
-
-                    OnLoadPaged?.Invoke(this, EventArgs.Empty);
-
-                    if (page.Instance.DataContext is ModelBase newVm)
-                    {
-                        CurrentViewModel = newVm;
-                        _ = newVm.OnNavigatedToAsync();
-                    }
-                    else
-                    {
-                        CurrentViewModel = null;
-                    }
-                }
-                else
-                {
-                    Debug.WriteLine("找不到Page：" + Uri + "，请确认已被注入");
-                }
+                _ = TransitionPageAsync(leavingPage!, targetUri, isBack, direction, version, cts.Token);
+                return;
             }
+
+            DisposeCurrentPage();
+            MountAndEnterPage(targetUri, isBack, direction, cts.Token);
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"页面加载失败 [{Uri}]: {ex}");
             throw;
         }
+    }
+
+    private async Task TransitionPageAsync(
+        UserControl leavingPage,
+        string targetUri,
+        bool isBack,
+        PageTransitionDirection direction,
+        int version,
+        CancellationToken token)
+    {
+        _isExiting = true;
+        leavingPage.IsHitTestVisible = false;
+
+        try
+        {
+            await PageMotion.PlayExitAsync(leavingPage, direction, token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
         finally
         {
-            IsBack = false;
+            _isExiting = false;
+        }
+
+        if (token.IsCancellationRequested || version != _navigationVersion)
+            return;
+
+        DisposePage(leavingPage);
+        MountAndEnterPage(targetUri, isBack, direction, token);
+    }
+
+    private void MountAndEnterPage(
+        string targetUri,
+        bool isBack,
+        PageTransitionDirection direction,
+        CancellationToken token)
+    {
+        var page = GetPage(targetUri);
+        if (page?.Instance == null)
+        {
+            Debug.WriteLine("找不到Page：" + targetUri + "，请确认已被注入");
+            CurrentViewModel = null;
+            return;
+        }
+
+        // 先设置进场首帧态，再附加新内容，避免首帧闪出完整内容
+        if (Motion.IsEnabled)
+        {
+            PageMotion.Prepare(page.Instance, direction);
+        }
+        else
+        {
+            PageMotion.SnapToRest(page.Instance);
+        }
+
+        // 安全序列：先分离旧内容逻辑树，再附加新内容，避免 Avalonia 12 逻辑树竞态
+        ContentPresenter.Content = null;
+        ContentPresenter.Content = page.Instance;
+
+        // 同步 Content 属性供外部 Binding 观察
+        SetValue(ContentProperty, page.Instance);
+
+        // 统一进场动效
+        _ = PageMotion.PlayEnterAsync(page.Instance, direction, token);
+
+        // 滚动条位置处理：先中止前序惯性滚动
+        SmoothScroll.CancelAnimation(ScrollViewer);
+        if (isBack)
+            ScrollViewer.Offset = new Vector(0, page.ScrollValue);
+        else
+            ScrollViewer?.ScrollToHome();
+
+        OnLoadPaged?.Invoke(this, EventArgs.Empty);
+
+        if (page.Instance.DataContext is ModelBase newVm)
+        {
+            CurrentViewModel = newVm;
+            _ = newVm.OnNavigatedToAsync();
+        }
+        else
+        {
+            CurrentViewModel = null;
+        }
+    }
+
+    private (int Version, CancellationTokenSource Cts) BeginNavigation()
+    {
+        var previous = _navigationCts;
+        var next = new CancellationTokenSource();
+        _navigationCts = next;
+        var version = ++_navigationVersion;
+
+        if (previous != null)
+        {
+            previous.Cancel();
+            previous.Dispose();
+        }
+
+        return (version, next);
+    }
+
+    private void CancelPendingNavigation()
+    {
+        _navigationVersion++;
+        _isExiting = false;
+        var previous = _navigationCts;
+        _navigationCts = null;
+        if (previous != null)
+        {
+            previous.Cancel();
+            previous.Dispose();
+        }
+    }
+
+    private void DisposeCurrentPage()
+    {
+        if (Content is UserControl oldPage)
+        {
+            DisposePage(oldPage);
+        }
+    }
+
+    private static void DisposePage(UserControl page)
+    {
+        if (page.DataContext is ModelBase oldVm)
+        {
+            oldVm.OnNavigatedFrom();
+            if (oldVm is IDisposable disposable)
+                disposable.Dispose();
+            page.DataContext = null;
+        }
+        else if (page.DataContext is IDisposable disposable)
+        {
+            disposable.Dispose();
+            page.DataContext = null;
         }
     }
 

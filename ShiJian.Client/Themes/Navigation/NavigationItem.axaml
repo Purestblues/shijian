@@ -27,10 +27,13 @@
         <Setter Property="ToolTip.Tip" Value="{Binding Title, RelativeSource={RelativeSource Self}}" />
         <Styles>
             <Style Selector="controls|NavigationItem /template/ Border#Border">
+                <Setter Property="RenderTransform" Value="scale(1)" />
+                <Setter Property="RenderTransformOrigin" Value="50%,50%" />
                 <Setter Property="Transitions">
                     <Transitions>
-                        <BrushTransition Property="Background" Duration="0:0:0.09" />
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.09" />
+                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
                     </Transitions>
                 </Setter>
             </Style>
@@ -40,6 +43,9 @@
             </Style>
             <Style Selector="controls|NavigationItem:pointerover /template/ Border#Border">
                 <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+            </Style>
+            <Style Selector="controls|NavigationItem:pressed /template/ Border#Border">
+                <Setter Property="RenderTransform" Value="scale(0.965)" />
             </Style>
 
             <Style Selector="controls|NavigationItem:focus-visible /template/ Border#Border">
@@ -54,6 +60,13 @@
             </Style>
             <Style Selector="controls|NavigationItem[IsSelected=True] /template/ Border#Border">
                 <Setter Property="Background" Value="{DynamicResource SelectionPillBrush}" />
+            </Style>
+            <!-- 主导航列表内选中态高亮由 Navigation#ActiveIndicator 滑块统一承担，避免双层叠加 -->
+            <Style Selector="controls|NavigationItem.in-nav-list[IsSelected=True] /template/ Border#Border">
+                <Setter Property="Background" Value="Transparent" />
+            </Style>
+            <Style Selector="controls|NavigationItem.in-nav-list[IsSelected=True]:pointerover /template/ Border#Border">
+                <Setter Property="Background" Value="Transparent" />
             </Style>
             <Style Selector="controls|NavigationItem[IsSelected=True] /template/ base|Icon#Icon">
                 <Setter Property="IconType" Value="{Binding SelectedIcon, RelativeSource={RelativeSource TemplatedParent}}" />

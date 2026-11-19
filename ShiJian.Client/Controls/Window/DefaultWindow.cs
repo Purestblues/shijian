@@ -69,6 +69,9 @@ public class DefaultWindow : Avalonia.Controls.Window
             nameof(UseCustomWindowChrome),
             true);
 
+    public static readonly StyledProperty<bool> UseNativeWindowsChromeProperty =
+        AvaloniaProperty.Register<DefaultWindow, bool>(nameof(UseNativeWindowsChrome));
+
     public static readonly StyledProperty<ConnectionStatus> ConnectionStatusProperty =
         AvaloniaProperty.Register<DefaultWindow, ConnectionStatus>(nameof(ConnectionStatus), ConnectionStatus.Checking);
 
@@ -86,6 +89,10 @@ public class DefaultWindow : Avalonia.Controls.Window
     private bool IsDialogConfirm;
     private bool IsShowConfirmDialog, IsShowInputModal, IsShowActionDialog;
     private int ActionDialogResult = -1;
+    private readonly OverlayTransitionController _dialogOverlay = new();
+    private TaskCompletionSource<bool>? _confirmTcs;
+    private TaskCompletionSource<int>? _actionTcs;
+    private TaskCompletionSource<string?>? _inputTcs;
     private Border? _statusDot;
     private EventHandler? _onLoadPagedHandler;
     private readonly IDisposable _windowStateSubscription;
@@ -243,6 +250,12 @@ public class DefaultWindow : Avalonia.Controls.Window
         set => SetValue(UseCustomWindowChromeProperty, value);
     }
 
+    public bool UseNativeWindowsChrome
+    {
+        get => GetValue(UseNativeWindowsChromeProperty);
+        private set => SetValue(UseNativeWindowsChromeProperty, value);
+    }
+
     public ConnectionStatus ConnectionStatus
     {
         get => GetValue(ConnectionStatusProperty);
@@ -299,13 +312,47 @@ public class DefaultWindow : Avalonia.Controls.Window
         {
             ExtendClientAreaToDecorationsHint = true;
             ExtendClientAreaTitleBarHeightHint = CustomWindowChromeTitleBarHeight;
-            WindowDecorations = WindowDecorations.None;
+            if (OperatingSystem.IsWindows())
+            {
+                UseNativeWindowsChrome = true;
+                WindowDecorations = WindowDecorations.Full;
+                ApplyWin32WindowCornerPreference();
+            }
+            else
+            {
+                UseNativeWindowsChrome = false;
+                WindowDecorations = WindowDecorations.None;
+            }
             return;
         }
 
+        UseNativeWindowsChrome = false;
         ExtendClientAreaToDecorationsHint = false;
         ExtendClientAreaTitleBarHeightHint = 0;
         WindowDecorations = WindowDecorations.Full;
+    }
+
+    private void ApplyWin32WindowCornerPreference()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+
+        try
+        {
+            Win32Properties.SetWindowCornerPreference(this, Win32Properties.WindowCornerPreference.Round);
+        }
+        catch
+        {
+            // Headless 或句柄未就绪时忽略，OnOpened 时再次兜底
+        }
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        if (UseNativeWindowsChrome)
+        {
+            ApplyWin32WindowCornerPreference();
+        }
     }
 
     private const double ToastHiddenOffsetY = -44;
@@ -383,40 +430,34 @@ public class DefaultWindow : Avalonia.Controls.Window
 
     public Task<bool> ShowConfirmDialogAsync(string title, string message)
     {
+        _confirmTcs?.TrySetResult(false);
+        _confirmTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         IsShowConfirmDialog = true;
-        ToastGrid.IsVisible = true;
         DialogBorder.IsVisible = true;
         ActionDialogBorder.IsVisible = false;
         InputModalBorder.IsVisible = false;
 
         DialogMessage = message;
         DialogTitle = title;
-        DialogBorder.Opacity = 1;
-        DialogBorder.RenderTransform = TransformOperations.Parse("translateY(0px)");
-        Masklayer.Opacity = 1;
+        _dialogOverlay.Open(ToastGrid, Masklayer, DialogBorder, fromY: 8, fromScale: 0.97);
 
-        return Task.Run(async () =>
-        {
-            while (IsShowConfirmDialog) await Task.Delay(10);
-
-            return IsDialogConfirm;
-        });
+        return _confirmTcs.Task;
     }
 
     public Task<int> ShowActionDialogAsync(string title, string message, string[] buttons)
     {
+        _actionTcs?.TrySetResult(-1);
+        _actionTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         IsShowActionDialog = true;
         ActionDialogResult = -1;
-        ToastGrid.IsVisible = true;
         DialogBorder.IsVisible = false;
         InputModalBorder.IsVisible = false;
         ActionDialogBorder.IsVisible = true;
 
         DialogMessage = message;
         DialogTitle = title;
-        ActionDialogBorder.Opacity = 1;
-        ActionDialogBorder.RenderTransform = TransformOperations.Parse("translateY(0px)");
-        Masklayer.Opacity = 1;
 
         // 清空按钮面板并动态添加新按钮
         if (ActionDialogButtonsPanel != null)
@@ -441,12 +482,9 @@ public class DefaultWindow : Avalonia.Controls.Window
             }
         }
 
-        return Task.Run(async () =>
-        {
-            while (IsShowActionDialog) await Task.Delay(10);
+        _dialogOverlay.Open(ToastGrid, Masklayer, ActionDialogBorder, fromY: 8, fromScale: 0.97);
 
-            return ActionDialogResult;
-        });
+        return _actionTcs.Task;
     }
 
     private void ToastBorder_PointerPressed(object? sender, PointerPressedEventArgs e)
@@ -457,8 +495,10 @@ public class DefaultWindow : Avalonia.Controls.Window
 
     public Task<string?> ShowInputModalAsync(string title, string message, string value, Func<string, bool> validate)
     {
+        _inputTcs?.TrySetResult(null);
+        _inputTcs = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         IsShowInputModal = true;
-        ToastGrid.IsVisible = true;
         DialogBorder.IsVisible = false;
         ActionDialogBorder.IsVisible = false;
         InputModalBorder.IsVisible = true;
@@ -469,17 +509,9 @@ public class DefaultWindow : Avalonia.Controls.Window
         InputModalValidFnc = validate;
 
         InputModalInputBox.Text = InputModalValue;
-        InputModalBorder.Opacity = 1;
-        InputModalBorder.RenderTransform = TransformOperations.Parse("translateY(0px)");
+        _dialogOverlay.Open(ToastGrid, Masklayer, InputModalBorder, fromY: 8, fromScale: 0.97);
 
-        Masklayer.Opacity = 1;
-
-        return Task.Run(async () =>
-        {
-            while (IsShowInputModal) await Task.Delay(10);
-
-            return IsDialogConfirm ? InputValue : null;
-        });
+        return _inputTcs.Task;
     }
 
 
@@ -629,30 +661,43 @@ public class DefaultWindow : Avalonia.Controls.Window
 
     private void HideDialog()
     {
-        DialogBorder.Opacity = 0;
-        DialogBorder.RenderTransform = TransformOperations.Parse("translateY(8px)");
-        Masklayer.Opacity = 0;
-        ToastGrid.IsVisible = false;
         IsShowConfirmDialog = false;
+        var result = IsDialogConfirm;
+        _confirmTcs?.TrySetResult(result);
+        _confirmTcs = null;
+        _ = CloseDialogOverlayAsync(DialogBorder);
     }
 
     private void HideActionDialog()
     {
-        ActionDialogBorder.Opacity = 0;
-        ActionDialogBorder.RenderTransform = TransformOperations.Parse("translateY(8px)");
-        Masklayer.Opacity = 0;
-        ToastGrid.IsVisible = false;
         IsShowActionDialog = false;
+        var result = ActionDialogResult;
+        _actionTcs?.TrySetResult(result);
+        _actionTcs = null;
+        _ = CloseDialogOverlayAsync(ActionDialogBorder);
     }
 
     private void HideInputModal()
     {
-        InputModalBorder.Opacity = 0;
-        InputModalBorder.RenderTransform = TransformOperations.Parse("translateY(8px)");
-        Masklayer.Opacity = 0;
-        ToastGrid.IsVisible = false;
         IsShowInputModal = false;
+        var result = IsDialogConfirm ? InputValue : null;
+        _inputTcs?.TrySetResult(result);
+        _inputTcs = null;
+        _ = CloseDialogOverlayAsync(InputModalBorder);
     }
+
+    private Task CloseDialogOverlayAsync(Border? activeBorder)
+        => _dialogOverlay.CloseAsync(
+            ToastGrid,
+            Masklayer,
+            activeBorder,
+            toY: 6,
+            toScale: 0.97,
+            onHidden: () =>
+            {
+                if (activeBorder != null && !IsShowConfirmDialog && !IsShowActionDialog && !IsShowInputModal)
+                    activeBorder.IsVisible = false;
+            });
 
     private void UpdateConnectionStatus()
     {
@@ -690,6 +735,13 @@ public class DefaultWindow : Avalonia.Controls.Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _dialogOverlay.Cancel();
+        _confirmTcs?.TrySetResult(false);
+        _confirmTcs = null;
+        _actionTcs?.TrySetResult(-1);
+        _actionTcs = null;
+        _inputTcs?.TrySetResult(null);
+        _inputTcs = null;
         _toastCancellationTokenSource?.Cancel();
         _toastCancellationTokenSource?.Dispose();
         _toastCancellationTokenSource = null;
@@ -732,7 +784,7 @@ public class DefaultWindow : Avalonia.Controls.Window
     {
         base.OnPointerPressed(e);
 
-        if (e.Handled || titleBar == null) return;
+        if (e.Handled || titleBar == null || UseNativeWindowsChrome) return;
 
         try
         {
@@ -766,6 +818,14 @@ public class DefaultWindow : Avalonia.Controls.Window
     public void ToggleWindowState()
     {
         if (WindowState == WindowState.Minimized) return;
+
+        if (UseNativeWindowsChrome)
+        {
+            WindowState = WindowState is WindowState.Maximized or WindowState.FullScreen
+                ? WindowState.Normal
+                : WindowState.Maximized;
+            return;
+        }
 
         if (WindowState is WindowState.Maximized or WindowState.FullScreen)
         {

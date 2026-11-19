@@ -1,48 +1,85 @@
 using System;
-using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
-using Avalonia.Animation;
 using Avalonia.Controls;
-using Avalonia.Styling;
+using Avalonia.Media;
 
 namespace ShiJian.Client.Librarys;
 
+/// <summary>页面导航方向语义</summary>
+public enum PageTransitionDirection
+{
+    /// <summary>顶层侧栏同级切换：轻量纵向沉降淡入</summary>
+    Replace,
+
+    /// <summary>向子页下钻：旧页微向左隐退，新页从右侧平滑滑入</summary>
+    Forward,
+
+    /// <summary>返回上级页面：旧页向右轻撤，上级页从左侧平滑复位</summary>
+    Back
+}
+
 /// <summary>
-/// 换页进场动效。统一由 <see cref="Controls.PageContainer"/> 在页面挂上之后调用，
-/// 各页面不要再自己写一套，否则两层淡入叠在一起会显得发虚。
-///
-/// 时间线（对齐 Super Productivity，三者并行，总计 225ms）：
-///   t=0    页面 opacity = 0，translateY = 8px（同步设好，避免第一帧闪出完整页面）
-///   t=45   开始 180ms 淡入 + 上移归零（enter 曲线）
-///   t=225  结束，清理终态
-///
-/// 不做旧页淡出：换页流程会先把旧页 VM <c>Dispose()</c>、把 <c>DataContext</c> 置空
-/// （见 <c>PageContainer.LoadPage</c> 的注释，那里是为了避开 Avalonia 12 的逻辑树竞态），
-/// 想让旧页淡出就必须推迟这两步，代价大于收益。
+/// 换页进退场动效。统一由 <see cref="Controls.PageContainer"/> 在页面切换时协调调用，
+/// 按 <see cref="PageTransitionDirection"/> 区分“同级切换 / 向前下钻 / 返回上级”的方向语意，
+/// 并在快速连击与关闭动效时保持可中断与终态确定性。
 /// </summary>
 public static class PageMotion
 {
-    /// <summary>进场总时长（含 45ms 延迟）。动效默认时长的一半以上必须真的花掉，否则说明动画被跳过了。</summary>
+    /// <summary>同级切换进场总时长（含 45ms 延迟）</summary>
     public static readonly TimeSpan EnterDuration = MotionTokens.PageEnterDelay + MotionTokens.PageEnter;
 
-    private static readonly Animation EnterAnimation = BuildEnterAnimation();
+    /// <summary>下钻 / 返回时的水平位移距离（px）</summary>
+    public const double PageEnterOffsetX = 18;
 
-    /// <summary>动画结束态 / 动效关闭时的直切态：一定要把初始值清干净，否则页面会停在半透明或偏移位置</summary>
+    /// <summary>旧页退场时的水平撤出位移（px）</summary>
+    public const double PageLeaveOffsetX = 12;
+
+    /// <summary>动画结束态 / 动效关闭时的直切态：清干净透明度与位移变换，避免页面滞留偏移或半透明</summary>
     public static void SnapToRest(Control control)
     {
         control.Opacity = 1;
         SlideMotion.Reset(control);
     }
 
-    /// <summary>进场初始态。单独拆出来是为了能直接断言「第一帧不会闪出完整页面」</summary>
+    /// <summary>进场初始态（Replace 方向默认值）</summary>
     internal static void Prepare(Control control)
+        => Prepare(control, PageTransitionDirection.Replace);
+
+    /// <summary>按导航方向同步设置进场首帧状态，防止首帧闪出完整内容</summary>
+    internal static void Prepare(Control control, PageTransitionDirection direction)
     {
         control.Opacity = 0;
+        var (fromX, fromY) = GetEnterOffset(direction);
+        if (Math.Abs(fromX) > 1e-4 || Math.Abs(fromY) > 1e-4)
+        {
+            control.RenderTransform = new TranslateTransform(fromX, fromY);
+        }
     }
 
-    /// <summary>播放进场动效。动效关闭时同步置为终态，不产生任何延迟</summary>
-    public static async Task PlayEnterAsync(Control control)
+    public static (double X, double Y) GetEnterOffset(PageTransitionDirection direction) => direction switch
+    {
+        PageTransitionDirection.Forward => (PageEnterOffsetX, 0),
+        PageTransitionDirection.Back => (-PageEnterOffsetX, 0),
+        _ => (0, MotionTokens.PageOffsetY)
+    };
+
+    public static (double X, double Y) GetLeaveOffset(PageTransitionDirection direction) => direction switch
+    {
+        PageTransitionDirection.Forward => (-PageLeaveOffsetX, 0),
+        PageTransitionDirection.Back => (PageLeaveOffsetX, 0),
+        _ => (0, 0)
+    };
+
+    /// <summary>兼容旧签名：以默认同级切换语义播放进场动效</summary>
+    public static Task PlayEnterAsync(Control control)
+        => PlayEnterAsync(control, PageTransitionDirection.Replace, CancellationToken.None);
+
+    /// <summary>按方向语义播放进场动效；动效关闭时同步归位，无任何延迟</summary>
+    public static async Task PlayEnterAsync(
+        Control control,
+        PageTransitionDirection direction,
+        CancellationToken cancellationToken = default)
     {
         if (!Motion.IsEnabled)
         {
@@ -50,57 +87,67 @@ public static class PageMotion
             return;
         }
 
+        var (fromX, fromY) = GetEnterOffset(direction);
+        var delay = direction == PageTransitionDirection.Replace ? MotionTokens.PageEnterDelay : TimeSpan.Zero;
+
         try
         {
-            Prepare(control);
-
-            // 淡入走原生动画（Opacity 是 double，有内置动画器）
-            var fade = EnterAnimation.RunAsync(control);
-
-            // 位移只能自己插值（Avalonia 12 没有 RenderTransform 动画器）
-            var slide = SlideMotion.SlideYAsync(
+            await SlideMotion.AnimateTransformAndOpacityAsync(
                 control,
-                MotionTokens.PageOffsetY,
-                0,
+                fromX, 0,
+                fromY, 0,
+                1d, 1d,
+                0d, 1d,
                 MotionTokens.PageEnter,
                 MotionTokens.Enter(),
-                MotionTokens.PageEnterDelay);
-
-            await Task.WhenAll(fade, slide);
+                delay: delay,
+                resetTransformOnComplete: true,
+                cancellationToken: cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // 动画抛异常时 Avalonia 会整段跳过（关键帧里有它不认识的属性就会这样），
-            // 页面随即被 finally 拉到终态——所以这里必须留下日志，否则「没动效」查无对证。
             Logging.Logger.Warn($"[PageMotion] 进场动画失败，已跳过: {ex.GetType().Name}: {ex.Message}");
         }
         finally
         {
-            SnapToRest(control);
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                SnapToRest(control);
+            }
         }
     }
 
-    private static Animation BuildEnterAnimation()
+    /// <summary>按方向语义播放旧页退场动效；动效关闭或无 TopLevel 时直接返回</summary>
+    public static async Task PlayExitAsync(
+        Control control,
+        PageTransitionDirection direction,
+        CancellationToken cancellationToken = default)
     {
-        return new Animation
+        if (!Motion.IsEnabled || TopLevel.GetTopLevel(control) == null)
+            return;
+
+        var (toX, toY) = GetLeaveOffset(direction);
+
+        try
         {
-            Duration = MotionTokens.PageEnter,
-            Delay = MotionTokens.PageEnterDelay,
-            Easing = MotionTokens.Enter(),
-            FillMode = FillMode.Forward,
-            Children =
-            {
-                new KeyFrame
-                {
-                    Cue = new Cue(0d),
-                    Setters = { new Setter(Visual.OpacityProperty, 0d) }
-                },
-                new KeyFrame
-                {
-                    Cue = new Cue(1d),
-                    Setters = { new Setter(Visual.OpacityProperty, 1d) }
-                }
-            }
-        };
+            await SlideMotion.AnimateTransformAndOpacityAsync(
+                control,
+                0, toX,
+                0, toY,
+                1d, 1d,
+                control.Opacity, 0d,
+                MotionTokens.PageLeave,
+                MotionTokens.Leave(),
+                delay: TimeSpan.Zero,
+                resetTransformOnComplete: false,
+                cancellationToken: cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logging.Logger.Warn($"[PageMotion] 退场动画失败，已跳过: {ex.GetType().Name}: {ex.Message}");
+        }
     }
 }

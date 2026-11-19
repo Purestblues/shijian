@@ -21,8 +21,8 @@
             <Style Selector="^ /template/ Border#CardSurface">
                 <Setter Property="Transitions">
                     <Transitions>
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
-                        <BrushTransition Property="Background" Duration="0:0:0.15" />
+                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                     </Transitions>
                 </Setter>
             </Style>

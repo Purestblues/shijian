@@ -14,6 +14,16 @@
             <Style Selector="controls|Expander[IsExpanded=True] /template/ Border#HeaderBorder">
                 <Setter Property="CornerRadius" Value="8,8,0,0" />
             </Style>
+            <Style Selector="controls|Expander[IsExpanded=True] /template/ base|Icon#Icon">
+                <Setter Property="RenderTransform" Value="rotate(0deg)" />
+            </Style>
+            <Style Selector="controls|Expander /template/ Border#HeaderBorder:pointerover">
+                <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource CardBorderHoverBrush}" />
+            </Style>
+            <Style Selector="controls|Expander /template/ Border#HeaderBorder:pressed">
+                <Setter Property="RenderTransform" Value="scale(0.992)" />
+            </Style>
         </Styles>
         <Setter Property="Template">
             <ControlTemplate>
@@ -33,8 +43,17 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="{TemplateBinding CornerRadius}"
+                                RenderTransform="scale(1)"
+                                RenderTransformOrigin="50%,50%"
                                 ZIndex="2"
                                 Cursor="Hand">
+                            <Border.Transitions>
+                                <Transitions>
+                                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                                </Transitions>
+                            </Border.Transitions>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -51,10 +70,13 @@
                                 <base:Icon x:Name="Icon" Grid.Column="1" IconType="ChevronDownMed" FontSize="11"
                                            Foreground="{DynamicResource SubTextBrush}"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           RenderTransformOrigin=".5,.5">
-                                    <base:Icon.RenderTransform>
-                                        <RotateTransform Angle="0" />
-                                    </base:Icon.RenderTransform>
+                                           RenderTransform="rotate(-90deg)"
+                                           RenderTransformOrigin="50%,50%">
+                                    <base:Icon.Transitions>
+                                        <Transitions>
+                                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        </Transitions>
+                                    </base:Icon.Transitions>
                                 </base:Icon>
                             </Grid>
                         </Border>

@@ -76,20 +76,18 @@
                                 Padding="1,0">
                             <Border.Transitions>
                                 <Transitions>
-                                    <BrushTransition Property="Background" Duration="0:0:0.18" />
-                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+                                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                                 </Transitions>
                             </Border.Transitions>
                             <Border x:Name="Mark" Width="16" Height="16" CornerRadius="8"
                                     Background="{DynamicResource SubTextBrush}"
+                                    RenderTransform="translateX(0px)"
                                     VerticalAlignment="Center" HorizontalAlignment="Left">
-                                <Border.RenderTransform>
-                                    <TranslateTransform X="0" />
-                                </Border.RenderTransform>
                                 <Border.Transitions>
                                     <Transitions>
-                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                                        <BrushTransition Property="Background" Duration="0:0:0.18" />
+                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                                     </Transitions>
                                 </Border.Transitions>
                                 <Path x:Name="CheckMark"

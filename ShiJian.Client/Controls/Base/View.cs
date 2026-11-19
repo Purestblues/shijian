@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using ShiJian.Client.Librarys;
 
 namespace ShiJian.Client.Controls.Base;
 
@@ -37,7 +38,8 @@ public class View : ContentControl
             new DoubleTransition
             {
                 Property = OpacityProperty,
-                Duration = TimeSpan.FromMilliseconds(120)
+                Duration = MotionTokens.S,
+                Easing = MotionTokens.Standard()
             }
         };
     }

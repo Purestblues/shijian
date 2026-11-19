@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using ShiJian.Client.Librarys;
 using TabbarControl = global::ShiJian.Client.Controls.Tabbar.Tabbar;
 
 namespace ShiJian.Client.Controls;
@@ -54,10 +55,17 @@ public sealed class ScrollSectionNavigator : IDisposable
 
             var reachedTarget = IsAtScrollEnd()
                 || Math.Abs(_scrollViewer.Offset.Y - _programmaticTargetOffset) < ActivationTolerance;
-            if (!reachedTarget) return;
+            if (reachedTarget)
+            {
+                _programmaticTarget = -1;
+                return;
+            }
 
+            if (SmoothScroll.IsAnimating(_scrollViewer))
+                return;
+
+            // 用户打断平滑滚动或已由外力停靠时释放锁定
             _programmaticTarget = -1;
-            return;
         }
 
         var currentIndex = CalculateActiveSection();
@@ -130,7 +138,7 @@ public sealed class ScrollSectionNavigator : IDisposable
 
         var targetY = Math.Max(0, targetTop.Value - SnapOffset);
 
-        _scrollViewer.Offset = new Vector(_scrollViewer.Offset.X, targetY);
+        SmoothScroll.AnimateTo(_scrollViewer, new Vector(_scrollViewer.Offset.X, targetY));
         return targetY;
     }
 

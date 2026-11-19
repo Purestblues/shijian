@@ -78,11 +78,7 @@
         <Grid Margin="{Binding IsHeaderExpanded, Converter={StaticResource PageMarginConverter}}">
             <Grid.Transitions>
                 <Transitions>
-                    <ThicknessTransition Property="Margin" Duration="0:0:0.225">
-                        <ThicknessTransition.Easing>
-                            <CubicEaseInOut />
-                        </ThicknessTransition.Easing>
-                    </ThicknessTransition>
+                    <ThicknessTransition Property="Margin" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
                 </Transitions>
             </Grid.Transitions>
             <Grid.Styles>
@@ -103,16 +99,8 @@
                     ClipToBounds="True">
                 <Border.Transitions>
                     <Transitions>
-                        <DoubleTransition Property="MaxHeight" Duration="0:0:0.225">
-                            <DoubleTransition.Easing>
-                                <CubicEaseInOut />
-                            </DoubleTransition.Easing>
-                        </DoubleTransition>
-                        <DoubleTransition Property="Opacity" Duration="0:0:0.225">
-                            <DoubleTransition.Easing>
-                                <CubicEaseInOut />
-                            </DoubleTransition.Easing>
-                        </DoubleTransition>
+                        <DoubleTransition Property="MaxHeight" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
                     </Transitions>
                 </Border.Transitions>
                 <Grid ColumnDefinitions="Auto,*,Auto,Auto"
@@ -681,11 +669,7 @@
                 IsHitTestVisible="{Binding !IsHeaderExpanded}">
             <Border.Transitions>
                 <Transitions>
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.225">
-                        <DoubleTransition.Easing>
-                            <CubicEaseInOut />
-                        </DoubleTransition.Easing>
-                    </DoubleTransition>
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
                 </Transitions>
             </Border.Transitions>
             <Button:IconButton Width="24" Height="24" FontSize="11"

@@ -26,17 +26,23 @@
             <Style Selector="controls|DatePickerGridItem[IsSelected=True]:pointerover /template/ Border#Bg">
                 <Setter Property="Background" Value="{DynamicResource ThemeBrush}" />
             </Style>
+            <Style Selector="controls|DatePickerGridItem:pressed /template/ Border#Bg">
+                <Setter Property="RenderTransform" Value="scale(0.975)" />
+            </Style>
         </Styles>
         <Setter Property="Template">
             <ControlTemplate>
                 <Border x:Name="Bg"
                         Background="Transparent"
                         CornerRadius="{StaticResource RadiusSmall}"
-                        BorderThickness="0">
+                        BorderThickness="0"
+                        RenderTransform="scale(1)"
+                        RenderTransformOrigin="50%,50%">
                     <Border.Transitions>
                         <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.15" />
-                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
                         </Transitions>
                     </Border.Transitions>
 

@@ -26,6 +26,10 @@
                 <Setter Property="Background" Value="{DynamicResource ThemeBrush}" />
             </Style>
 
+            <Style Selector="controls|DatePickerBarItem:pressed /template/ Border#Bg">
+                <Setter Property="RenderTransform" Value="scale(0.975)" />
+            </Style>
+
             <Style Selector="controls|DatePickerBarItem[IsDisabled=True]">
                 <Style Selector="^ /template/ Border#Bg">
                     <Setter Property="Background" Value="Transparent" />
@@ -42,10 +46,13 @@
                     <Grid Margin="2">
                         <Border x:Name="Bg" Background="Transparent"
                                 Width="36" Height="36"
-                                CornerRadius="{StaticResource RadiusMedium}">
+                                CornerRadius="{StaticResource RadiusMedium}"
+                                RenderTransform="scale(1)"
+                                RenderTransformOrigin="50%,50%">
                             <Border.Transitions>
                                 <Transitions>
-                                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
                                 </Transitions>
                             </Border.Transitions>
 

@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Controls.Primitives;
+using Avalonia.Media.Transformation;
 using Avalonia.Threading;
+using ShiJian.Client.Librarys;
 
 namespace ShiJian.Client.Controls.Select;
 
@@ -203,19 +206,33 @@ public class TabSwitch : TemplatedControl
         var targetX = containerOffset.X + selected.Bounds.X;
         var targetWidth = selected.Bounds.Width;
 
-        if (!_sliderInitialized)
+        _slider.Margin = new Thickness(0);
+
+        var animate = _sliderInitialized && Motion.IsEnabled;
+        if (!animate)
         {
             _slider.Transitions = null;
-            _slider.Margin = new Thickness(targetX, 0, 0, 0);
+            _slider.RenderTransform = TransformOperations.Parse(
+                $"translateX({targetX.ToString(CultureInfo.InvariantCulture)}px)");
             _slider.Width = targetWidth;
             _slider.IsVisible = true;
-            _slider.Transitions = _sliderTransitions;
+            if (Motion.IsEnabled && _sliderTransitions != null)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_slider != null && Motion.IsEnabled)
+                        _slider.Transitions = _sliderTransitions;
+                }, DispatcherPriority.Render);
+            }
             _sliderInitialized = true;
         }
         else
         {
-            _slider.Margin = new Thickness(targetX, 0, 0, 0);
+            _slider.Transitions ??= _sliderTransitions;
+            _slider.RenderTransform = TransformOperations.Parse(
+                $"translateX({targetX.ToString(CultureInfo.InvariantCulture)}px)");
             _slider.Width = targetWidth;
+            _slider.IsVisible = true;
         }
     }
 

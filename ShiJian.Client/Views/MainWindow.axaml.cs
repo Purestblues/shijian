@@ -23,12 +23,20 @@ public partial class MainWindow : DefaultWindow
     private TextBox? _searchInput;
     private ListBox? _searchResultList;
     private Grid? _pageModalOverlay;
+    private Border? _pageModalScrim;
     private ContentControl? _pageModalHost;
+    private Grid? _searchOverlay;
+    private Border? _searchScrim;
+    private Border? _searchCard;
+    private readonly OverlayTransitionController _pageModalOverlayController = new();
+    private readonly OverlayTransitionController _searchOverlayController = new();
 
     public MainWindow()
     {
         InitializeComponent();
         SmoothScroll.EnsureRegistered();
+        PopupMotion.EnsureRegistered();
+        PressedState.EnsureRegistered();
         RequestClose += (_, _) => Close();
 
         if (OperatingSystem.IsMacOS())
@@ -99,7 +107,11 @@ public partial class MainWindow : DefaultWindow
         OverlayDismissTracker.EnsureInitialized();
 
         _pageModalOverlay = this.FindControl<Grid>("PageModalOverlay");
+        _pageModalScrim = this.FindControl<Border>("PageModalScrim");
         _pageModalHost = this.FindControl<ContentControl>("PageModalHost");
+        _searchOverlay = this.FindControl<Grid>("SearchOverlay");
+        _searchScrim = this.FindControl<Border>("SearchScrim");
+        _searchCard = this.FindControl<Border>("SearchCard");
         PageModal.ActiveModalChanged += OnPageModalActiveChanged;
         SyncPageModalOverlay();
 
@@ -119,25 +131,45 @@ public partial class MainWindow : DefaultWindow
         // 全局 Esc：按 Bubble 在浮层、弹窗、对话框、输入失焦之后再触发「返回上一页」
         AddHandler(KeyDownEvent, OnGlobalKeyDown, RoutingStrategies.Bubble);
 
-        // IsSearchOpen 变化时聚焦输入框
+        // IsSearchOpen 变化时驱动搜索遮罩进退场并聚焦输入框
         if (DataContext is MainViewModel vm)
         {
             vm.PropertyChanged += OnMainViewModelPropertyChanged;
+            if (vm.IsSearchOpen) SyncSearchOverlay(true);
         }
     }
 
     private void OnMainViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (e.PropertyName != nameof(MainViewModel.IsSearchOpen)) return;
-        if (DataContext is not MainViewModel { IsSearchOpen: true }) return;
-        // 展开后聚焦输入框并复位列表滚动条到顶部，延迟到布局完成
-        Dispatcher.UIThread.Post(() =>
+        if (DataContext is not MainViewModel vm) return;
+        SyncSearchOverlay(vm.IsSearchOpen);
+    }
+
+    private void SyncSearchOverlay(bool isOpen)
+    {
+        if (_searchOverlay == null) return;
+
+        if (isOpen)
         {
-            _searchInput?.Focus();
-            var scrollViewer = _searchResultList?.FindDescendantOfType<ScrollViewer>();
-            if (scrollViewer != null)
-                scrollViewer.Offset = Vector.Zero;
-        }, DispatcherPriority.Loaded);
+            _searchOverlayController.Open(_searchOverlay, _searchScrim, _searchCard, fromY: -6, fromScale: 0.97);
+
+            // 展开后聚焦输入框并复位列表滚动条到顶部，延迟到布局完成
+            Dispatcher.UIThread.Post(() =>
+            {
+                _searchInput?.Focus();
+                var scrollViewer = _searchResultList?.FindDescendantOfType<ScrollViewer>();
+                if (scrollViewer != null)
+                {
+                    SmoothScroll.CancelAnimation(scrollViewer);
+                    scrollViewer.Offset = Vector.Zero;
+                }
+            }, DispatcherPriority.Loaded);
+        }
+        else
+        {
+            _ = _searchOverlayController.CloseAsync(_searchOverlay, _searchScrim, _searchCard, toY: -6, toScale: 0.97);
+        }
     }
 
     private void OnPageModalActiveChanged()
@@ -154,9 +186,20 @@ public partial class MainWindow : DefaultWindow
         var active = PageModal.ActiveModal;
         if (active == null)
         {
-            _pageModalOverlay.IsVisible = false;
-            _pageModalHost.Content = null;
-            _pageModalHost.DataContext = null;
+            _ = _pageModalOverlayController.CloseAsync(
+                _pageModalOverlay,
+                _pageModalScrim,
+                _pageModalHost,
+                toY: 8,
+                toScale: 0.975,
+                onHidden: () =>
+                {
+                    if (PageModal.ActiveModal == null && _pageModalHost != null)
+                    {
+                        _pageModalHost.Content = null;
+                        _pageModalHost.DataContext = null;
+                    }
+                });
             return;
         }
 
@@ -165,7 +208,7 @@ public partial class MainWindow : DefaultWindow
 
         _pageModalHost.DataContext = active.DataContext;
         _pageModalHost.Content = active.ModalContent;
-        _pageModalOverlay.IsVisible = true;
+        _pageModalOverlayController.Open(_pageModalOverlay, _pageModalScrim, _pageModalHost, fromY: 10, fromScale: 0.975);
     }
 
     private void OnPageModalScrimPressed(object? sender, PointerPressedEventArgs e)
@@ -318,6 +361,8 @@ public partial class MainWindow : DefaultWindow
 
     protected override void OnClosed(EventArgs e)
     {
+        _pageModalOverlayController.Cancel();
+        _searchOverlayController.Cancel();
         PageModal.ActiveModalChanged -= OnPageModalActiveChanged;
         RemoveHandler(KeyDownEvent, OnSearchKeyDown);
         RemoveHandler(KeyDownEvent, OnGlobalKeyDown);

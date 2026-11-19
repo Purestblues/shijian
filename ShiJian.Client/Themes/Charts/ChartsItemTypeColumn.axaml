@@ -8,7 +8,7 @@
         <Styles>
             <Style Selector="controls|ChartItemTypeColumn /template/ Border#ValueContainer">
                 <Setter Property="Transitions">
-                    <BrushTransition Property="Background" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                 </Setter>
             </Style>
 

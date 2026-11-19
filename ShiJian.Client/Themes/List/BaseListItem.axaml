@@ -11,8 +11,21 @@
         <Setter Property="Background" Value="Transparent" />
 
         <Styles>
+            <Style Selector="controls|BaseListItem /template/ Border#BoxBorder">
+                <Setter Property="RenderTransform" Value="scale(1)" />
+                <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                    </Transitions>
+                </Setter>
+            </Style>
             <Style Selector="controls|BaseListItem:pointerover /template/ Border#BoxBorder">
                 <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+            </Style>
+            <Style Selector="controls|BaseListItem:pressed /template/ Border#BoxBorder">
+                <Setter Property="RenderTransform" Value="scale(0.992)" />
             </Style>
             <Style Selector="controls|BaseListItem[IsSelected=True]">
                 <Setter Property="Foreground" Value="{DynamicResource OnBrandBrush}" />

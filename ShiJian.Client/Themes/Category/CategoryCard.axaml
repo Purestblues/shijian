@@ -24,9 +24,30 @@
         <Setter Property="MinWidth" Value="156" />
         <Setter Property="Height" Value="92" />
 
+        <Styles>
+            <Style Selector="controls|CategoryCard /template/ Border#CardRoot">
+                <Setter Property="RenderTransform" Value="translateY(0px) scale(1)" />
+                <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                    </Transitions>
+                </Setter>
+            </Style>
+            <Style Selector="controls|CategoryCard:pointerover /template/ Border#CardRoot">
+                <Setter Property="RenderTransform" Value="translateY(-1px) scale(1)" />
+            </Style>
+            <Style Selector="controls|CategoryCard:pressed /template/ Border#CardRoot">
+                <Setter Property="RenderTransform" Value="translateY(0px) scale(0.988)" />
+            </Style>
+        </Styles>
+
         <Setter Property="Template">
             <ControlTemplate>
-                <Border x:DataType="models:CategoryCardModel"
+                <Border x:Name="CardRoot"
+                        x:DataType="models:CategoryCardModel"
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
@@ -89,7 +110,8 @@
             <Setter Property="Padding" Value="14,12" />
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border x:DataType="models:CategoryCardModel"
+                    <Border x:Name="CardRoot"
+                            x:DataType="models:CategoryCardModel"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"

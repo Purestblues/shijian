@@ -37,6 +37,24 @@
                                       VerticalScrollBarVisibility="Auto"
                                       HorizontalScrollBarVisibility="Disabled">
                             <Grid Background="Transparent" x:Name="MenuGrid">
+                                <Border x:Name="ActiveIndicator"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Top"
+                                        Height="38"
+                                        CornerRadius="{StaticResource RadiusMedium}"
+                                        Background="{DynamicResource SelectionPillBrush}"
+                                        IsHitTestVisible="False"
+                                        IsVisible="False"
+                                        Opacity="0"
+                                        RenderTransform="translateY(0px)"
+                                        RenderTransformOrigin="0,0">
+                                    <Border.Transitions>
+                                        <Transitions>
+                                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
+                                            <DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        </Transitions>
+                                    </Border.Transitions>
+                                </Border>
                                 <StackPanel x:Name="ItemsPanel" Spacing="0" />
                             </Grid>
                         </ScrollViewer>

@@ -18,7 +18,7 @@
                 <Style Selector="^ /template/ button|IconButton#BackBtn">
                     <Setter Property="Transitions">
                         <Transitions>
-                            <DoubleTransition Property="Width" Duration="0:0:0.09" />
+                            <DoubleTransition Property="Width" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
                         </Transitions>
                     </Setter>
                 </Style>
@@ -31,7 +31,7 @@
                     <Setter Property="Opacity" Value="0.6" />
                     <Setter Property="Transitions">
                         <Transitions>
-                            <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                         </Transitions>
                     </Setter>
                 </Style>
@@ -192,14 +192,7 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Opacity="0"
-                            RenderTransform="translateY(8px)"
                             ZIndex="1000">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                                </Transitions>
-                            </Border.Transitions>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="auto" />
@@ -244,14 +237,7 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Opacity="0"
-                            RenderTransform="translateY(8px)"
                             ZIndex="1000">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                                </Transitions>
-                            </Border.Transitions>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="auto" />
@@ -287,14 +273,7 @@
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
                             Opacity="0"
-                            RenderTransform="translateY(8px)"
                             ZIndex="1000">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut" />
-                                </Transitions>
-                            </Border.Transitions>
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="auto" />
@@ -325,13 +304,7 @@
                             </Grid>
                         </Border>
 
-                        <Border x:Name="Masklayer" Background="{DynamicResource ScrimBrush}" Opacity="0">
-                            <Border.Transitions>
-                                <Transitions>
-                                    <DoubleTransition Property="Opacity" Duration="0:0:0.18" />
-                                </Transitions>
-                            </Border.Transitions>
-                        </Border>
+                        <Border x:Name="Masklayer" Background="{DynamicResource ScrimBrush}" Opacity="0" />
                         </Grid>
                     </Grid>
                 </Border>

@@ -599,7 +599,16 @@
                                                 CornerRadius="8"
                                                 Background="{DynamicResource CardBgBrush}"
                                                 BorderBrush="{DynamicResource CardBorderBrush}"
-                                                BorderThickness="1">
+                                                BorderThickness="1"
+                                                RenderTransform="scale(1)"
+                                                RenderTransformOrigin="50%,50%">
+                                            <Border.Transitions>
+                                                <Transitions>
+                                                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                                                </Transitions>
+                                            </Border.Transitions>
                                             <ContentPresenter x:Name="PART_ContentPresenter"
                                                               Background="Transparent"
                                                               Content="{TemplateBinding Content}"
@@ -647,6 +656,7 @@
                                 <Style Selector="^:pressed /template/ Border#EntityCardBorder">
                                     <Setter Property="Background" Value="{DynamicResource ListItemPressedBrush}" />
                                     <Setter Property="BorderBrush" Value="{DynamicResource ListItemCardHoverBorderBrush}" />
+                                    <Setter Property="RenderTransform" Value="scale(0.992)" />
                                 </Style>
                                 <Style Selector="^:selected /template/ Border#EntityCardBorder">
                                     <Setter Property="Background" Value="{DynamicResource ListItemSelectedBrush}" />
@@ -664,6 +674,15 @@
                                 <Setter Property="CornerRadius" Value="6" />
                                 <Setter Property="Padding" Value="8,4" />
                                 <Setter Property="Cursor" Value="Hand" />
+                                <Setter Property="RenderTransform" Value="scale(1)" />
+                                <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+                                <Setter Property="Transitions">
+                                    <Transitions>
+                                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                                    </Transitions>
+                                </Setter>
                                 <Setter Property="Template">
                                     <ControlTemplate>
                                         <Border Background="{TemplateBinding Background}"
@@ -685,6 +704,7 @@
                             </Style>
                             <Style Selector="Button.tagPill:pressed">
                                 <Setter Property="Background" Value="{DynamicResource ListItemCardHoverBgBrush}" />
+                                <Setter Property="RenderTransform" Value="scale(0.96)" />
                             </Style>
                         </ListBox.Styles>
                         <ListBox.ItemsPanel>

@@ -39,8 +39,8 @@
                                 BorderThickness="1">
                             <Border.Transitions>
                                 <Transitions>
-                                    <BrushTransition Property="Background" Duration="0:0:0.12" />
-                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+                                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                                 </Transitions>
                             </Border.Transitions>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">

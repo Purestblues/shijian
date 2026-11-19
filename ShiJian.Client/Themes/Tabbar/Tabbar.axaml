@@ -9,8 +9,8 @@
             <Style Selector="controls|Tabbar /template/ Border#ActiveBlock">
                 <Setter Property="Transitions">
                     <Transitions>
-                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.225" Easing="CubicEaseOut" />
-                        <DoubleTransition Property="Width" Duration="0:0:0.225" Easing="CubicEaseOut" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
+                        <DoubleTransition Property="Width" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
                     </Transitions>
                 </Setter>
             </Style>
@@ -18,7 +18,7 @@
             <Style Selector="TextBlock">
                 <Setter Property="Transitions">
                     <Transitions>
-                        <BrushTransition Property="Foreground" Duration="0:0:0.18" />
+                        <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                     </Transitions>
                 </Setter>
                 <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}" />

@@ -71,7 +71,7 @@ public partial class CategoryPage : TPage
         {
             var scrollViewer = EntityListBox?.FindDescendantOfType<ScrollViewer>();
             if (scrollViewer != null)
-                scrollViewer.Offset = Vector.Zero;
+                SmoothScroll.AnimateTo(scrollViewer, Vector.Zero);
         }, DispatcherPriority.Loaded);
     }
 

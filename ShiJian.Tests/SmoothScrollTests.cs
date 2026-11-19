@@ -1,7 +1,10 @@
+using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
+using Avalonia.Input;
 using Avalonia.Threading;
 using ShiJian.Client.Librarys;
 using Xunit;
@@ -11,15 +14,20 @@ namespace ShiJian.Tests;
 public class SmoothScrollTests
 {
     [Fact]
-    public void ComputeNextOffset_ExponentialDecayConvergesAndSnaps()
+    public void ComputeNextOffset_WheelDecayIsPerceptibleAndConvergesWithinBudget()
     {
         var current = new Vector(0, 0);
         var target = new Vector(0, SmoothScroll.WheelStepPx);
         var snapped = false;
 
-        for (var frame = 0; frame < 40; frame++)
+        var firstFrame = SmoothScroll.ComputeNextOffset(current, target, 1.0 / 60.0, SmoothScroll.WheelDecayRate, out _);
+        var firstFrameFraction = firstFrame.Y / target.Y;
+        // 离散滚轮每帧温和起步（~17.5%），避免单帧骤跳超过 22%
+        Assert.InRange(firstFrameFraction, 0.12, 0.22);
+
+        for (var frame = 0; frame < 45; frame++)
         {
-            var next = SmoothScroll.ComputeNextOffset(current, target, 1.0 / 60.0, out snapped);
+            var next = SmoothScroll.ComputeNextOffset(current, target, 1.0 / 60.0, SmoothScroll.WheelDecayRate, out snapped);
             Assert.True(next.Y >= current.Y, "Offset should move monotonically toward target");
             Assert.True(next.Y <= target.Y, "Exponential decay must not overshoot target");
             current = next;
@@ -29,20 +37,85 @@ public class SmoothScrollTests
             }
         }
 
-        Assert.True(snapped, "Smooth scroll should snap to target within ~40 frames at 60Hz");
+        Assert.True(snapped, "Wheel smooth scroll should snap within ~45 frames at 60Hz");
         Assert.Equal(target, current);
+    }
+
+    [Fact]
+    public void ComputeWheelStep_DistinguishesPrecisionTrackpadAndBurstAcceleration()
+    {
+        var precision = SmoothScroll.ComputeWheelStep(new Vector(0, -0.3), 16, new Vector(0, -0.3), out var precisionDecay);
+        Assert.Equal(SmoothScroll.PrecisionDecayRate, precisionDecay);
+        Assert.Equal(0.3 * SmoothScroll.WheelStepPx, precision.Y, 3);
+
+        var singleWheel = SmoothScroll.ComputeWheelStep(new Vector(0, -1.0), 300, Vector.Zero, out var wheelDecay);
+        Assert.Equal(SmoothScroll.WheelDecayRate, wheelDecay);
+        Assert.Equal(SmoothScroll.WheelStepPx, singleWheel.Y, 3);
+
+        var burstWheel = SmoothScroll.ComputeWheelStep(new Vector(0, -1.0), 40, new Vector(0, -1.0), out var burstDecay);
+        Assert.Equal(SmoothScroll.WheelDecayRate, burstDecay);
+        Assert.True(burstWheel.Y > SmoothScroll.WheelStepPx);
+        Assert.True(burstWheel.Y <= SmoothScroll.WheelStepPx * SmoothScroll.MaxBurstMultiplier);
     }
 
     [Fact]
     public void ComputeNextOffset_AlreadyWithinThreshold_SnapsImmediately()
     {
         var target = new Vector(0, 120);
-        var current = new Vector(0, 119.7);
+        var current = new Vector(0, 119.75);
 
         var next = SmoothScroll.ComputeNextOffset(current, target, 1.0 / 60.0, out var snapped);
 
         Assert.True(snapped);
         Assert.Equal(target, next);
+    }
+
+    [AvaloniaFact]
+    public async Task AnimateTo_ScrollBy_And_CancelAnimation_WorkAcrossModes()
+    {
+        var sv = new ScrollViewer
+        {
+            Height = 150,
+            Content = new Border { Width = 200, Height = 1200 }
+        };
+        var window = new Window
+        {
+            Width = 260,
+            Height = 160,
+            Content = sv
+        };
+
+        try
+        {
+            SmoothScroll.EnsureRegistered();
+            window.Show();
+            Dispatcher.UIThread.RunJobs();
+
+            // 减动效开启时：AnimateTo 直接落至目标位置，不启动插值动画
+            Motion.SetEnabled(false);
+            SmoothScroll.AnimateTo(sv, new Vector(0, 240));
+            Assert.False(SmoothScroll.IsAnimating(sv));
+            Assert.Equal(240.0, sv.Offset.Y, 1);
+
+            // 开启动效时：AnimateTo / ScrollBy 平滑推进，CancelAnimation 立即停住
+            Motion.SetEnabled(true);
+            SmoothScroll.AnimateTo(sv, new Vector(0, 0), TimeSpan.FromMilliseconds(160));
+            Assert.True(SmoothScroll.IsAnimating(sv));
+
+            await Task.Delay(30);
+            Dispatcher.UIThread.RunJobs();
+            SmoothScroll.CancelAnimation(sv);
+            Assert.False(SmoothScroll.IsAnimating(sv));
+
+            SmoothScroll.ScrollBy(sv, new Vector(0, 180), TimeSpan.FromMilliseconds(120));
+            Assert.True(SmoothScroll.IsAnimating(sv));
+        }
+        finally
+        {
+            SmoothScroll.CancelAnimation(sv);
+            Motion.SetEnabled(true);
+            window.Close();
+        }
     }
 
     [AvaloniaFact]

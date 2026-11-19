@@ -109,8 +109,130 @@ public static class SlideMotion
         }
     }
 
+    /// <summary>
+    /// 逐帧同时插值二维位移、缩放与透明度（用于页面切换、弹窗进退场、Tab 切换、Popup 等连续动效）。
+    /// </summary>
+    public static async Task AnimateTransformAndOpacityAsync(
+        Control target,
+        double fromX,
+        double toX,
+        double fromY,
+        double toY,
+        double fromScale,
+        double toScale,
+        double fromOpacity,
+        double toOpacity,
+        TimeSpan duration,
+        IEasing easing,
+        TimeSpan delay = default,
+        bool resetTransformOnComplete = true,
+        RelativePoint? renderTransformOrigin = null,
+        CancellationToken cancellationToken = default)
+    {
+        var topLevel = TopLevel.GetTopLevel(target);
+        if (!Motion.IsEnabled || topLevel == null || duration <= TimeSpan.Zero)
+        {
+            ApplyTransformAndOpacity(target, toX, toY, toScale, toOpacity, resetTransformOnComplete, renderTransformOrigin);
+            return;
+        }
+
+        var useScale = Math.Abs(fromScale - 1d) > 1e-4 || Math.Abs(toScale - 1d) > 1e-4;
+        ApplyTransformAndOpacity(target, fromX, fromY, fromScale, fromOpacity, resetTransformOnComplete: false,
+            useScale ? (renderTransformOrigin ?? RelativePoint.Center) : null);
+
+        try
+        {
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken);
+
+            var currentTopLevel = TopLevel.GetTopLevel(target);
+            if (currentTopLevel == null)
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                    ApplyTransformAndOpacity(target, toX, toY, toScale, toOpacity, resetTransformOnComplete, renderTransformOrigin);
+                return;
+            }
+
+            await AnimateAsync(target, currentTopLevel, duration, easing, progress =>
+            {
+                var curX = fromX + (toX - fromX) * progress;
+                var curY = fromY + (toY - fromY) * progress;
+                var curScale = useScale ? fromScale + (toScale - fromScale) * progress : 1d;
+                target.Opacity = fromOpacity + (toOpacity - fromOpacity) * progress;
+
+                if (useScale)
+                    SetScaleAndTranslate(target, curScale, curX, curY);
+                else
+                    SetTranslate(target, curX, curY);
+            }, cancellationToken);
+
+            if (!cancellationToken.IsCancellationRequested && TopLevel.GetTopLevel(target) != null)
+            {
+                ApplyTransformAndOpacity(target, toX, toY, toScale, toOpacity, resetTransformOnComplete, renderTransformOrigin);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // 已取消的动画不回写终态，避免覆盖紧接着启动的新一轮过渡
+        }
+    }
+
+    /// <summary>
+    /// 逐帧插值透明度（用于背景遮罩渐显/渐隐）。
+    /// </summary>
+    public static async Task AnimateOpacityAsync(
+        Control target,
+        double fromOpacity,
+        double toOpacity,
+        TimeSpan duration,
+        IEasing easing,
+        TimeSpan delay = default,
+        CancellationToken cancellationToken = default)
+    {
+        var topLevel = TopLevel.GetTopLevel(target);
+        if (!Motion.IsEnabled || topLevel == null || duration <= TimeSpan.Zero)
+        {
+            target.Opacity = toOpacity;
+            return;
+        }
+
+        target.Opacity = fromOpacity;
+
+        try
+        {
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken);
+
+            var currentTopLevel = TopLevel.GetTopLevel(target);
+            if (currentTopLevel == null)
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                    target.Opacity = toOpacity;
+                return;
+            }
+
+            await AnimateAsync(target, currentTopLevel, duration, easing, progress =>
+            {
+                target.Opacity = fromOpacity + (toOpacity - fromOpacity) * progress;
+            }, cancellationToken);
+
+            if (!cancellationToken.IsCancellationRequested && TopLevel.GetTopLevel(target) != null)
+            {
+                target.Opacity = toOpacity;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     public static double GetTranslateY(Control target)
-        => target.RenderTransform is TranslateTransform transform ? transform.Y : 0d;
+    {
+        if (target.RenderTransform is TranslateTransform transform) return transform.Y;
+        if (target.RenderTransform is TransformGroup group && group.Children.Count >= 2 && group.Children[1] is TranslateTransform t)
+            return t.Y;
+        return 0d;
+    }
 
     private static TranslateTransform GetOrCreateTranslateTransform(Control target)
     {
@@ -120,6 +242,60 @@ public static class SlideMotion
         var transform = new TranslateTransform();
         target.RenderTransform = transform;
         return transform;
+    }
+
+    private static void SetTranslate(Control target, double x, double y)
+    {
+        var transform = GetOrCreateTranslateTransform(target);
+        transform.X = x;
+        transform.Y = y;
+    }
+
+    private static void SetScaleAndTranslate(Control target, double scale, double x, double y)
+    {
+        if (target.RenderTransform is TransformGroup group
+            && group.Children.Count == 2
+            && group.Children[0] is ScaleTransform scaleTransform
+            && group.Children[1] is TranslateTransform translateTransform)
+        {
+            scaleTransform.ScaleX = scale;
+            scaleTransform.ScaleY = scale;
+            translateTransform.X = x;
+            translateTransform.Y = y;
+            return;
+        }
+
+        var nextGroup = new TransformGroup();
+        nextGroup.Children.Add(new ScaleTransform(scale, scale));
+        nextGroup.Children.Add(new TranslateTransform(x, y));
+        target.RenderTransform = nextGroup;
+    }
+
+    private static void ApplyTransformAndOpacity(
+        Control target,
+        double x,
+        double y,
+        double scale,
+        double opacity,
+        bool resetTransformOnComplete,
+        RelativePoint? renderTransformOrigin)
+    {
+        target.Opacity = opacity;
+        if (resetTransformOnComplete)
+        {
+            Reset(target);
+            return;
+        }
+
+        if (Math.Abs(scale - 1d) > 1e-4)
+        {
+            target.RenderTransformOrigin = renderTransformOrigin ?? RelativePoint.Center;
+            SetScaleAndTranslate(target, scale, x, y);
+        }
+        else
+        {
+            SetTranslate(target, x, y);
+        }
     }
 
     private static void ApplyYAndOpacity(
@@ -139,12 +315,17 @@ public static class SlideMotion
         }
     }
 
-    /// <summary>把位移清掉（动效关闭 / 动画结束 / 控件卸载）</summary>
+    /// <summary>把位移/缩放变换清掉（动效关闭 / 动画结束 / 控件卸载）</summary>
     public static void Reset(Control target)
     {
         if (target.RenderTransform is TranslateTransform transform)
         {
+            transform.X = 0;
             transform.Y = 0;
+            target.RenderTransform = null;
+        }
+        else if (target.RenderTransform is TransformGroup)
+        {
             target.RenderTransform = null;
         }
     }

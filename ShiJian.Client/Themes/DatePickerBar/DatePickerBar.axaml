@@ -64,9 +64,10 @@
                                             <Transitions>
                                                 <TransformOperationsTransition
                                                     Property="RenderTransform"
-                                                    Duration="0:0:0.18" />
+                                                    Duration="0:0:0.15"
+                                                    Easing="0.40,0,0.20,1" />
 
-                                                <BrushTransition Property="Foreground" Duration="0:0:0.18" />
+                                                <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                                             </Transitions>
                                         </base:Icon.Transitions>
                                     </base:Icon>
@@ -74,8 +75,8 @@
 
                                 <Border.Transitions>
                                     <Transitions>
-                                        <BrushTransition Property="Background" Duration="0:0:0.15" />
-                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                                     </Transitions>
                                 </Border.Transitions>
                             </Border>

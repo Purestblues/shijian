@@ -37,12 +37,27 @@
                 <Style Selector="^:pointerover">
                     <Setter Property="Background" Value="{DynamicResource OptionHoverBrush}" />
                 </Style>
+                <Style Selector="^:pressed /template/ Border#RootBorder">
+                    <Setter Property="RenderTransform" Value="scale(0.975)" />
+                </Style>
 
             </Style>
         </Styles>
         <Setter Property="Template">
             <ControlTemplate>
-                <Border CornerRadius="{StaticResource RadiusSmall}" Background="{TemplateBinding Background}" Padding="10,7" Cursor="Hand">
+                <Border x:Name="RootBorder"
+                        CornerRadius="{StaticResource RadiusSmall}"
+                        Background="{TemplateBinding Background}"
+                        Padding="10,7"
+                        RenderTransform="scale(1)"
+                        RenderTransformOrigin="50%,50%"
+                        Cursor="Hand">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                        </Transitions>
+                    </Border.Transitions>
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="26" />

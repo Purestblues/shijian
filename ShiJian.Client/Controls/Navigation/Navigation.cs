@@ -2,13 +2,18 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.Linq;
 using Avalonia;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media.Transformation;
+using Avalonia.Threading;
 using ShiJian.Client.Controls.Navigation.Models;
+using ShiJian.Client.Librarys;
 
 namespace ShiJian.Client.Controls.Navigation;
 
@@ -59,11 +64,16 @@ public class Navigation : TemplatedControl
     private object? _topExtContent;
 
     private StackPanel ItemsPanel;
+    private Border? _activeIndicator;
+    private Transitions? _indicatorTransitions;
+    private bool _indicatorInitialized;
+    private bool _indicatorUpdatePending;
 
     public Navigation()
     {
         ItemsDictionary = new Dictionary<int, NavigationItem>();
         Loaded += Navigation_Loaded;
+        Unloaded += Navigation_Unloaded;
     }
 
     public ContextMenu? ItemContextMenu
@@ -117,6 +127,7 @@ public class Navigation : TemplatedControl
             {
                 item.IsCompact = IsCompact;
             }
+            ScheduleActiveIndicatorUpdate(animate: false);
         }
     }
 
@@ -177,7 +188,32 @@ public class Navigation : TemplatedControl
 
     private void Navigation_Loaded(object? sender, RoutedEventArgs e)
     {
+        Motion.Changed += OnMotionChanged;
         ScrollToActive();
+    }
+
+    private void Navigation_Unloaded(object? sender, RoutedEventArgs e)
+    {
+        Motion.Changed -= OnMotionChanged;
+        if (ItemsPanel != null)
+        {
+            ItemsPanel.SizeChanged -= OnItemsPanelSizeChanged;
+        }
+    }
+
+    private void OnMotionChanged(object? sender, EventArgs e)
+    {
+        if (!Motion.IsEnabled || _activeIndicator == null || _indicatorTransitions == null) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_activeIndicator != null && Motion.IsEnabled)
+                _activeIndicator.Transitions = _indicatorTransitions;
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void OnItemsPanelSizeChanged(object? sender, SizeChangedEventArgs e)
+    {
+        ScheduleActiveIndicatorUpdate(animate: false);
     }
 
     private void RemoveItem(NavigationItemModel item)
@@ -185,12 +221,21 @@ public class Navigation : TemplatedControl
         var navItem = ItemsDictionary[item.ID];
         ItemsPanel.Children.Remove(navItem);
         ItemsDictionary.Remove(item.ID);
+        ScheduleActiveIndicatorUpdate(animate: false);
     }
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
         base.OnApplyTemplate(e);
+        if (ItemsPanel != null)
+        {
+            ItemsPanel.SizeChanged -= OnItemsPanelSizeChanged;
+        }
         ItemsPanel = e.NameScope.Get<StackPanel>("ItemsPanel")!;
+        ItemsPanel.SizeChanged += OnItemsPanelSizeChanged;
+        _activeIndicator = e.NameScope.Find<Border>("ActiveIndicator");
+        _indicatorTransitions = _activeIndicator?.Transitions;
+        _indicatorInitialized = false;
         Render();
     }
 
@@ -199,6 +244,7 @@ public class Navigation : TemplatedControl
         if (ItemsPanel != null)
         {
             var navItem = new NavigationItem();
+            navItem.Classes.Add("in-nav-list");
             var id = item.ID < -1 ? CreateID() : item.ID;
             if (ItemsDictionary.ContainsKey(id)) return;
 
@@ -322,19 +368,97 @@ public class Navigation : TemplatedControl
 
     private void ScrollToActive(double animationDuration = 0.35)
     {
-        //  获取选中项
-        if (SelectedItem == null || ItemsDictionary.Count == 0 || !ItemsDictionary.ContainsKey(SelectedItem.ID)) return;
+        if (SelectedItem == null || ItemsDictionary.Count == 0 || !ItemsDictionary.ContainsKey(SelectedItem.ID))
+        {
+            UpdateActiveIndicator(animate: animationDuration > 0);
+            return;
+        }
 
         var item = ItemsDictionary[SelectedItem.ID];
         item.IsSelected = true;
+        ScheduleActiveIndicatorUpdate(animate: _indicatorInitialized && animationDuration > 0);
     }
 
     private void UpdateActiveLocation()
     {
-        if (SelectedItem == null || !IsLoaded) return;
+        if (SelectedItem == null || !IsLoaded)
+        {
+            UpdateActiveIndicator(animate: false);
+            return;
+        }
 
         var item = ItemsDictionary[SelectedItem.ID];
-        item.Loaded += (e, c) => { ScrollToActive(0); };
+        item.Loaded += (_, _) => { ScrollToActive(0); };
+    }
+
+    private void ScheduleActiveIndicatorUpdate(bool animate)
+    {
+        if (_activeIndicator == null) return;
+
+        if (animate && _indicatorInitialized)
+        {
+            UpdateActiveIndicator(animate: true);
+            return;
+        }
+
+        if (_indicatorUpdatePending) return;
+        _indicatorUpdatePending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _indicatorUpdatePending = false;
+            UpdateActiveIndicator(animate: false);
+        }, DispatcherPriority.Loaded);
+    }
+
+    private void UpdateActiveIndicator(bool animate)
+    {
+        if (_activeIndicator == null) return;
+
+        if (SelectedItem == null || !ItemsDictionary.TryGetValue(SelectedItem.ID, out var item))
+        {
+            if (!Motion.IsEnabled)
+                _activeIndicator.Transitions = null;
+            else
+                _activeIndicator.Transitions = _indicatorTransitions;
+
+            _activeIndicator.Opacity = 0;
+            return;
+        }
+
+        var targetY = item.Bounds.Y;
+        var targetHeight = item.Bounds.Height;
+        if (targetHeight <= 0)
+        {
+            ScheduleActiveIndicatorUpdate(animate);
+            return;
+        }
+
+        var shouldAnimate = animate && Motion.IsEnabled && _indicatorInitialized;
+        if (!shouldAnimate)
+        {
+            _activeIndicator.Transitions = null;
+        }
+        else
+        {
+            _activeIndicator.Transitions = _indicatorTransitions;
+        }
+
+        _activeIndicator.Height = targetHeight;
+        _activeIndicator.IsVisible = true;
+        _activeIndicator.Opacity = 1;
+        _activeIndicator.RenderTransform =
+            TransformOperations.Parse($"translateY({targetY.ToString(CultureInfo.InvariantCulture)}px)");
+
+        if (!shouldAnimate && Motion.IsEnabled && _indicatorTransitions != null)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_activeIndicator != null && Motion.IsEnabled)
+                    _activeIndicator.Transitions = _indicatorTransitions;
+            }, DispatcherPriority.Render);
+        }
+
+        _indicatorInitialized = true;
     }
 
     private void Render()

@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > **文档定位**：本文档为 `ShiJian.Client` 全栈交互反馈与动效体系重设计方案（涵盖平滑滚动与滚动条、Windows 原生 DWM 窗口缩放过渡与全局浮层、方向感知页面与导航层级、Popup 弹出体系、触感微交互及 `MotionTokens` 全量收敛）。
-> **当前状态**：已完成系统性审计与方案定稿（2026-11-15），**尚未开工实施**，待后续指令后按本方案执行。
+> **当前状态**：✅ **已全面实施完成（2026-11-19）**。五大支柱（双模平滑滚动与自适应滚动条、Windows 原生 DWM 窗口缩放与过渡浮层、方向感知页面/Tab/侧栏滑块/Expander、智能方位 `PopupMotion`、`TabSwitch` GPU 变换 + `:pointerover`/`:pressed` 触感矩阵及 `MotionTokens` 全量收敛）已全部落地；单元测试 `dotnet test ShiJian.Tests/ShiJian.Tests.csproj -c Release --nologo`（222/222）与 Windows 11 实机 `/gui-verify` 验证通过。
 
 ---
 

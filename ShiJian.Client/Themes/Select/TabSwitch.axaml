@@ -27,24 +27,21 @@
                                 BoxShadow="{DynamicResource ElevationCard}"
                                 CornerRadius="{StaticResource RadiusSmall}"
                                 Width="0"
+                                Margin="0"
                                 HorizontalAlignment="Left"
                                 VerticalAlignment="Stretch"
+                                RenderTransform="translateX(0px)"
+                                RenderTransformOrigin="0,0"
                                 IsHitTestVisible="False"
                                 IsVisible="False">
                             <Border.Transitions>
                                 <Transitions>
-                                    <ThicknessTransition Property="Margin"
-                                                         Duration="0:0:0.20">
-                                        <ThicknessTransition.Easing>
-                                            <CubicEaseInOut />
-                                        </ThicknessTransition.Easing>
-                                    </ThicknessTransition>
+                                    <TransformOperationsTransition Property="RenderTransform"
+                                                                   Duration="0:0:0.225"
+                                                                   Easing="0.40,0,0.20,1" />
                                     <DoubleTransition Property="Width"
-                                                      Duration="0:0:0.20">
-                                        <DoubleTransition.Easing>
-                                            <CubicEaseInOut />
-                                        </DoubleTransition.Easing>
-                                    </DoubleTransition>
+                                                      Duration="0:0:0.225"
+                                                      Easing="0.40,0,0.20,1" />
                                 </Transitions>
                             </Border.Transitions>
                         </Border>

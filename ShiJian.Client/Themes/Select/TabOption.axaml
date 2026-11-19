@@ -17,7 +17,15 @@
                         Background="{TemplateBinding Background}"
                         Padding="{TemplateBinding Padding}"
                         Cursor="Hand"
+                        RenderTransform="scale(1)"
+                        RenderTransformOrigin="50%,50%"
                         x:Name="RootBorder">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                        </Transitions>
+                    </Border.Transitions>
                     <Grid ColumnDefinitions="Auto,Auto" HorizontalAlignment="Center">
                         <Border Grid.Column="0"
                                 Margin="0,0,6,0"
@@ -48,9 +56,19 @@
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="{DynamicResource TabOptionTextColor}" />
             </Style>
+            <Style Selector="select|TabOption TextBlock">
+                <Setter Property="Transitions">
+                    <Transitions>
+                        <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                    </Transitions>
+                </Setter>
+            </Style>
 
             <Style Selector="select|TabOption:pointerover">
                 <Setter Property="Foreground" Value="{DynamicResource DefaultTextBrush}" />
+            </Style>
+            <Style Selector="select|TabOption:pressed /template/ Border#RootBorder">
+                <Setter Property="RenderTransform" Value="scale(0.975)" />
             </Style>
 
             <Style Selector="select|TabOption[IsChecked=True]">

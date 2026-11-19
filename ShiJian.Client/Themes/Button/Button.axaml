@@ -21,11 +21,13 @@
             </Style>
 
             <Style Selector="controls|Button /template/ Border#BoxBorder">
+                <Setter Property="RenderTransform" Value="scale(1)" />
+                <Setter Property="RenderTransformOrigin" Value="50%,50%" />
                 <Setter Property="Transitions">
                     <Transitions>
-                        <BrushTransition Property="Background" Duration="0:0:0.12" />
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
-                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" />
+                        <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
                     </Transitions>
                 </Setter>
             </Style>
@@ -36,7 +38,7 @@
             </Style>
 
             <Style Selector="controls|Button:pressed /template/ Border#BoxBorder">
-                <Setter Property="RenderTransform" Value="scale(0.985)" />
+                <Setter Property="RenderTransform" Value="scale(0.97)" />
             </Style>
 
             <Style Selector="controls|Button.primary">

@@ -88,16 +88,22 @@ public class ExpanderHeaderTests
 
         try
         {
+            MotionTransitions.Attach(window);
             Motion.SetEnabled(false);
+            Dispatcher.UIThread.RunJobs();
 
-            var rotate = Assert.IsType<RotateTransform>(Chevron(expander).RenderTransform);
-            Assert.Equal(-90d, rotate.Angle);
+            var collapsedMatrix = Assert.IsAssignableFrom<ITransform>(Chevron(expander).RenderTransform).Value;
+            Assert.Equal(0d, collapsedMatrix.M11, 2);
+            Assert.Equal(-1d, collapsedMatrix.M12, 2);
 
             ClickHeader(window, expander);
-            Assert.Equal(0d, rotate.Angle);
+            var expandedMatrix = Assert.IsAssignableFrom<ITransform>(Chevron(expander).RenderTransform).Value;
+            Assert.Equal(1d, expandedMatrix.M11, 2);
+            Assert.Equal(0d, expandedMatrix.M12, 2);
         }
         finally
         {
+            MotionTransitions.Detach();
             Motion.SetEnabled(true);
             window.Close();
         }

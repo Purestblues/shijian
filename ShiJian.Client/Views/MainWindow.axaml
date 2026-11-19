@@ -66,6 +66,23 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="MinHeight" Value="0" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox#SearchResultList ListBoxItem /template/ ContentPresenter">
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="ListBox#SearchResultList ListBoxItem:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.992)" />
         </Style>
         <Style Selector="ListBox#SearchResultList ListBoxItem:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
@@ -112,8 +129,8 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Transitions">
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15" />
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                 </Transitions>
             </Setter>
         </Style>
@@ -226,13 +243,28 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.palette-ghost /template/ ContentPresenter">
             <Setter Property="CornerRadius" Value="11" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.palette-ghost:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="Button.palette-ghost:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.965)" />
         </Style>
 
         <Style Selector="Button.palette-esc">
@@ -246,10 +278,23 @@
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalContentAlignment" Value="Center" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.palette-esc /template/ ContentPresenter">
             <Setter Property="CornerRadius" Value="5" />
             <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.palette-esc:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
@@ -259,6 +304,9 @@
         </Style>
         <Style Selector="Button.palette-esc:pointerover TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource DefaultTextBrush}" />
+        </Style>
+        <Style Selector="Button.palette-esc:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.965)" />
         </Style>
         <Style Selector="Button.sidebar-search">
             <Setter Property="Background" Value="Transparent" />
@@ -271,16 +319,32 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Foreground" Value="{DynamicResource SubTextBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Foreground" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.sidebar-search /template/ ContentPresenter">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                </Transitions>
+            </Setter>
         </Style>
         <Style Selector="Button.sidebar-search:pointerover">
             <Setter Property="Foreground" Value="{DynamicResource DefaultTextBrush}" />
         </Style>
         <Style Selector="Button.sidebar-search:pointerover /template/ ContentPresenter">
             <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="Button.sidebar-search:pressed">
+            <Setter Property="RenderTransform" Value="scale(0.965)" />
         </Style>
         <Style Selector="Button.sidebar-search.compact">
             <Setter Property="Padding" Value="0" />
@@ -298,7 +362,7 @@
             <Grid x:Name="NavigationHost" Grid.Column="0" Width="{Binding SidebarWidth}" Margin="0,36,0,0">
                 <Grid.Transitions>
                     <Transitions>
-                        <DoubleTransition Property="Width" Duration="0:0:0.225" Easing="CubicEaseOut" />
+                        <DoubleTransition Property="Width" Duration="0:0:0.225" Easing="0.40,0,0.20,1" />
                     </Transitions>
                 </Grid.Transitions>
                 <na:Navigation x:Name="Navigation"
@@ -397,9 +461,12 @@
               ZIndex="450"
               Margin="0"
               IsVisible="False">
-            <Border Background="{DynamicResource ScrimBrush}"
+            <Border x:Name="PageModalScrim"
+                    Background="{DynamicResource ScrimBrush}"
+                    Opacity="0"
                     PointerPressed="OnPageModalScrimPressed" />
             <ContentControl x:Name="PageModalHost"
+                            Opacity="0"
                             HorizontalAlignment="Stretch"
                             VerticalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
@@ -409,12 +476,16 @@
         <Grid x:Name="SearchOverlay"
               ZIndex="500"
               Margin="0,36,0,0"
-              IsVisible="{Binding IsSearchOpen}">
-            <Border Background="{DynamicResource ScrimBrush}"
+              IsVisible="False">
+            <Border x:Name="SearchScrim"
+                    Background="{DynamicResource ScrimBrush}"
+                    Opacity="0"
                     PointerReleased="OnSearchMaskPointerReleased" />
 
             <!-- 搜索面板 -->
-            <Border x:DataType="vm:SearchPaletteViewModel"
+            <Border x:Name="SearchCard"
+                    Opacity="0"
+                    x:DataType="vm:SearchPaletteViewModel"
                     DataContext="{Binding SearchVm}"
                     Width="560" Height="430" MaxHeight="450"
                     Margin="0,36,0,20"

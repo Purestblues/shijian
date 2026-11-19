@@ -17,8 +17,8 @@
                         Padding="10,5">
                     <Border.Transitions>
                         <Transitions>
-                            <BrushTransition Property="BorderBrush" Duration="0.18" />
-                            <BrushTransition Property="Background" Duration="0.18" />
+                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                         </Transitions>
                     </Border.Transitions>
                     <Border.Styles>
@@ -92,7 +92,7 @@
                                     Opacity="0">
                             <StackPanel.Transitions>
                                 <Transitions>
-                                    <DoubleTransition Property="Opacity" Duration="0.15" />
+                                    <DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
                                 </Transitions>
                             </StackPanel.Transitions>
                             <Button x:Name="PART_ResetButton"

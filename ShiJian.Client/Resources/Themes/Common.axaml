@@ -56,6 +56,12 @@
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="6">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                        </Transitions>
+                    </Border.Transitions>
                     
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -103,7 +109,13 @@
                               Margin="10,0,0,0"
                               VerticalAlignment="Center"
                               Data="M0,0L4,3.5 0,7z"
-                              Fill="{DynamicResource SubTextBrush}" />
+                              Fill="{DynamicResource SubTextBrush}">
+                            <Path.Transitions>
+                                <Transitions>
+                                    <BrushTransition Property="Fill" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                                </Transitions>
+                            </Path.Transitions>
+                        </Path>
                         <Popup Name="PART_Popup"
                                IsLightDismissEnabled="False"
                                IsOpen="{TemplateBinding IsSubMenuOpen,
@@ -224,7 +236,12 @@
             <Setter Property="Height" Value="10" />
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Background="Transparent" Padding="3" UseLayoutRounding="False">
+                    <Border x:Name="TrackHost" Background="Transparent" CornerRadius="5" Padding="3" UseLayoutRounding="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            </Transitions>
+                        </Border.Transitions>
                         <Track Maximum="{TemplateBinding Maximum}"
                                Minimum="{TemplateBinding Minimum}"
                                Orientation="{TemplateBinding Orientation}"
@@ -243,6 +260,8 @@
                             </Track.IncreaseButton>
                             <Thumb Name="thumb"
                                    MinWidth="20"
+                                   RenderTransform="scaleY(0.6)"
+                                   RenderTransformOrigin="50%,100%"
                                    Theme="{StaticResource FluentScrollBarThumb}" />
                         </Track>
                     </Border>
@@ -253,7 +272,12 @@
             <Setter Property="Width" Value="10" />
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Background="Transparent" Padding="3" UseLayoutRounding="False">
+                    <Border x:Name="TrackHost" Background="Transparent" CornerRadius="5" Padding="3" UseLayoutRounding="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                            </Transitions>
+                        </Border.Transitions>
                         <Track IsDirectionReversed="True"
                                Maximum="{TemplateBinding Maximum}"
                                Minimum="{TemplateBinding Minimum}"
@@ -273,11 +297,25 @@
                             </Track.IncreaseButton>
                             <Thumb Name="thumb"
                                    MinHeight="20"
+                                   RenderTransform="scaleX(0.6)"
+                                   RenderTransformOrigin="100%,50%"
                                    Theme="{StaticResource FluentScrollBarThumb}" />
                         </Track>
                     </Border>
                 </ControlTemplate>
             </Setter>
+        </Style>
+
+        <Style Selector="^:pointerover /template/ Border#TrackHost">
+            <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+        </Style>
+        <Style Selector="^[IsExpanded=True] /template/ Thumb#thumb">
+            <Setter Property="Opacity" Value="0.72" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Thumb#thumb">
+            <Setter Property="Opacity" Value="0.78" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
     </ControlTheme>
 
@@ -295,7 +333,7 @@
 
     <ControlTheme x:Key="FluentScrollBarThumb" TargetType="Thumb">
         <Setter Property="Background" Value="{DynamicResource ScrollBarBrush}" />
-        <Setter Property="Opacity" Value="0.50" />
+        <Setter Property="Opacity" Value="0.35" />
         <Setter Property="Template">
             <ControlTemplate>
                 <Border Background="{TemplateBinding Background}"
@@ -304,18 +342,21 @@
         </Setter>
         <Setter Property="Transitions">
             <Transitions>
-                <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
-                <BrushTransition Property="Background" Duration="0:0:0.15" />
+                <DoubleTransition Property="Opacity" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
             </Transitions>
         </Setter>
 
         <Style Selector="^:pointerover">
-            <Setter Property="Opacity" Value="0.75" />
+            <Setter Property="Opacity" Value="0.82" />
             <Setter Property="Background" Value="{DynamicResource ThemeBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
         <Style Selector="^:pressed">
             <Setter Property="Opacity" Value="0.95" />
             <Setter Property="Background" Value="{DynamicResource ThemeBrush}" />
+            <Setter Property="RenderTransform" Value="scale(1)" />
         </Style>
     </ControlTheme>
 </ResourceDictionary>

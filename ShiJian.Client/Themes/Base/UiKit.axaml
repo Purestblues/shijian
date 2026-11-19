@@ -13,8 +13,8 @@
         <Setter Property="BoxShadow" Value="{DynamicResource ElevationCard}" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.09" />
-                <BrushTransition Property="Background" Duration="0:0:0.09" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
             </Transitions>
         </Setter>
     </Style>
@@ -32,7 +32,7 @@
         <Setter Property="Padding" Value="16,14" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.09" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
             </Transitions>
         </Setter>
     </Style>
@@ -58,7 +58,8 @@
         <Setter Property="Padding" Value="10,6" />
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.09" />
+                <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
             </Transitions>
         </Setter>
     </Style>
