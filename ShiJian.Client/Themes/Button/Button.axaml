@@ -33,7 +33,7 @@
             </Style>
 
             <Style Selector="controls|Button:pointerover /template/ Border#BoxBorder">
-                <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                <Setter Property="Background" Value="{DynamicResource Surface3HoverBrush}" />
                 <Setter Property="BorderBrush" Value="{DynamicResource CardBorderHoverBrush}" />
             </Style>
 

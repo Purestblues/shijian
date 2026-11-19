@@ -25,9 +25,17 @@ public static class FocusVisual
         return new SolidColorBrush(Color.Parse("#5E81AC"));
     }
 
+    public static bool ShouldDraw(Control? control) =>
+        control != null && control.IsKeyboardFocusWithin && control.Classes.Contains(":focus-visible");
+
     public static void Draw(DrawingContext context, Control control, double cornerRadius = 10)
     {
-        Draw(context, control.Bounds.Size, control.IsKeyboardFocusWithin, cornerRadius);
+        Draw(context, control.Bounds.Size, ShouldDraw(control), cornerRadius);
+    }
+
+    public static void Draw(DrawingContext context, Size size, Control control, double cornerRadius = 10)
+    {
+        Draw(context, size, ShouldDraw(control), cornerRadius);
     }
 
     public static void Draw(DrawingContext context, Size size, bool focused, double cornerRadius = 10)

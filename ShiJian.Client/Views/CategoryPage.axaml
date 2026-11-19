@@ -316,7 +316,7 @@
 
                     <!-- 空分类折叠区（N7-c 尾项） -->
                     <StackPanel IsVisible="{Binding HasEmptyAppCategories}" Margin="10,16,10,12">
-                        <Button Background="Transparent" BorderThickness="0" Padding="4,6"
+                        <Button Classes="subtle" Padding="6,6"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                 Command="{Binding ToggleAppEmptyExpandedCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">

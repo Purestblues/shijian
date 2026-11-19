@@ -50,6 +50,8 @@
     <Color x:Key="Surface3">#F0F6FA</Color>
     <Color x:Key="Surface3Color">#F0F6FA</Color>
     <SolidColorBrush x:Key="Surface3Brush" Color="{StaticResource Surface3}" />
+    <Color x:Key="Surface3HoverColor">#E4EFF7</Color>
+    <SolidColorBrush x:Key="Surface3HoverBrush" Color="{StaticResource Surface3HoverColor}" />
 
     <Color x:Key="Surface4">#FFFFFF</Color>
     <Color x:Key="Surface4Color">#FFFFFF</Color>

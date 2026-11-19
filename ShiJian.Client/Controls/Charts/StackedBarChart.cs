@@ -119,7 +119,7 @@ public class StackedBarChart : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        Focus();
+        Focus(NavigationMethod.Pointer);
     }
 
     static StackedBarChart()
@@ -333,7 +333,7 @@ public class StackedBarChart : Control
         DrawLabels(context, labels, slot, columnCount, height);
         DrawHoverValue(context, totals, maxTotal, slot, plotHeight, baseline, width);
 
-        FocusVisual.Draw(context, new Size(width, height), IsKeyboardFocusWithin);
+        FocusVisual.Draw(context, new Size(width, height), this);
     }
 
     private List<ChartsDataModel> BuildSeries(out int columnCount)

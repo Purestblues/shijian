@@ -103,7 +103,7 @@ public class DonutChart : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
-        Focus();
+        Focus(NavigationMethod.Pointer);
     }
 
     static DonutChart()
@@ -217,7 +217,7 @@ public class DonutChart : Control
         if (total <= 0 || _slices.Count == 0)
         {
             DrawEmpty(context, center, innerRadius);
-            FocusVisual.Draw(context, Bounds.Size, IsKeyboardFocusWithin,
+            FocusVisual.Draw(context, Bounds.Size, this,
                 Math.Min(Bounds.Width, Bounds.Height) / 2);
             return;
         }
@@ -249,7 +249,7 @@ public class DonutChart : Control
 
         DrawCenterForHover(context, center, innerRadius, total);
 
-        FocusVisual.Draw(context, Bounds.Size, IsKeyboardFocusWithin,
+        FocusVisual.Draw(context, Bounds.Size, this,
             Math.Min(Bounds.Width, Bounds.Height) / 2);
     }
 

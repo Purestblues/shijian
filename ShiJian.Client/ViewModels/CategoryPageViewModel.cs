@@ -350,11 +350,52 @@ public class CategoryPageViewModel : CategoryPageModel
         ClearEditFields();
     }
 
+    internal static string PickDefaultCategoryColor(
+        IEnumerable<string?> usedColors,
+        IReadOnlyList<string>? palette = null)
+    {
+        var candidates = palette is { Count: > 0 }
+            ? palette
+            : Base.Color.Colors.MainColors;
+        if (candidates.Count == 0)
+            return "#527CE6";
+
+        var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var raw in usedColors)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            var key = raw.Trim();
+            counts[key] = counts.TryGetValue(key, out var c) ? c + 1 : 1;
+        }
+
+        foreach (var color in candidates)
+        {
+            if (!counts.ContainsKey(color))
+                return color;
+        }
+
+        var best = candidates[0];
+        var minCount = counts.GetValueOrDefault(best);
+        for (var i = 1; i < candidates.Count; i++)
+        {
+            var c = counts.GetValueOrDefault(candidates[i]);
+            if (c < minCount)
+            {
+                minCount = c;
+                best = candidates[i];
+            }
+        }
+        return best;
+    }
+
+    private string PickNextCategoryColor() =>
+        PickDefaultCategoryColor(Data.Select(m => m.Data?.Color));
+
     private void ClearEditFields()
     {
         EditName = "";
         EditIconFile = CategoryIconCatalog.DefaultIconKey;
-        EditColor = "#00FFAB";
+        EditColor = PickNextCategoryColor();
         EditIsDirectoryMatch = false;
         EditIsUrlMatch = false;
         EditDirectories.Clear();
@@ -779,7 +820,7 @@ public class CategoryPageViewModel : CategoryPageModel
                 || CategoryIconCatalog.ResolveKey(category.Data.IconFile) == null && !string.IsNullOrWhiteSpace(category.Data.IconFile)
                 ? category.Data.IconFile!
                 : CategoryIconCatalog.ResolveKey(category.Data.IconFile) ?? CategoryIconCatalog.DefaultIconKey;
-            EditColor = string.IsNullOrWhiteSpace(category.Data.Color) ? "#00FFAB" : category.Data.Color;
+            EditColor = string.IsNullOrWhiteSpace(category.Data.Color) ? PickNextCategoryColor() : category.Data.Color;
             EditIsDirectoryMatch = category.Data.IsDirectoryMatch;
             EditIsUrlMatch = category.Data.IsUrlMatch;
 
@@ -833,7 +874,7 @@ public class CategoryPageViewModel : CategoryPageModel
         {
             EditName = "";
             EditIconFile = CategoryIconCatalog.DefaultIconKey;
-            EditColor = "#00FFAB";
+            EditColor = PickNextCategoryColor();
             EditIsDirectoryMatch = false;
             EditIsUrlMatch = false;
         }

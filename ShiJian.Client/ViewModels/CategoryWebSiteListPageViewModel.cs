@@ -70,6 +70,7 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
         GotoDetailCommand = AsyncRelayCommand.Create<object>(OnGotoDetail).DisposeWith(Disposables);
         ChooseCloseCommand = AsyncRelayCommand.Create<object>(OnChooseClose).DisposeWith(Disposables);
         DelCommand = AsyncRelayCommand.CreateFromTask<object>(OnDelAsync).DisposeWith(Disposables);
+        GoBackCommand = AsyncRelayCommand.Create<object>(_ => _navigationService.GoBack()).DisposeWith(Disposables);
 
         _searchSubscription = ObservablePropertyChangedExtensions.WhenPropertyChanged(this, x => x.SearchInput)
             .Skip(1)
@@ -103,6 +104,7 @@ public class CategoryWebSiteListPageViewModel : CategoryWebSiteListPageModel
     public ICommand GotoDetailCommand { get; }
     public ICommand ChooseCloseCommand { get; }
     public ICommand DelCommand { get; }
+    public ICommand GoBackCommand { get; }
 
     private async Task LoadDataCoreAsync(CancellationToken cancellationToken)
     {

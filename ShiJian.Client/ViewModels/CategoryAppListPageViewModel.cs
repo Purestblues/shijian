@@ -50,6 +50,7 @@ public class CategoryAppListPageViewModel : CategoryAppListPageModel
         SearchCommand = AsyncRelayCommand.CreateFromTask<object>(OnSearchAsync).DisposeWith(Disposables);
         ChooseCloseCommand = AsyncRelayCommand.Create<object>(OnChooseClose).DisposeWith(Disposables);
         DelCommand = AsyncRelayCommand.CreateFromTask<object>(OnDel).DisposeWith(Disposables);
+        GoBackCommand = AsyncRelayCommand.Create<object>(_ => _navigationService.GoBack()).DisposeWith(Disposables);
 
         RefreshOnChange(
             _appEventService.AppChanged
@@ -76,6 +77,7 @@ public class CategoryAppListPageViewModel : CategoryAppListPageModel
     public ICommand SearchCommand { get; }
     public ICommand ChooseCloseCommand { get; }
     public ICommand DelCommand { get; }
+    public ICommand GoBackCommand { get; }
 
     public override void Dispose()
     {

@@ -963,6 +963,65 @@ public class GuiFixRegressionTests
         }
     }
 
+    [Fact]
+    public void CategoryPageViewModel_PickDefaultCategoryColor_SelectsUnusedAndRotates()
+    {
+        var palette = ShiJian.Client.Base.Color.Colors.MainColors;
+
+        Assert.Equal(palette[0], CategoryPageViewModel.PickDefaultCategoryColor([], palette));
+        Assert.Equal(palette[2], CategoryPageViewModel.PickDefaultCategoryColor([palette[0].ToLowerInvariant(), palette[1]], palette));
+
+        // 全部占满一轮后，按调色板顺序轮换
+        var allOnce = palette.ToList();
+        Assert.Equal(palette[0], CategoryPageViewModel.PickDefaultCategoryColor(allOnce, palette));
+
+        var withExtraFirst = allOnce.Append(palette[0]).ToList();
+        Assert.Equal(palette[1], CategoryPageViewModel.PickDefaultCategoryColor(withExtraFirst, palette));
+    }
+
+    [AvaloniaFact]
+    public void CategoryListPages_GoBackCommand_NavigatesBack()
+    {
+        var appGoBackCalls = 0;
+        var appNav = StubProxy<INavigationService>.Create(new()
+        {
+            [nameof(INavigationService.GoBack)] = _ => { appGoBackCalls++; return null; }
+        });
+        var appVm = new CategoryAppListPageViewModel(
+            StubProxy<IAppData>.Create(new()),
+            StubProxy<INavigationDataService>.Create(new()),
+            appNav,
+            StubProxy<IAppUpdateService>.Create(new()),
+            new AppEventService(),
+            StubProxy<IAppMergeService>.Create(new()));
+
+        var webGoBackCalls = 0;
+        var webNav = StubProxy<INavigationService>.Create(new()
+        {
+            [nameof(INavigationService.GoBack)] = _ => { webGoBackCalls++; return null; }
+        });
+        var webVm = new CategoryWebSiteListPageViewModel(
+            StubProxy<INavigationDataService>.Create(new()),
+            webNav,
+            StubProxy<IToastService>.Create(new()),
+            StubProxy<ICategorys>.Create(new()),
+            StubProxy<IWebData>.Create(new()),
+            new AppEventService());
+
+        try
+        {
+            appVm.GoBackCommand.Execute(null);
+            webVm.GoBackCommand.Execute(null);
+            Assert.Equal(1, appGoBackCalls);
+            Assert.Equal(1, webGoBackCalls);
+        }
+        finally
+        {
+            appVm.Dispose();
+            webVm.Dispose();
+        }
+    }
+
     private sealed class RelayActionCommand(Action execute) : System.Windows.Input.ICommand
     {
         public event EventHandler? CanExecuteChanged { add { } remove { } }

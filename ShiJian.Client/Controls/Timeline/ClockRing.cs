@@ -285,7 +285,7 @@ public class ClockRing : Control, ICustomHitTest
         DrawCenter(context, center, Math.Max(16, radius - thickness / 2), segments.Count > 0);
 
         // 键盘焦点环：套在整块控件外沿
-        FocusVisual.Draw(context, Bounds.Size, IsKeyboardFocusWithin, 12);
+        FocusVisual.Draw(context, Bounds.Size, this, 12);
     }
 
     /// <summary>鼠标在环带上时，画一根短线标出当前位置——空档里也有反馈，不然像没反应</summary>

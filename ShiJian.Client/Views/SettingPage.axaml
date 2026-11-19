@@ -89,7 +89,7 @@
                                     </Setter>
                                 </Style>
                                 <Style Selector="Border.shortcut-row:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                                    <Setter Property="Background" Value="{DynamicResource Surface3HoverBrush}" />
                                 </Style>
                                 <Style Selector="Grid.shortcut-row-grid">
                                     <Setter Property="Margin" Value="0" />
@@ -186,7 +186,7 @@
                                     </Setter>
                                 </Style>
                                 <Style Selector="Border.data-row:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                                    <Setter Property="Background" Value="{DynamicResource Surface3HoverBrush}" />
                                 </Style>
                                 <Style Selector="Grid.data-row-grid">
                                     <Setter Property="Margin" Value="0" />
@@ -494,7 +494,7 @@
                                     </Setter>
                                 </Style>
                                 <Style Selector="Border.about-row:pointerover">
-                                    <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                                    <Setter Property="Background" Value="{DynamicResource Surface3HoverBrush}" />
                                 </Style>
                             </StackPanel.Styles>
 

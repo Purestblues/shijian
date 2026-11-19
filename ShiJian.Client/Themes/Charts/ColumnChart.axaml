@@ -9,7 +9,9 @@
         <Setter Property="Background" Value="Transparent" />
         <Styles>
             <Style Selector="controls|ColumnChart[IsShowCategory=True] /template/ Border#ChartBorder">
-                <Setter Property="MinHeight" Value="230" />
+                <Setter Property="Height" Value="260" />
+                <Setter Property="MinHeight" Value="260" />
+                <Setter Property="VerticalAlignment" Value="Top" />
             </Style>
             <Style Selector="controls|ColumnChart[IsShowCategory=True] /template/ Grid#CategoryLegend">
                 <Setter Property="IsVisible" Value="True" />
@@ -39,7 +41,7 @@
                                Placement="Top"
                                HorizontalOffset="{TemplateBinding ValuesPopupHorizontalOffset}"
                                PlacementTarget="{TemplateBinding ValuesPopupPlacementTarget}">
-                            <Border
+                            <Border IsHitTestVisible="False"
                                 Background="{DynamicResource PopupBackgroundBrush}"
                                 BorderBrush="{DynamicResource PopupBorderBrush}"
                                 BorderThickness="1"

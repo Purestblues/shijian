@@ -541,8 +541,7 @@ public class ColumnChartCanvas : Control
 
         // 键盘焦点环绘制在画布边界以内，避免底部/右侧被裁切
         if (_owner != null)
-            FocusVisual.Draw(context, new Size(width, height),
-                _owner.IsKeyboardFocusWithin);
+            FocusVisual.Draw(context, new Size(width, height), _owner);
     }
 
     private void FillColumnBand(DrawingContext context, int colIndex, double height, IBrush fill)

@@ -5,11 +5,11 @@
 
 
     <ControlTheme x:Key="{x:Type controls:SettingPanelItem}" TargetType="controls:SettingPanelItem">
-        <Setter Property="Background" Value="{DynamicResource Surface3Brush}" />
         <Setter Property="CornerRadius" Value="{StaticResource RadiusMedium}" />
 
         <Styles>
             <Style Selector="controls|SettingPanelItem /template/ Border#Border">
+                <Setter Property="Background" Value="{DynamicResource Surface3Brush}" />
                 <Setter Property="Transitions">
                     <Transitions>
                         <BrushTransition Property="Background" Duration="0:0:0.15" Easing="0.40,0,0.20,1" />
@@ -17,13 +17,13 @@
                 </Setter>
             </Style>
             <Style Selector="controls|SettingPanelItem:pointerover /template/ Border#Border">
-                <Setter Property="Background" Value="{DynamicResource HoverBackgroundBrush}" />
+                <Setter Property="Background" Value="{DynamicResource Surface3HoverBrush}" />
             </Style>
         </Styles>
 
         <Setter Property="Template">
             <ControlTemplate>
-                <Border Background="{TemplateBinding Background}" Padding="14,12"
+                <Border Padding="14,12"
                         BorderBrush="{DynamicResource DividerSubtleBrush}"
                         BorderThickness="1"
                         x:Name="Border" Classes="setting-panel-item"

@@ -52,6 +52,8 @@
             <Color x:Key="Surface3">#282D38</Color>
             <Color x:Key="Surface3Color">#282D38</Color>
             <SolidColorBrush x:Key="Surface3Brush" Color="{StaticResource Surface3}" />
+            <Color x:Key="Surface3HoverColor">#303643</Color>
+            <SolidColorBrush x:Key="Surface3HoverBrush" Color="{StaticResource Surface3HoverColor}" />
 
             <Color x:Key="Surface4">#2E3440</Color>
             <Color x:Key="Surface4Color">#2E3440</Color>
@@ -351,6 +353,8 @@
             <Color x:Key="Surface3">#F2F4F8</Color>
             <Color x:Key="Surface3Color">#F2F4F8</Color>
             <SolidColorBrush x:Key="Surface3Brush" Color="{StaticResource Surface3}" />
+            <Color x:Key="Surface3HoverColor">#E8ECF3</Color>
+            <SolidColorBrush x:Key="Surface3HoverBrush" Color="{StaticResource Surface3HoverColor}" />
 
             <Color x:Key="Surface4">#FFFFFF</Color>
             <Color x:Key="Surface4Color">#FFFFFF</Color>

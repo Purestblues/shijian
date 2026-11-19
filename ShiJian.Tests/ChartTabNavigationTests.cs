@@ -5,6 +5,7 @@ using Avalonia.Headless.XUnit;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Threading;
+using ShiJian.Client.Controls.Base;
 using ShiJian.Client.Controls.Charts;
 using ShiJian.Client.Controls.Timeline;
 using Xunit;
@@ -56,6 +57,13 @@ public class ChartTabNavigationTests
             // 反向也要走得回去
             window.KeyPressQwerty(PhysicalKey.Tab, RawInputModifiers.Shift);
             Assert.Same(chart, window.FocusManager?.GetFocusedElement());
+            Assert.True(FocusVisual.ShouldDraw(chart));
+
+            // 鼠标/指针聚焦不应绘制焦点边框（G27）
+            before.Focus(NavigationMethod.Pointer);
+            chart.Focus(NavigationMethod.Pointer);
+            Assert.Same(chart, window.FocusManager?.GetFocusedElement());
+            Assert.False(FocusVisual.ShouldDraw(chart));
         }
         finally
         {
