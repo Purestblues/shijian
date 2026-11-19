@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using Avalonia.Controls;
@@ -15,6 +16,7 @@ using ShiJian.Client.Platform.Abstractions.Primitives;
 using ShiJian.Client.Servicers.Updater;
 using ShiJian.Client.Shared.Helpers;
 using ShiJian.Client.Shared.Models.Config;
+using ShiJian.Client.ViewModels;
 using Xunit;
 
 namespace ShiJian.Tests;
@@ -484,13 +486,33 @@ public class SettingPageTests
         Assert.Contains(vm.McpHttpUrl, vm.McpInstallPrompt);
         Assert.Contains(vm.McpToken, vm.McpInstallPrompt);
         Assert.Contains("--mcp", vm.McpInstallPrompt);
-        Assert.Contains("优先", vm.McpInstallPrompt);
-        Assert.Contains("只读", vm.McpInstallPrompt);
+        var isEnglish = !CultureInfo.CurrentUICulture.TwoLetterISOLanguageName.Equals("zh", StringComparison.OrdinalIgnoreCase);
+        if (isEnglish)
+        {
+            Assert.Contains("Priority", vm.McpInstallPrompt);
+            Assert.Contains("READ-ONLY", vm.McpInstallPrompt);
+        }
+        else
+        {
+            Assert.Contains("优先", vm.McpInstallPrompt);
+            Assert.Contains("只读", vm.McpInstallPrompt);
+        }
 
         var oldToken = vm.McpToken;
         vm.RegenerateMcpTokenCommand.Execute(null);
         Assert.NotEqual(oldToken, vm.McpToken);
         Assert.Contains(vm.McpToken, vm.McpInstallPrompt);
+
+        // 显式断言中英文双语提示词生成逻辑，确保无论 CI 语言环境如何，双语模板的优先原则与安全红线均得到完整覆盖
+        var cnPrompt = SettingPageViewModel.BuildMcpInstallPrompt(vm.McpHttpUrl, vm.McpStdioCommand, "http://127.0.0.1:49152", true, vm.McpToken, isEnglish: false);
+        Assert.Contains("优先", cnPrompt);
+        Assert.Contains("只读", cnPrompt);
+        Assert.Contains(vm.McpToken, cnPrompt);
+
+        var enPrompt = SettingPageViewModel.BuildMcpInstallPrompt(vm.McpHttpUrl, vm.McpStdioCommand, "http://127.0.0.1:49152", true, vm.McpToken, isEnglish: true);
+        Assert.Contains("Priority", enPrompt);
+        Assert.Contains("READ-ONLY", enPrompt);
+        Assert.Contains(vm.McpToken, enPrompt);
     }
 
     private class StubProxy<T> : DispatchProxy where T : class
