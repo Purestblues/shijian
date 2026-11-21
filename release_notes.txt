@@ -1,44 +1,18 @@
 # v{version} 发布说明
 
-> 本版本为 **ShiJian（时见）{version} 正式版**。
-> 本次更新带来重磅功能 —— **深度集成 Agent 与本地 MCP 服务端（Streamable HTTP + STDIO）**，并在客户端设置中新增「**AI 与 MCP**」专属分页，让各类 AI Agent 能够安全读取历史统计与使用洞察，并自动化协助用户完成分类规划与进程规则维护。
+> 本版本为 **ShiJian（时见）{version} 维护更新版**，在 v2.3 基础上全面换装 **Nord 24h 环形时钟** 全新应用图标体系。
 
 ---
 
-## 重大更新亮点
+## 本次更新内容
 
-### 1. 本地 MCP 服务端双模式支持（Streamable HTTP + STDIO）
-- **HTTP 模式**：内置于 Rust 高性能常驻服务，挂载于 `/mcp` 端点，支持标准 JSON-RPC 2.0 及长连接 Server-Sent Events / Streamable 协议，单服务同时供给客户端与 Agent，极低资源占用。
-- **STDIO 桥接模式**：提供极薄标准输入输出入口（`ShiJian.Server.exe --mcp`），作为轻量转发器自动桥接至本地后台服务，完美兼容 Claude Desktop、Cline、Roo Code 等仅支持 Stdio 进程拉起的 Agent 环境。
-- **自动安全鉴权**：首次开启时自动生成 32 字节高熵随机 Bearer Token，并在所有 HTTP 请求中严格校验；支持一键重新生成与撤销旧 Token。
+### 1. 全新 Nord 24h 环形时钟应用图标
+- **统一视觉语言**：告别早期继承自 Tai 的幽灵图标，采用契合时见 2.0 Nord Snow Storm / Frost 设计语言的 **24 小时分段环形表盘 + 极简指针** 图标。
+- **全平台多尺寸适配**：覆盖 Windows 主程序（`16–256px` 多分辨率 ICO）、窗口标题栏、系统托盘（针对 `16×16` 小尺寸进行像素对齐加粗优化）、macOS `AppIcon.icns`（Retina 全套分片）、安装器（`.ico` / `.png`）及浏览器扩展（`48px` / `128px`）。
 
-### 2. 严密的 Agent 安全边界与只读红线
-- **原始数据绝对只读**：细粒度进程流水与按日/周/时段统计摘要仅开放只读查询，严禁通过 Agent 篡改任何历史时间记录。
-- **敏感凭据脱敏防护**：系统配置读取接口自动擦除 WebDAV 密码与 MCP 鉴权令牌，绝不向大模型泄露。
-- **高危操作封禁**：严格排除整库还原、覆盖导入、清空数据等破坏性备份接口。
-- **丰富工具生态**：
-  - **洞察分析**：`get_today_summary`、`get_range_summary`、`query_history`、`get_category_distribution`、`get_app_detail`、`get_all_categories` 等。
-  - **智能归类与维护**：`create_category`、`update_category`、`delete_category`、`batch_assign_categories`、`update_process_merge_rules`、`ignore_process` 等。
-
-### 3. 设置页新增独立「AI 与 MCP」专属分页
-- **第六分页独立归类**：与常规设置解耦，清晰呈现 Agent 交互状态。
-- **一键复制与即刻集成**：
-  - **安装提示词**：内置针对任何 AI Agent 的一键安装提示词，用户复制后直接粘贴给 Agent 即可全自动完成配置。
-  - **客户端配置模板**：提供 Claude Desktop、Cline 等主流工具的 `claude_desktop_config.json` 模板一键复制。
-  - **桥接命令与 Token**：支持一键复制 STDIO 桥接指令与当前有效 Bearer Token。
-
-### 4. 完善的开发与集成指南
-- 新增官方指南文档 `docs/MCP-GUIDE.md`，详细记录架构设计、端口分配、HTTP/STDIO 协议报文样例及安全准则。
-
----
-
-## 质量与测试
-
-- **单元测试与 Headless 测试**：
-  - Rust 服务端：52/52 单元测试全部通过（包含 MCP JSON-RPC、Schema、只读红线与脱敏测试）。
-  - C# 客户端：235/235 单元测试全部通过（新增 `SettingPageViewModelMcpTests` 等自动化测试）。
-- **实机与 GUI 验证**：
-  - 通过 `gui_controller` 自动化 MCP 完成新版本设置页 UI 渲染、Tab 6 切换、Token 交互及命令复制功能验证。
+### 2. 包含 v2.3 全部能力
+- **本地 MCP 服务端双模式（Streamable HTTP + STDIO）**：内置 `/mcp` 端点与 `--mcp` 桥接入口，支持 Bearer Token 安全鉴权、原始流水只读红线与敏感凭据脱敏。
+- **独立「AI 与 MCP」设置分页**：支持一键复制 Agent 安装提示词、主流客户端配置模板与 STDIO 桥接命令。
 
 ---
 
